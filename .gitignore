@@ -10,6 +10,7 @@ __pycache__/
 
 # Go
 /edu-trace
+/data/
 *.exe
 
 # Next.js

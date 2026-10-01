@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/marlon/edu-trace/internal/ai"
+	"github.com/marlon/edu-trace/internal/auth"
 	"github.com/marlon/edu-trace/internal/model"
 )
 
@@ -17,16 +18,18 @@ const maxFeedbackCodeSize = 50 * 1024 // 50 KB
 type FeedbackHandler struct {
 	ollama    *ai.OllamaClient
 	modelName string
+	store     *auth.Store
 }
 
 // NewFeedbackHandler creates a handler backed by the given Ollama client.
-func NewFeedbackHandler(ollama *ai.OllamaClient, modelName string) *FeedbackHandler {
-	return &FeedbackHandler{ollama: ollama, modelName: modelName}
+func NewFeedbackHandler(ollama *ai.OllamaClient, modelName string, store *auth.Store) *FeedbackHandler {
+	return &FeedbackHandler{ollama: ollama, modelName: modelName, store: store}
 }
 
 func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var req model.FeedbackRequest
 
+	r.Body = http.MaxBytesReader(w, r.Body, 4*maxFeedbackCodeSize)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{
 			Error:   "invalid request body",
@@ -49,7 +52,11 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user := auth.UserFrom(r.Context())
+	h.store.RecordFeedback(user.ID)
+
 	slog.Info("streaming feedback request received",
+		"user_id", user.ID,
 		"code_size", len(req.Code),
 		"compiled", req.Success,
 	)
@@ -69,7 +76,7 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	start := time.Now()
 
-	err := h.ollama.StreamFeedback(r.Context(), req.Code, req.CompilerOutput, req.Success, func(token string) {
+	err := h.ollama.StreamFeedback(r.Context(), req, func(token string) {
 		payload, _ := json.Marshal(map[string]string{"token": token})
 		fmt.Fprintf(w, "data: %s\n\n", payload)
 		flusher.Flush()
