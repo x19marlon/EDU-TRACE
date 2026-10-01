@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/marlon/edu-trace/internal/ai"
+	"github.com/marlon/edu-trace/internal/auth"
 	"github.com/marlon/edu-trace/internal/compiler"
 	"github.com/marlon/edu-trace/internal/config"
 	"github.com/marlon/edu-trace/internal/handler"
@@ -18,6 +19,23 @@ import (
 
 func main() {
 	cfg := config.Load()
+
+	if err := compiler.CheckSandbox(cfg.Sandbox); err != nil {
+		slog.Error("sandbox no disponible — el servidor no ejecutará código sin aislamiento", "error", err)
+		os.Exit(1)
+	}
+	if cfg.Sandbox == "none" {
+		slog.Warn("SANDBOX=none: el código de los estudiantes se ejecuta SIN aislamiento, úsalo solo en desarrollo")
+	}
+
+	store, err := auth.OpenStore(cfg.DataDir, cfg.SessionTTL)
+	if err != nil {
+		slog.Error("no se pudo abrir el almacén de usuarios", "error", err)
+		os.Exit(1)
+	}
+	if cfg.TeacherCode == "" {
+		slog.Warn("TEACHER_CODE vacío: el registro de cuentas docentes está deshabilitado")
+	}
 
 	comp := compiler.New(cfg)
 
@@ -30,10 +48,10 @@ func main() {
 		ollama = ollamaClient
 	}
 
-	router := handler.NewRouter(cfg, comp, ollama)
+	router := handler.NewRouter(cfg, comp, ollama, store)
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%s", cfg.Port),
+		Addr:         net.JoinHostPort(cfg.Host, cfg.Port),
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 200 * time.Second, // Long for Ollama responses
@@ -56,7 +74,8 @@ func main() {
 	}()
 
 	slog.Info("EDU-TRACE server starting",
-		"port", cfg.Port,
+		"addr", srv.Addr,
+		"sandbox", cfg.Sandbox,
 		"g++", cfg.GppPath,
 		"ollama_url", cfg.OllamaBaseURL,
 		"ollama_model", cfg.OllamaModel,

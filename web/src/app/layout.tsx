@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import { Nunito } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/components/AuthProvider";
+
+const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "EDU-TRACE — Compilador C++",
-  description: "Plataforma de apoyo para Introducción a la Programación",
+  title: "EduTrace",
+  description: "Retroalimentación formativa para cursos introductorios de programación, con el docente como decisor",
 };
 
 export default function RootLayout({
@@ -12,9 +16,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
-      <body className="bg-gray-950 text-white antialiased">
-        {children}
+    <html lang="es" className={nunito.variable}>
+      <body className="bg-cream text-ink font-sans antialiased">
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
