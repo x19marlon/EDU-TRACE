@@ -52,36 +52,60 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	switch req.Mode {
+	case "":
+		req.Mode = ai.ModeFormal
+	case ai.ModeFormal, ai.ModeInformal:
+	default:
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "tipo de retroalimentación inválido"})
+		return
+	}
+
 	user := auth.UserFrom(r.Context())
+
+	// El enunciado del taller solo se usa si el usuario tiene acceso a ese taller.
+	var statement string
+	if req.AssignmentID != "" {
+		st, err := h.store.AssignmentStatement(user, req.AssignmentID)
+		if err != nil {
+			writeJSON(w, http.StatusNotFound, model.ErrorResponse{Error: "taller no encontrado"})
+			return
+		}
+		statement = st
+	}
+
 	h.store.RecordFeedback(user.ID)
 
 	slog.Info("streaming feedback request received",
 		"user_id", user.ID,
+		"mode", req.Mode,
 		"code_size", len(req.Code),
 		"compiled", req.Success,
 	)
 
-	// Set SSE headers.
+	streamSSE(w, h.modelName, func(onToken func(string)) error {
+		return h.ollama.StreamFeedback(r.Context(), req, statement, onToken)
+	})
+}
+
+// streamSSE envía la respuesta del modelo como Server-Sent Events: un evento por
+// trozo de texto, "error" si falla y "done" con el tiempo empleado.
+func streamSSE(w http.ResponseWriter, modelName string, run func(onToken func(string)) error) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Error: "streaming not supported"})
+		return
+	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{
-			Error: "streaming not supported",
-		})
-		return
-	}
-
 	start := time.Now()
-
-	err := h.ollama.StreamFeedback(r.Context(), req, func(token string) {
+	err := run(func(token string) {
 		payload, _ := json.Marshal(map[string]string{"token": token})
 		fmt.Fprintf(w, "data: %s\n\n", payload)
 		flusher.Flush()
 	})
-
 	elapsed := time.Since(start).Milliseconds()
 
 	if err != nil {
@@ -91,13 +115,8 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 	}
 
-	// Send done event with metadata.
-	donePayload, _ := json.Marshal(map[string]any{
-		"model":   h.modelName,
-		"time_ms": elapsed,
-	})
+	donePayload, _ := json.Marshal(map[string]any{"model": modelName, "time_ms": elapsed})
 	fmt.Fprintf(w, "event: done\ndata: %s\n\n", donePayload)
 	flusher.Flush()
-
-	slog.Info("streaming feedback completed", "time_ms", elapsed)
+	slog.Info("streaming completed", "time_ms", elapsed)
 }

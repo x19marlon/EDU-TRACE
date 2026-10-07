@@ -40,11 +40,17 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("GET /api/teacher/groups/{id}", teacher(classes.Group))
 	mux.Handle("GET /api/teacher/groups/{id}/submissions", teacher(classes.GroupSubmissions))
 	mux.Handle("GET /api/teacher/submissions/{id}", teacher(classes.Submission))
+	mux.Handle("POST /api/teacher/groups/{id}/assignments", teacher(classes.CreateAssignment))
+	mux.Handle("GET /api/teacher/groups/{id}/assignments", teacher(classes.GroupAssignments))
+
+	// --- Adjuntos de talleres: profesor dueño o estudiante inscrito (se verifica en el store) ---
+	mux.Handle("GET /api/assignments/{id}/files/{file}", auth.RequireAuth(store, http.HandlerFunc(classes.AssignmentFile)))
 
 	// --- Estudiante: clases y envíos ---
 	mux.Handle("GET /api/student/groups", student(http.HandlerFunc(classes.MyGroups)))
 	mux.Handle("POST /api/student/groups/join", student(http.HandlerFunc(classes.Join)))
 	mux.Handle("GET /api/student/submissions", student(http.HandlerFunc(classes.MySubmissions)))
+	mux.Handle("GET /api/student/assignments", student(http.HandlerFunc(classes.MyAssignments)))
 	mux.Handle("POST /api/student/submissions", student(compileFlight.Wrap(http.HandlerFunc(classes.Submit))))
 
 	// --- Compile endpoint ---
@@ -53,13 +59,17 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	// --- Feedback endpoint (Ollama) ---
 	if ollama != nil {
 		mux.Handle("POST /api/feedback", auth.RequireAuth(store, feedbackFlight.Wrap(NewFeedbackHandler(ollama, cfg.OllamaModel, store))))
+		mux.Handle("POST /api/teacher/groups/{id}/students/{student}/analysis",
+			auth.RequireRole(store, auth.RoleTeacher, feedbackFlight.Wrap(NewAnalysisHandler(ollama, cfg.OllamaModel, store))))
 		slog.Info("feedback endpoint enabled", "model", cfg.OllamaModel)
 	} else {
-		mux.Handle("POST /api/feedback", auth.RequireAuth(store, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		unavailable := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{
 				"error": "Ollama no está configurado. La retroalimentación con IA no está disponible.",
 			})
-		})))
+		})
+		mux.Handle("POST /api/feedback", auth.RequireAuth(store, unavailable))
+		mux.Handle("POST /api/teacher/groups/{id}/students/{student}/analysis", auth.RequireRole(store, auth.RoleTeacher, unavailable))
 		slog.Warn("feedback endpoint disabled — Ollama client not available")
 	}
 

@@ -45,3 +45,16 @@ export function formatFeedback(text: string): string {
     .replace(/(<\/h[34]>)(<br \/>)+/g, "$1")
     .replace(/(<br \/>)+(<h[34])/g, "$2");
 }
+
+export function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** "Entrega: 20 oct 2026, 18:59" (o "Entrega vencida: ..."). */
+export function dueLabel(iso?: string): string | null {
+  if (!iso) return null;
+  const late = new Date(iso).getTime() < Date.now();
+  return `${late ? "Entrega vencida" : "Entrega"}: ${formatDateTime(iso)}`;
+}

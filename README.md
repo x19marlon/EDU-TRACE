@@ -92,6 +92,9 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser. You wil
 - **Teachers** create **courses** and, inside each one, **classes** (groups). Each class has a join code; students join with it and send their code from the compiler. In **Mis materias** (`/docente`) teachers open a class to see its students and every submission (code, input/output and the AI guidance the student saw). A teacher only ever sees their own classes.
 - To sign in or register as a teacher, open the small `⋮` button in the top-right corner of the login card and pick **Docente**. Teacher registration requires `TEACHER_CODE`; if it is empty, teacher accounts cannot be created. A student account cannot sign in through teacher access.
 - Passwords are hashed with PBKDF2-SHA256; sessions are opaque tokens in an `HttpOnly` cookie. Users, sessions, courses, classes and submission metadata live in `data/edutrace.json`; each submission's code is stored in `data/submissions/<id>.json` (all git-ignored).
+- **Assignments (talleres):** inside a class the teacher publishes assignments with a statement, an optional due date and attachments (up to 10 files of 10 MB). Students read the statement, download the files and pick the assignment they are working on; their submissions are linked to it and the AI uses the statement as context. Attachments are always served as downloads (`application/octet-stream`, `nosniff`), never rendered in the browser. They are stored in `data/assignments/<id>/`.
+- **Two AI feedback modes, always available:** *formal* follows the formative-feedback model of the project document (¿Hacia dónde voy? / ¿Cómo voy? / ¿Qué sigue?); *informal* gives a tutor-style review of code elements (naming, types, loops, functions, layout) plus a quick tip. Neither grades nor writes the solution. Submissions keep whichever feedback the student requested so the teacher can review it.
+- **Attempts vs. official submissions:** when a student compiles with a class selected, the compilation is stored as an *attempt* (identical consecutive attempts are skipped; students are told on screen). Only **Enviar** creates the *official submission*. For each student the teacher sees attempts and official submissions separately, data-based stats (attempts, % that compiled, most frequent compiler errors) and can ask the AI for an analysis of the process ("en qué puede mejorar") addressed to the teacher, who makes the final decision. The student's name is not sent to the model.
 - Each user can run one compilation and one feedback request at a time; logins are rate-limited per IP.
 - Student code is compiled and run inside **bubblewrap**: no network, no access to the host's files (read-only `/usr`, private `/tmp`), and memory/CPU/file-size limits via `prlimit`.
 
@@ -198,8 +201,13 @@ EDU-TRACE/
 | `POST` | `/api/teacher/courses` | Create a course 🔒 teacher |
 | `POST` | `/api/teacher/courses/{id}/groups` | Create a class (group) with a join code 🔒 teacher |
 | `GET` | `/api/teacher/groups/{id}` | Class detail with its students 🔒 teacher (own classes only) |
-| `GET` | `/api/teacher/groups/{id}/submissions` | Class submissions (`?student=` to filter) 🔒 teacher |
+| `GET` | `/api/teacher/groups/{id}/submissions` | Class submissions (`?student=` to filter, `?kind=official\|attempt\|all`, default `official`) 🔒 teacher |
+| `POST` | `/api/teacher/groups/{id}/students/{student}/analysis` | AI analysis of a student's process for the teacher (SSE) 🔒 teacher |
 | `GET` | `/api/teacher/submissions/{id}` | Full submission: code, I/O, AI guidance 🔒 teacher |
+| `POST` | `/api/teacher/groups/{id}/assignments` | Create an assignment (multipart: `title`, `statement`, optional `due_at`, `files`) 🔒 teacher |
+| `GET` | `/api/teacher/groups/{id}/assignments` | Class assignments 🔒 teacher |
+| `GET` | `/api/assignments/{id}/files/{file}` | Download an attachment (owner teacher or enrolled student) 🔒 |
+| `GET` | `/api/student/assignments` | Assignments of the student's classes 🔒 student |
 | `GET` | `/api/student/groups` | Student's classes 🔒 student |
 | `POST` | `/api/student/groups/join` | Join a class with its code 🔒 student |
 | `POST` | `/api/student/submissions` | Send code to a class (compiled server-side in the sandbox) 🔒 student |

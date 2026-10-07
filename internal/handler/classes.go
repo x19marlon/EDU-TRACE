@@ -106,9 +106,10 @@ func (h *ClassesHandler) Group(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, g)
 }
 
-// GroupSubmissions maneja GET /api/teacher/groups/{id}/submissions?student=...
+// GroupSubmissions maneja GET /api/teacher/groups/{id}/submissions?student=...&kind=official|attempt|all
 func (h *ClassesHandler) GroupSubmissions(w http.ResponseWriter, r *http.Request) {
-	subs, err := h.store.GroupSubmissions(auth.UserFrom(r.Context()).ID, r.PathValue("id"), r.URL.Query().Get("student"))
+	q := r.URL.Query()
+	subs, err := h.store.GroupSubmissions(auth.UserFrom(r.Context()).ID, r.PathValue("id"), q.Get("student"), q.Get("kind"))
 	if err != nil {
 		writeStoreErr(w, err, "cargar los envíos")
 		return
@@ -170,13 +171,15 @@ func (h *ClassesHandler) MySubmissions(w http.ResponseWriter, r *http.Request) {
 // código en el sandbox: el docente ve el resultado real, no uno enviado por el cliente.
 func (h *ClassesHandler) Submit(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		GroupID    string `json:"group_id"`
-		Code       string `json:"code"`
-		Stdin      string `json:"stdin"`
-		AIFeedback string `json:"ai_feedback"`
+		GroupID            string `json:"group_id"`
+		AssignmentID       string `json:"assignment_id"`
+		Code               string `json:"code"`
+		Stdin              string `json:"stdin"`
+		AIFeedback         string `json:"ai_feedback"`
+		AIFeedbackInformal string `json:"ai_feedback_informal"`
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, 4*maxCodeSize)
-	if !decodeJSON(w, r, &req) {
+	// Código + entrada + dos retroalimentaciones, con margen para el escape JSON.
+	if !decodeJSONLimit(w, r, &req, 2*(2*maxCodeSize+maxStdinSize+maxCodeSize)) {
 		return
 	}
 	switch {
@@ -189,13 +192,17 @@ func (h *ClassesHandler) Submit(w http.ResponseWriter, r *http.Request) {
 	case len(req.Stdin) > maxStdinSize:
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "la entrada supera el tamaño máximo (64 KB)"})
 		return
-	case len(req.AIFeedback) > maxCodeSize:
-		req.AIFeedback = strings.ToValidUTF8(req.AIFeedback[:maxCodeSize], "")
 	}
+	req.AIFeedback = clip(req.AIFeedback, maxCodeSize)
+	req.AIFeedbackInformal = clip(req.AIFeedbackInformal, maxCodeSize)
 
 	user := auth.UserFrom(r.Context())
 	if !h.store.IsEnrolled(user.ID, req.GroupID) {
 		writeJSON(w, http.StatusForbidden, model.ErrorResponse{Error: auth.ErrNotEnrolled.Error()})
+		return
+	}
+	if req.AssignmentID != "" && !h.store.AssignmentInGroup(req.AssignmentID, req.GroupID) {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "ese taller no pertenece a la clase elegida"})
 		return
 	}
 
@@ -203,17 +210,20 @@ func (h *ClassesHandler) Submit(w http.ResponseWriter, r *http.Request) {
 	h.store.RecordCompile(user.ID)
 	sub := &auth.Submission{
 		SubmissionMeta: auth.SubmissionMeta{
-			GroupID:   req.GroupID,
-			StudentID: user.ID,
-			Success:   result.Success,
-			RunError:  result.Error,
-			ExitCode:  result.ExitCode,
+			GroupID:      req.GroupID,
+			AssignmentID: req.AssignmentID,
+			StudentID:    user.ID,
+			Success:      result.Success,
+			RunError:     result.Error,
+			ExitCode:     result.ExitCode,
+			ErrorSummary: compiler.FirstError(result.CompilerOutput),
 		},
 		Code:           req.Code,
 		Stdin:          req.Stdin,
 		CompilerOutput: result.CompilerOutput,
 		ProgramOutput:  result.ProgramOutput,
 		AIFeedback:     req.AIFeedback,
+		AIFeedbackInf:  req.AIFeedbackInformal,
 	}
 	if err := h.store.AddSubmission(sub); err != nil {
 		writeStoreErr(w, err, "guardar el envío")
@@ -221,4 +231,12 @@ func (h *ClassesHandler) Submit(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("submission saved", "user_id", user.ID, "group_id", req.GroupID, "submission_id", sub.ID)
 	writeJSON(w, http.StatusCreated, sub.SubmissionMeta)
+}
+
+// clip recorta s a max bytes sin partir caracteres UTF-8.
+func clip(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return strings.ToValidUTF8(s[:max], "")
 }

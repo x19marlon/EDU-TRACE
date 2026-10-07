@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -64,6 +65,7 @@ func (h *CompileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.store.RecordCompile(user.ID)
 
 	result := h.compiler.Compile(r.Context(), req.Code, req.Stdin)
+	h.saveAttempt(user, req, result)
 
 	writeJSON(w, http.StatusOK, result)
 }
@@ -73,5 +75,35 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		slog.Error("failed to write JSON response", "error", err)
+	}
+}
+
+// saveAttempt guarda la compilación como intento si el estudiante eligió una clase
+// en la que está inscrito. Nunca hace fallar la compilación.
+func (h *CompileHandler) saveAttempt(user *auth.User, req model.CompileRequest, result *model.CompileResult) {
+	if user.Role != auth.RoleStudent || req.GroupID == "" || !h.store.IsEnrolled(user.ID, req.GroupID) {
+		return
+	}
+	if req.AssignmentID != "" && !h.store.AssignmentInGroup(req.AssignmentID, req.GroupID) {
+		req.AssignmentID = ""
+	}
+	err := h.store.AddSubmission(&auth.Submission{
+		SubmissionMeta: auth.SubmissionMeta{
+			Kind:         auth.KindAttempt,
+			GroupID:      req.GroupID,
+			AssignmentID: req.AssignmentID,
+			StudentID:    user.ID,
+			Success:      result.Success,
+			RunError:     result.Error,
+			ExitCode:     result.ExitCode,
+			ErrorSummary: compiler.FirstError(result.CompilerOutput),
+		},
+		Code:           req.Code,
+		Stdin:          req.Stdin,
+		CompilerOutput: result.CompilerOutput,
+		ProgramOutput:  result.ProgramOutput,
+	})
+	if err != nil && !errors.Is(err, auth.ErrDuplicateAttempt) {
+		slog.Error("save attempt failed", "user_id", user.ID, "error", err)
 	}
 }

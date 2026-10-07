@@ -57,6 +57,7 @@ type storeData struct {
 	Courses     map[string]*Course         `json:"courses"`
 	Groups      map[string]*Group          `json:"groups"`
 	Submissions map[string]*SubmissionMeta `json:"submissions"` // el código va en dir/submissions/<id>.json
+	Assignments map[string]*Assignment     `json:"assignments"` // los adjuntos van en dir/assignments/<id>/
 }
 
 // Store guarda usuarios y sesiones en un archivo JSON. Pensado para un curso
@@ -106,6 +107,9 @@ func OpenStore(dir string, ttl time.Duration) (*Store, error) {
 	}
 	if s.data.Submissions == nil {
 		s.data.Submissions = map[string]*SubmissionMeta{}
+	}
+	if s.data.Assignments == nil {
+		s.data.Assignments = map[string]*Assignment{}
 	}
 	return s, nil
 }
