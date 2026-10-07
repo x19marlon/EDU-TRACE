@@ -5,6 +5,8 @@ package model
 // The execution fields describe the last compilation of exactly this code;
 // the frontend leaves Compiled=false when the code changed since then.
 type FeedbackRequest struct {
+	Mode           string `json:"mode"`          // "formal" (por defecto) o "informal"
+	AssignmentID   string `json:"assignment_id"` // taller elegido (opcional): su enunciado da contexto a la IA
 	Code           string `json:"code"`
 	Compiled       bool   `json:"compiled"`
 	Success        bool   `json:"success"`

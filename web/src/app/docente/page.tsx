@@ -39,7 +39,7 @@ function CourseCard({ course, onChanged }: { course: CourseSummary; onChanged: (
                   {g.join_code}
                 </span>
                 <span className="text-xs font-semibold text-ink-soft">
-                  {g.student_count} estudiantes · {g.submission_count} envíos
+                  {g.student_count} estudiantes · {g.submission_count} entregas
                 </span>
                 <svg className="h-4 w-4 text-ink-faint" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
                   <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.17 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />
@@ -130,8 +130,9 @@ function CoursesDashboard() {
             <ol className="list-decimal space-y-2 pl-5 text-sm text-ink-soft">
               <li>Crea una materia y agrégale sus clases (grupos).</li>
               <li>Comparte el código de cada clase con tus estudiantes.</li>
-              <li>Ellos se unen y te envían su código desde el compilador.</li>
-              <li>Entra a una clase para ver a cada estudiante, sus envíos y la orientación que le dio la IA.</li>
+              <li>Dentro de cada clase, publica talleres con su enunciado y archivos de apoyo.</li>
+              <li>Tus estudiantes trabajan el taller, piden retroalimentación formal o informal y te envían su código.</li>
+              <li>Entra a la clase para ver cada envío, a qué taller responde y qué retroalimentación vio el estudiante.</li>
             </ol>
           </Card>
         </div>

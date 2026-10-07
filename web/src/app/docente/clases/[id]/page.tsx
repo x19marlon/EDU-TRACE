@@ -5,37 +5,35 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/AppShell";
-import { Avatar, Card, ProgressRing, Spinner } from "@/components/ui";
+import { Avatar, Card, ProgressRing } from "@/components/ui";
+import TeacherAssignments from "@/components/TeacherAssignments";
+import StudentProcess from "@/components/StudentProcess";
+import { StatusPill, SubmissionDetail } from "@/components/SubmissionView";
 import {
+  Assignment,
   getGroup,
-  getSubmission,
+  listGroupAssignments,
   GroupDetail,
   GroupStudent,
   listGroupSubmissions,
-  Submission,
   SubmissionMeta,
 } from "@/lib/api";
-import { formatDateTime, formatFeedback, relativeTime } from "@/lib/format";
+import { formatDateTime, relativeTime } from "@/lib/format";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Última señal de actividad del estudiante: compilar, pedir orientación o enviar. */
 function lastSeen(s: GroupStudent): string | undefined {
   const a = s.activity.last_active_at;
-  const candidates = [a && !a.startsWith("0001") ? a : undefined, s.last_submission_at].filter(Boolean) as string[];
+  const candidates = [a && !a.startsWith("0001") ? a : undefined, s.last_submission_at, s.last_attempt_at].filter(
+    Boolean
+  ) as string[];
   return candidates.sort().at(-1);
 }
 
 function isActive(s: GroupStudent): boolean {
   const seen = lastSeen(s);
   return !!seen && Date.now() - new Date(seen).getTime() < WEEK_MS;
-}
-
-function StatusPill({ meta }: { meta: SubmissionMeta }) {
-  if (!meta.success) return <span className="rounded-full bg-peach-100 px-2.5 py-0.5 text-[11px] font-bold text-peach-700">No compila</span>;
-  if (meta.run_error || meta.exit_code !== 0)
-    return <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">Error al ejecutar</span>;
-  return <span className="rounded-full bg-mint-100 px-2.5 py-0.5 text-[11px] font-bold text-mint-700">Compila y ejecuta</span>;
 }
 
 function CopyCode({ code }: { code: string }) {
@@ -60,105 +58,32 @@ function CopyCode({ code }: { code: string }) {
   );
 }
 
-function CodeView({ code }: { code: string }) {
-  const lines = code.replace(/\n$/, "").split("\n");
-  return (
-    <pre className="overflow-x-auto rounded-2xl border border-lavender-100 bg-white py-3 font-mono text-[13px] leading-relaxed">
-      {lines.map((line, i) => (
-        <div key={i} className="flex">
-          <span className="w-10 shrink-0 select-none pr-3 text-right text-ink-faint">{i + 1}</span>
-          <span className="whitespace-pre pr-4">{line || " "}</span>
-        </div>
-      ))}
-    </pre>
-  );
-}
-
-function SubmissionDetail({ id, studentName }: { id: string; studentName: string }) {
-  const [sub, setSub] = useState<Submission | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setSub(null);
-    setError(null);
-    getSubmission(id)
-      .then(setSub)
-      .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar el envío"));
-  }, [id]);
-
-  if (error) return <p className="rounded-2xl bg-peach-50 p-4 text-sm text-peach-700">{error}</p>;
-  if (!sub)
-    return (
-      <p className="flex items-center gap-2 p-2 text-sm text-ink-soft">
-        <Spinner className="h-4 w-4 border-lavender-500" /> Cargando envío...
-      </p>
-    );
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-bold">{studentName}</span>
-        <span className="text-xs text-ink-soft">{formatDateTime(sub.created_at)}</span>
-        <StatusPill meta={sub} />
-      </div>
-
-      <CodeView code={sub.code} />
-
-      {sub.compiler_output && (
-        <div>
-          <h4 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-ink-soft">Mensajes del compilador</h4>
-          <pre className="whitespace-pre-wrap rounded-2xl bg-peach-50 p-3 font-mono text-xs text-peach-700">{sub.compiler_output}</pre>
-        </div>
-      )}
-      {sub.success && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <h4 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-ink-soft">Entrada</h4>
-            <pre className="min-h-[3rem] whitespace-pre-wrap rounded-2xl bg-lavender-50 p-3 font-mono text-xs">{sub.stdin || "(sin entrada)"}</pre>
-          </div>
-          <div>
-            <h4 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-ink-soft">Salida</h4>
-            <pre className="min-h-[3rem] whitespace-pre-wrap rounded-2xl bg-mint-50 p-3 font-mono text-xs">{sub.program_output || "(sin salida)"}</pre>
-          </div>
-        </div>
-      )}
-      {sub.run_error && <p className="rounded-2xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">{sub.run_error}</p>}
-
-      <div>
-        <h4 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-ink-soft">Orientación de la IA que vio el estudiante</h4>
-        {sub.ai_feedback ? (
-          <div className="rounded-2xl bg-mint-50 p-4">
-            <div className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: formatFeedback(sub.ai_feedback) }} />
-            <p className="mt-3 border-t border-mint-200 pt-2 text-xs text-ink-faint">
-              Generada por IA. Úsala como apoyo: la valoración y la retroalimentación final son tuyas.
-            </p>
-          </div>
-        ) : (
-          <p className="text-sm text-ink-soft">El estudiante envió este código sin pedir orientación a la IA.</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function GroupView() {
   const { id } = useParams<{ id: string }>();
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [submissions, setSubmissions] = useState<SubmissionMeta[] | null>(null);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [studentId, setStudentId] = useState<string | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getGroup(id), listGroupSubmissions(id)])
-      .then(([g, s]) => {
+    Promise.all([getGroup(id), listGroupSubmissions(id), listGroupAssignments(id)])
+      .then(([g, s, a]) => {
         setGroup(g);
         setSubmissions(s);
+        setAssignments(a);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar la clase"));
   }, [id]);
 
   const names = useMemo(() => new Map(group?.students.map((s) => [s.id, s.name]) ?? []), [group]);
+  const assignmentTitles = useMemo(() => new Map(assignments.map((a) => [a.id, a.title])), [assignments]);
+  const perAssignment = useMemo(() => {
+    const counts = new Map<string, number>();
+    submissions?.forEach((m) => m.assignment_id && counts.set(m.assignment_id, (counts.get(m.assignment_id) ?? 0) + 1));
+    return counts;
+  }, [submissions]);
   const visible = useMemo(
     () => submissions?.filter((s) => !studentId || s.student_id === studentId) ?? [],
     [submissions, studentId]
@@ -211,7 +136,7 @@ function GroupView() {
           <div className="grid grid-cols-3 gap-2 text-center">
             {[
               { v: total, l: "estudiantes", c: "bg-lavender-50 text-lavender-700" },
-              { v: submissions.length, l: "envíos", c: "bg-mint-50 text-mint-700" },
+              { v: submissions.length, l: "entregas", c: "bg-mint-50 text-mint-700" },
               { v: total - withSubmission, l: "sin enviar", c: "bg-peach-50 text-peach-700" },
             ].map((x) => (
               <div key={x.l} className={`rounded-2xl py-4 ${x.c}`}>
@@ -222,6 +147,13 @@ function GroupView() {
           </div>
         </Card>
       </div>
+
+      <TeacherAssignments
+        groupId={group.id}
+        assignments={assignments}
+        submissionCounts={perAssignment}
+        onCreated={(a) => setAssignments((list) => [a, ...list])}
+      />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
         {/* Estudiantes */}
@@ -242,7 +174,7 @@ function GroupView() {
                     !studentId ? "bg-lavender-100 text-lavender-700" : "text-ink-soft hover:bg-lavender-50"
                   }`}
                 >
-                  Todos los envíos
+                  Todas las entregas
                 </button>
               </li>
               {group.students.map((s) => (
@@ -257,7 +189,8 @@ function GroupView() {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-bold">{s.name}</span>
                       <span className="block truncate text-xs text-ink-soft">
-                        {s.submission_count} {s.submission_count === 1 ? "envío" : "envíos"} · {relativeTime(lastSeen(s))}
+                        {s.submission_count} {s.submission_count === 1 ? "entrega" : "entregas"} · {s.attempt_count}{" "}
+                        {s.attempt_count === 1 ? "intento" : "intentos"} · {relativeTime(lastSeen(s))}
                       </span>
                     </span>
                     <span
@@ -273,15 +206,18 @@ function GroupView() {
           )}
         </Card>
 
-        {/* Envíos */}
+        {/* Proceso del estudiante elegido, o entregas oficiales recientes de la clase */}
+        {selected ? (
+          <StudentProcess key={selected.id} groupId={group.id} student={selected} assignmentTitles={assignmentTitles} />
+        ) : (
         <Card
-          title={selected ? `Envíos de ${selected.name}` : "Envíos recientes"}
+          title="Entregas oficiales recientes"
           className="rise-in lg:col-span-3"
           action={<span className="text-xs font-semibold text-ink-faint">{visible.length}</span>}
         >
           {visible.length === 0 ? (
             <p className="text-sm text-ink-soft">
-              {selected ? "Este estudiante aún no ha enviado código." : "Todavía no hay envíos en esta clase."}
+              Todavía no hay entregas oficiales en esta clase. Elige un estudiante para ver también sus intentos.
             </p>
           ) : (
             <div className="space-y-4">
@@ -297,9 +233,14 @@ function GroupView() {
                       {!selected && <span className="text-sm font-bold">{names.get(m.student_id) ?? "Estudiante"}</span>}
                       <span className="text-xs text-ink-soft">{formatDateTime(m.created_at)}</span>
                       <span className="text-xs text-ink-faint">{m.lines} líneas</span>
+                      {m.assignment_id && (
+                        <span className="rounded-full bg-lavender-100 px-2.5 py-0.5 text-[11px] font-bold text-lavender-700">
+                          {assignmentTitles.get(m.assignment_id) ?? "Taller"}
+                        </span>
+                      )}
                       <span className="flex-1" />
                       {m.has_ai_feedback && (
-                        <span className="rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-lavender-600">Con orientación IA</span>
+                        <span className="rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-lavender-600">Con retroalimentación IA</span>
                       )}
                       <StatusPill meta={m} />
                     </button>
@@ -311,12 +252,17 @@ function GroupView() {
                   <SubmissionDetail
                     id={submissionId}
                     studentName={names.get(visible.find((m) => m.id === submissionId)?.student_id ?? "") ?? "Estudiante"}
+                    assignmentTitle={(() => {
+                      const aid = visible.find((m) => m.id === submissionId)?.assignment_id;
+                      return aid ? assignmentTitles.get(aid) ?? "Taller" : undefined;
+                    })()}
                   />
                 </div>
               )}
             </div>
           )}
         </Card>
+        )}
       </div>
     </div>
   );

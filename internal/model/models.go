@@ -4,6 +4,10 @@ package model
 type CompileRequest struct {
 	Code  string `json:"code"`
 	Stdin string `json:"stdin"`
+	// Clase y taller elegidos por el estudiante: si está inscrito, la compilación
+	// se guarda como intento para que su profesor vea el proceso.
+	GroupID      string `json:"group_id"`
+	AssignmentID string `json:"assignment_id"`
 }
 
 // CompileResult holds the outcome of compiling and running C++ code.

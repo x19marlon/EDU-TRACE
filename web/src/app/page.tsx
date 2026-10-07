@@ -9,13 +9,17 @@ import AppShell from "@/components/AppShell";
 import { Avatar, Card, Spinner } from "@/components/ui";
 import { useAuth } from "@/components/AuthProvider";
 import StudentClasses from "@/components/StudentClasses";
+import StudentAssignments from "@/components/StudentAssignments";
 import {
   compileCode,
   streamFeedback,
   CompileResult,
   FeedbackContext,
   FeedbackMeta,
+  FeedbackMode,
+  listMyAssignments,
   listMyGroups,
+  StudentAssignment,
   StudentGroup,
   submitCode,
   UnauthorizedError,
@@ -60,6 +64,18 @@ function StatChip({ value, label, tone }: { value: number; label: string; tone: 
   );
 }
 
+type FeedbackState = {
+  text: string;
+  meta: FeedbackMeta | null;
+  loading: boolean;
+  error: string | null;
+  code: string | null; // código sobre el que se generó (se adjunta al envío solo si coincide)
+};
+
+const EMPTY_FEEDBACK: FeedbackState = { text: "", meta: null, loading: false, error: null, code: null };
+
+const MODE_LABEL: Record<FeedbackMode, string> = { formal: "Formal", informal: "Informal" };
+
 function CompilerPage() {
   const { user, setUser } = useAuth();
   const [code, setCode] = useState(DEFAULT_CODE);
@@ -71,20 +87,31 @@ function CompilerPage() {
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileError, setCompileError] = useState<string | null>(null);
 
-  const [feedbackText, setFeedbackText] = useState("");
-  const [feedbackMeta, setFeedbackMeta] = useState<FeedbackMeta | null>(null);
-  const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
-  const [feedbackError, setFeedbackError] = useState<string | null>(null);
-  const feedbackRef = useRef("");
-  // Código sobre el que se generó la orientación actual (se adjunta al envío solo si coincide).
-  const [feedbackCode, setFeedbackCode] = useState<string | null>(null);
+  // Una retroalimentación por modalidad; las dos están siempre disponibles.
+  const [feedback, setFeedback] = useState<Record<FeedbackMode, FeedbackState>>({
+    formal: EMPTY_FEEDBACK,
+    informal: EMPTY_FEEDBACK,
+  });
+  const feedbackText = useRef<Record<FeedbackMode, string>>({ formal: "", informal: "" });
+  const updateFeedback = (mode: FeedbackMode, patch: Partial<FeedbackState>) =>
+    setFeedback((f) => ({ ...f, [mode]: { ...f[mode], ...patch } }));
+  // El servidor atiende una retroalimentación a la vez por usuario.
+  const anyFeedbackLoading = feedback.formal.loading || feedback.informal.loading;
 
-  // Clases del estudiante y envío al profesor.
+  // Clases, talleres y envío al profesor.
   const isStudent = user?.role === "student";
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [groupId, setGroupId] = useState<string | null>(null);
+  const [assignments, setAssignments] = useState<StudentAssignment[]>([]);
+  const [assignmentId, setAssignmentId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [sendStatus, setSendStatus] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const loadAssignments = useCallback(() => {
+    listMyAssignments()
+      .then(setAssignments)
+      .catch(() => setAssignments([]));
+  }, []);
 
   useEffect(() => {
     if (!isStudent) return;
@@ -94,9 +121,18 @@ function CompilerPage() {
         setGroupId((cur) => cur ?? gs[0]?.id ?? null);
       })
       .catch(() => setGroups([]));
-  }, [isStudent]);
+    loadAssignments();
+  }, [isStudent, loadAssignments]);
 
-  const [activeTab, setActiveTab] = useState<"output" | "feedback">("output");
+  const groupAssignments = assignments.filter((a) => a.group_id === groupId);
+  // Al cambiar de clase, el taller elegido deja de valer si no es de esa clase.
+  useEffect(() => {
+    if (assignmentId && !assignments.some((a) => a.id === assignmentId && a.group_id === groupId)) {
+      setAssignmentId(null);
+    }
+  }, [groupId, assignments, assignmentId]);
+
+  const [activeTab, setActiveTab] = useState<"output" | FeedbackMode>("output");
 
   // Contadores del saludo: parten de la sesión y se actualizan localmente.
   const [stats, setStats] = useState({
@@ -109,14 +145,12 @@ function CompilerPage() {
     setCompileError(null);
     setCompileResult(null);
     setCompiledRun(null);
-    setFeedbackText("");
-    setFeedbackMeta(null);
-    setFeedbackError(null);
-    feedbackRef.current = "";
     setActiveTab("output");
 
     try {
-      const result = await compileCode(code, stdin);
+      // Con una clase elegida, la compilación queda como intento visible para el profesor.
+      const context = isStudent && groupId ? { group_id: groupId, assignment_id: assignmentId ?? undefined } : undefined;
+      const result = await compileCode(code, stdin, context);
       setCompileResult(result);
       setCompiledRun({ code, stdin });
       setStats((s) => ({ ...s, compiles: s.compiles + 1 }));
@@ -129,23 +163,20 @@ function CompilerPage() {
     } finally {
       setIsCompiling(false);
     }
-  }, [code, stdin, setUser]);
+  }, [code, stdin, setUser, isStudent, groupId, assignmentId]);
 
-  const handleFeedback = useCallback(async () => {
-    setIsFeedbackLoading(true);
-    setFeedbackError(null);
-    setFeedbackText("");
-    setFeedbackMeta(null);
-    feedbackRef.current = "";
-    setFeedbackCode(code);
-    setActiveTab("feedback");
+  const handleFeedback = async (mode: FeedbackMode) => {
+    feedbackText.current[mode] = "";
+    updateFeedback(mode, { text: "", meta: null, error: null, loading: true, code });
+    setActiveTab(mode);
 
     try {
       const upToDate = compileResult !== null && compiledRun?.code === code;
+      const base = { mode, code, assignment_id: (isStudent && assignmentId) || undefined };
       const context: FeedbackContext =
         upToDate && compileResult
           ? {
-              code,
+              ...base,
               compiled: true,
               success: compileResult.success,
               compiler_output: compileResult.compiler_output,
@@ -154,39 +185,52 @@ function CompilerPage() {
               exit_code: compileResult.exit_code,
               run_error: compileResult.error ?? "",
             }
-          : { code, compiled: false };
+          : { ...base, compiled: false };
 
-      const meta = await streamFeedback(
-        context,
-        (token) => {
-          feedbackRef.current += token;
-          setFeedbackText(feedbackRef.current);
-        }
-      );
-      setFeedbackMeta(meta);
+      const meta = await streamFeedback(context, (token) => {
+        feedbackText.current[mode] += token;
+        updateFeedback(mode, { text: feedbackText.current[mode] });
+      });
+      updateFeedback(mode, { meta });
       setStats((s) => ({ ...s, feedbacks: s.feedbacks + 1 }));
     } catch (err) {
       if (err instanceof UnauthorizedError) setUser(null);
-      setFeedbackError(
-        err instanceof Error ? err.message : "Error de conexión con Ollama"
-      );
+      updateFeedback(mode, { error: err instanceof Error ? err.message : "Error de conexión con Ollama" });
     } finally {
-      setIsFeedbackLoading(false);
+      updateFeedback(mode, { loading: false });
     }
-  }, [code, compileResult, compiledRun, setUser]);
+  };
+
+  /** Texto de la retroalimentación si corresponde exactamente al código actual. */
+  const usableFeedback = (mode: FeedbackMode) => {
+    const f = feedback[mode];
+    return !f.loading && !f.error && f.code === code && f.text.trim() !== "" ? f.text : "";
+  };
 
   const handleSend = async () => {
     const group = groups.find((g) => g.id === groupId);
     if (!group) return;
+    const assignment = groupAssignments.find((a) => a.id === assignmentId);
     setSending(true);
     setSendStatus(null);
     try {
-      const withFeedback = !isFeedbackLoading && !feedbackError && feedbackCode === code && feedbackText.trim() !== "";
-      await submitCode({ group_id: group.id, code, stdin, ai_feedback: withFeedback ? feedbackText : "" });
+      const formal = usableFeedback("formal");
+      const informal = usableFeedback("informal");
+      await submitCode({
+        group_id: group.id,
+        assignment_id: assignment?.id,
+        code,
+        stdin,
+        ai_feedback: formal,
+        ai_feedback_informal: informal,
+      });
       setStats((s) => ({ ...s, compiles: s.compiles + 1 }));
+      const extras = [formal && "la retroalimentación formal", informal && "la informal"].filter(Boolean);
       setSendStatus({
         ok: true,
-        text: `Enviado a ${group.course_name} · ${group.name}. Tu profesor ya puede verlo${withFeedback ? " junto con la orientación de la IA" : ""}.`,
+        text:
+          `Enviado a ${group.course_name} · ${group.name}${assignment ? ` (${assignment.title})` : ""}. ` +
+          `Tu profesor ya puede verlo${extras.length ? ` junto con ${extras.join(" y ")}` : ""}.`,
       });
     } catch (err) {
       if (err instanceof UnauthorizedError) setUser(null);
@@ -209,7 +253,7 @@ function CompilerPage() {
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">¡Hola, {firstName}!</h1>
               <p className="text-ink-soft text-sm mt-0.5">
-                Escribe tu solución, compílala y pide orientación cuando la necesites.
+                Escribe tu solución, compílala y pide retroalimentación formal o informal cuando la necesites.
               </p>
             </div>
           </div>
@@ -227,6 +271,7 @@ function CompilerPage() {
               onJoined={(g) => {
                 setGroups((gs) => (gs.some((x) => x.id === g.id) ? gs : [...gs, g]));
                 setGroupId(g.id);
+                loadAssignments();
               }}
             />
             {sendStatus && (
@@ -243,13 +288,17 @@ function CompilerPage() {
         )}
       </section>
 
+      {isStudent && groupAssignments.length > 0 && (
+        <StudentAssignments assignments={groupAssignments} selectedId={assignmentId} onSelect={setAssignmentId} />
+      )}
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
         {/* Editor */}
         <Card
           className="rise-in lg:col-span-3 min-h-[520px] overflow-hidden"
           bodyClassName="pt-3"
           title={
-            <span className="flex items-center gap-2">
+            <span className="flex items-center gap-2 whitespace-nowrap">
               Código fuente
               <span className="rounded-full bg-lavender-50 px-2 py-0.5 text-[11px] font-semibold text-lavender-600">
                 C++17
@@ -258,15 +307,26 @@ function CompilerPage() {
           }
           action={
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <button
-                onClick={handleFeedback}
-                disabled={isFeedbackLoading || !code.trim()}
-                className="flex items-center gap-2 rounded-full bg-mint-100 px-4 py-2 text-sm font-bold text-mint-700
-                  transition hover:bg-mint-200 disabled:opacity-50"
-              >
-                {isFeedbackLoading && <Spinner className="h-4 w-4 border-mint-700" />}
-                {isFeedbackLoading ? "Analizando..." : "Pedir orientación"}
-              </button>
+              <div className="flex items-center gap-1 rounded-full bg-lavender-50 p-1" role="group" aria-label="Pedir retroalimentación">
+                <span className="pl-2 pr-0.5 text-xs font-bold text-ink-soft" title="Retroalimentación con IA">IA</span>
+                {(["formal", "informal"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => handleFeedback(mode)}
+                    disabled={anyFeedbackLoading || !code.trim()}
+                    title={`Pedir retroalimentación ${mode}`}
+                    aria-label={`Pedir retroalimentación ${mode}`}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold transition disabled:opacity-50 ${
+                      mode === "formal"
+                        ? "bg-mint-100 text-mint-700 hover:bg-mint-200"
+                        : "bg-peach-100 text-peach-700 hover:bg-peach-200"
+                    }`}
+                  >
+                    {feedback[mode].loading && <Spinner className="h-3.5 w-3.5 border-current" />}
+                    {MODE_LABEL[mode]}
+                  </button>
+                ))}
+              </div>
               <button
                 onClick={handleCompile}
                 disabled={isCompiling || !code.trim()}
@@ -287,11 +347,11 @@ function CompilerPage() {
                   onClick={handleSend}
                   disabled={sending || !groupId || !code.trim()}
                   title={groupId ? "Enviar este código a tu profesor" : "Únete a una clase para poder enviar"}
-                  className="flex items-center gap-2 rounded-full bg-peach-100 px-4 py-2 text-sm font-bold text-peach-700
-                    transition hover:bg-peach-200 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-lavender-700
+                    ring-1 ring-lavender-200 transition hover:bg-lavender-50 disabled:opacity-50"
                 >
                   {sending ? (
-                    <Spinner className="h-4 w-4 border-peach-700" />
+                    <Spinner className="h-4 w-4 border-lavender-700" />
                   ) : (
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
@@ -325,13 +385,14 @@ function CompilerPage() {
             />
           </section>
 
-          {/* Resultado / Retroalimentación */}
+          {/* Resultado / Retroalimentación formal / informal */}
           <Card className="rise-in flex-1 min-h-[360px] overflow-hidden" bodyClassName="">
-            <div className="flex gap-1 p-2 pb-0">
+            <div className="flex flex-wrap gap-1 p-2 pb-0">
               {(
                 [
                   ["output", "Resultado"],
-                  ["feedback", "Retroalimentación"],
+                  ["formal", "Formal"],
+                  ["informal", "Informal"],
                 ] as const
               ).map(([tab, label]) => (
                 <button
@@ -342,8 +403,9 @@ function CompilerPage() {
                   }`}
                 >
                   {label}
-                  {tab === "feedback" && isFeedbackLoading && (
-                    <Spinner className="h-3 w-3 border-lavender-500" />
+                  {tab !== "output" && feedback[tab].loading && <Spinner className="h-3 w-3 border-lavender-500" />}
+                  {tab !== "output" && !feedback[tab].loading && feedback[tab].text && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" aria-label="con respuesta" />
                   )}
                 </button>
               ))}
@@ -352,12 +414,13 @@ function CompilerPage() {
               <OutputPanel result={compileResult} isLoading={isCompiling} error={compileError} />
             ) : (
               <FeedbackPanel
-                feedbackText={feedbackText}
-                meta={feedbackMeta}
-                isLoading={isFeedbackLoading}
-                error={feedbackError}
-                onRequestFeedback={handleFeedback}
-                canRequestFeedback={!!code.trim()}
+                mode={activeTab}
+                feedbackText={feedback[activeTab].text}
+                meta={feedback[activeTab].meta}
+                isLoading={feedback[activeTab].loading}
+                error={feedback[activeTab].error}
+                onRequestFeedback={() => handleFeedback(activeTab)}
+                canRequestFeedback={!anyFeedbackLoading && !!code.trim()}
               />
             )}
           </Card>

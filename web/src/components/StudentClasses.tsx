@@ -67,6 +67,12 @@ export default function StudentClasses({
             ))}
           </div>
         )}
+        {groups.length > 0 && (
+          <p className="mt-2 max-w-xl text-xs text-ink-faint">
+            Tus compilaciones en la clase elegida se guardan como <strong>intentos</strong> para que tu profesor vea tu
+            proceso. Solo lo que mandas con <strong>Enviar</strong> es tu entrega oficial.
+          </p>
+        )}
       </div>
 
       <form onSubmit={join} className="w-full space-y-1 sm:w-auto">
