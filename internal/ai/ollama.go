@@ -23,14 +23,17 @@ type OllamaClient struct {
 	cfg      *config.Config
 	client   *http.Client
 	syllabus string
+	think    bool // el modelo razona antes de responder (se resuelve al arrancar)
 }
 
 // chatRequest is the JSON body sent to Ollama /api/chat.
 type chatRequest struct {
-	Model    string        `json:"model"`
-	Messages []chatMessage `json:"messages"`
-	Stream   bool          `json:"stream"`
-	Options  chatOptions   `json:"options,omitempty"`
+	Model     string        `json:"model"`
+	Messages  []chatMessage `json:"messages"`
+	Stream    bool          `json:"stream"`
+	Think     bool          `json:"think"`                // siempre explícito: false es válido en cualquier modelo
+	KeepAlive string        `json:"keep_alive,omitempty"` // evita recargar el modelo (≈25 s) tras cada pausa
+	Options   chatOptions   `json:"options,omitempty"`
 }
 
 type chatMessage struct {
@@ -63,13 +66,74 @@ func NewOllamaClient(cfg *config.Config) (*OllamaClient, error) {
 		"url", cfg.OllamaBaseURL,
 	)
 
-	return &OllamaClient{
+	o := &OllamaClient{
 		cfg: cfg,
 		client: &http.Client{
 			Timeout: time.Duration(cfg.OllamaTimeout) * time.Second,
 		},
 		syllabus: syllabus,
-	}, nil
+	}
+	o.think = o.resolveThink()
+	return o, nil
+}
+
+// Thinking indica si las peticiones se hacen con razonamiento activado.
+func (o *OllamaClient) Thinking() bool { return o.think }
+
+// capabilities consulta a Ollama qué sabe hacer el modelo (p. ej. "thinking").
+func (o *OllamaClient) capabilities() ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	body, _ := json.Marshal(map[string]string{"model": o.cfg.OllamaModel})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.cfg.OllamaBaseURL+"/api/show", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	resp, err := o.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Ollama respondió %d (¿está descargado el modelo %q?)", resp.StatusCode, o.cfg.OllamaModel)
+	}
+	var info struct {
+		Capabilities []string `json:"capabilities"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, err
+	}
+	return info.Capabilities, nil
+}
+
+// resolveThink decide si usar razonamiento. Algunos modelos (p. ej. qwen3:4b) razonan
+// SIEMPRE: sin think=true, su razonamiento sale en la respuesta y lo vería el estudiante.
+func (o *OllamaClient) resolveThink() bool {
+	caps, err := o.capabilities()
+	canThink := false
+	for _, c := range caps {
+		if c == "thinking" {
+			canThink = true
+		}
+	}
+	mode := o.cfg.OllamaThink
+	switch {
+	case err != nil:
+		slog.Warn("no se pudieron consultar las capacidades del modelo", "model", o.cfg.OllamaModel, "error", err)
+		return mode == "true"
+	case mode == "true" && !canThink:
+		slog.Warn("OLLAMA_THINK=true, pero el modelo no razona: se desactiva", "model", o.cfg.OllamaModel)
+		return false
+	case mode == "false" && canThink:
+		slog.Warn("OLLAMA_THINK=false con un modelo que razona: su razonamiento puede aparecer en las respuestas; usa OLLAMA_THINK=auto",
+			"model", o.cfg.OllamaModel)
+		return false
+	case mode == "true" || mode == "false":
+		return mode == "true"
+	default: // auto
+		slog.Info("razonamiento del modelo", "model", o.cfg.OllamaModel, "think", canThink)
+		return canThink
+	}
 }
 
 // loadSyllabusDocuments reads all .md files from the syllabus/ directory.
@@ -184,16 +248,22 @@ Un consejo breve para depurar o para seguir practicando (por ejemplo, imprimir e
 const (
 	maxToolOutputChars = 3000 // salida del compilador / del programa
 	maxStdinChars      = 1000
-	maxStatementChars  = 3000 // enunciado del taller
-	reservedTokens     = 1100 // espacio para la respuesta
+	maxStatementChars  = 3000  // enunciado del taller
+	reservedTokens     = 1100  // espacio para la respuesta
+	thinkTokens        = 6000  // espacio extra para el razonamiento (modelos que razonan)
+	maxThinkContext    = 16384 // contexto máximo al que se amplía automáticamente si el modelo razona
 )
 
 // streamChunk is one JSON line from Ollama's streaming response.
 type streamChunk struct {
-	Message chatMessage `json:"message"`
-	Done    bool        `json:"done"`
-	Error   string      `json:"error"`
+	Message    chatMessage `json:"message"`
+	Done       bool        `json:"done"`
+	DoneReason string      `json:"done_reason"`
+	Error      string      `json:"error"`
 }
+
+// ErrIncomplete indica que el modelo alcanzó el límite de longitud sin terminar.
+var ErrIncomplete = errors.New("la respuesta de la IA quedó incompleta porque alcanzó el límite de longitud; inténtalo de nuevo")
 
 // ErrPromptTooLong indica que el código no cabe en el contexto del modelo.
 var ErrPromptTooLong = errors.New("tu código es demasiado largo para analizarlo de una vez; prueba con la parte que te genera dudas")
@@ -294,22 +364,47 @@ func (o *OllamaClient) StreamFeedback(ctx context.Context, fb model.FeedbackRequ
 	return o.streamChat(ctx, messages, onToken)
 }
 
+// outputTokens es lo que se reserva para la salida del modelo: la respuesta y, si el
+// modelo razona antes de contestar, su razonamiento (que no se muestra al usuario).
+func (o *OllamaClient) outputTokens() int {
+	if o.think {
+		return reservedTokens + thinkTokens
+	}
+	return reservedTokens
+}
+
+// contextLimit es el máximo de tokens (entrada + salida) admitido por petición. Con un
+// modelo que razona se amplía hasta maxThinkContext para que quepa el razonamiento.
+func (o *OllamaClient) contextLimit() int {
+	if o.think && o.cfg.OllamaContextSize < maxThinkContext {
+		return maxThinkContext
+	}
+	return o.cfg.OllamaContextSize
+}
+
 // streamChat envía los mensajes a Ollama y entrega la respuesta trozo a trozo.
 func (o *OllamaClient) streamChat(ctx context.Context, messages []chatMessage, onToken func(token string)) error {
 	// Si el mensaje no cabe, Ollama recorta el INICIO en silencio y se perderían
 	// las instrucciones y los criterios: mejor avisar.
-	if estimateTokens(messages)+reservedTokens > o.cfg.OllamaContextSize {
+	needed := estimateTokens(messages) + o.outputTokens()
+	if needed > o.contextLimit() {
 		return ErrPromptTooLong
+	}
+	numCtx := o.cfg.OllamaContextSize
+	if needed > numCtx {
+		numCtx = (needed + 1023) / 1024 * 1024 // solo pasa con modelos que razonan
 	}
 
 	reqBody := chatRequest{
-		Model:    o.cfg.OllamaModel,
-		Messages: messages,
-		Stream:   true,
+		Model:     o.cfg.OllamaModel,
+		Messages:  messages,
+		Stream:    true,
+		Think:     o.think,
+		KeepAlive: o.cfg.OllamaKeepAlive,
 		Options: chatOptions{
-			NumCtx:      o.cfg.OllamaContextSize,
+			NumCtx:      numCtx,
 			Temperature: 0.2,
-			NumPredict:  reservedTokens,
+			NumPredict:  o.outputTokens(),
 		},
 	}
 
@@ -352,6 +447,9 @@ func (o *OllamaClient) streamChat(ctx context.Context, messages []chatMessage, o
 		}
 
 		if chunk.Done {
+			if chunk.DoneReason == "length" {
+				return ErrIncomplete
+			}
 			break
 		}
 	}
