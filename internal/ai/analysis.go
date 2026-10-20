@@ -74,7 +74,7 @@ func (o *OllamaClient) buildAnalysisMessages(entries []ProcessEntry) []chatMessa
 	system := chatMessage{Role: "system", Content: fmt.Sprintf(systemPromptAnalysis, o.syllabus)}
 	for {
 		msgs := []chatMessage{system, {Role: "user", Content: describeProcess(entries)}}
-		if len(entries) <= 1 || estimateTokens(msgs)+reservedTokens <= o.cfg.OllamaContextSize {
+		if len(entries) <= 1 || estimateTokens(msgs)+o.outputTokens() <= o.contextLimit() {
 			return msgs
 		}
 		entries = entries[1:]

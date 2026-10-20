@@ -126,6 +126,8 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.2:latest
 OLLAMA_TIMEOUT=180
 OLLAMA_CONTEXT_SIZE=8192
+OLLAMA_THINK=auto         # auto: enabled only if the model reasons (e.g. qwen3); true / false to force
+OLLAMA_KEEP_ALIVE=30m     # keep the model loaded on the GPU between requests
 
 # Telegram Bot (Optional / Python)
 TELEGRAM_BOT_TOKEN=
@@ -212,6 +214,18 @@ EDU-TRACE/
 | `POST` | `/api/student/groups/join` | Join a class with its code 🔒 student |
 | `POST` | `/api/student/submissions` | Send code to a class (compiled server-side in the sandbox) 🔒 student |
 | `GET` | `/api/student/submissions` | Student's recent submissions 🔒 student |
+
+---
+
+## 🧪 Comparing AI models
+
+`cmd/aieval` runs typical student programs (missing `;`, operator precedence, infinite loop, a correct program and a prompt-injection attempt) through the real pipeline — sandbox, prompt and Ollama — and scores each answer: required headings, points to the right line, names the real cause, does not give the fix, does not invent errors. The checks are heuristics for comparing models; read the saved answers too.
+
+```bash
+go run ./cmd/aieval -model llama3.1:8b -ctx 6144 -out /tmp/aieval      # evaluate a model
+go run ./cmd/aieval -model qwen3:4b -out /tmp/aieval                   # reasoning is detected automatically
+go run ./cmd/aieval -model llama3.1:8b -rescore /tmp/aieval            # re-score saved answers
+```
 
 ---
 

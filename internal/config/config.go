@@ -23,6 +23,8 @@ type Config struct {
 	OllamaModel       string
 	OllamaTimeout     int
 	OllamaContextSize int
+	OllamaThink       string // "auto" (según el modelo), "true" o "false": razonamiento antes de responder
+	OllamaKeepAlive   string // cuánto tiempo mantiene Ollama el modelo cargado en la GPU
 	AllowedOrigins    string
 }
 
@@ -44,6 +46,8 @@ func Load() *Config {
 		OllamaModel:       envOrDefault("OLLAMA_MODEL", "llama3.2:latest"),
 		OllamaTimeout:     intOrDefault("OLLAMA_TIMEOUT", 180),
 		OllamaContextSize: intOrDefault("OLLAMA_CONTEXT_SIZE", 8192),
+		OllamaThink:       envOrDefault("OLLAMA_THINK", "auto"),
+		OllamaKeepAlive:   envOrDefault("OLLAMA_KEEP_ALIVE", "30m"),
 		AllowedOrigins:    envOrDefault("ALLOWED_ORIGINS", "http://localhost:3000"),
 	}
 }
