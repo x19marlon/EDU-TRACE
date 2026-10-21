@@ -12,7 +12,6 @@ import (
 	"unicode/utf8"
 )
 
-// ClassesHandler agrupa materias, clases, inscripciones y envíos.
 type ClassesHandler struct {
 	store      *auth.Store
 	compiler   *compiler.Compiler
@@ -48,12 +47,10 @@ func writeStoreErr(w http.ResponseWriter, err error, action string) {
 	}
 }
 
-// Courses maneja GET /api/teacher/courses.
 func (h *ClassesHandler) Courses(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, h.store.TeacherCourses(auth.UserFrom(r.Context()).ID))
 }
 
-// CreateCourse maneja POST /api/teacher/courses.
 func (h *ClassesHandler) CreateCourse(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name string `json:"name"`
@@ -73,7 +70,6 @@ func (h *ClassesHandler) CreateCourse(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, c)
 }
 
-// CreateGroup maneja POST /api/teacher/courses/{id}/groups.
 func (h *ClassesHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name string `json:"name"`
@@ -93,7 +89,6 @@ func (h *ClassesHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, g)
 }
 
-// Group maneja GET /api/teacher/groups/{id}.
 func (h *ClassesHandler) Group(w http.ResponseWriter, r *http.Request) {
 	g, err := h.store.GroupForTeacher(auth.UserFrom(r.Context()).ID, r.PathValue("id"))
 	if err != nil {
@@ -103,7 +98,6 @@ func (h *ClassesHandler) Group(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, g)
 }
 
-// GroupSubmissions maneja GET /api/teacher/groups/{id}/submissions?student=...&kind=official|attempt|all
 func (h *ClassesHandler) GroupSubmissions(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	subs, err := h.store.GroupSubmissions(auth.UserFrom(r.Context()).ID, r.PathValue("id"), q.Get("student"), q.Get("kind"))
@@ -139,14 +133,10 @@ func (h *ClassesHandler) Submission(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, sub)
 }
 
-// ---------- Estudiante ----------
-
-// MyGroups maneja GET /api/student/groups.
 func (h *ClassesHandler) MyGroups(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, h.store.StudentGroups(auth.UserFrom(r.Context()).ID))
 }
 
-// Join maneja POST /api/student/groups/join.
 func (h *ClassesHandler) Join(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Code string `json:"code"`
@@ -155,7 +145,7 @@ func (h *ClassesHandler) Join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := auth.UserFrom(r.Context())
-	// Limitar intentos fallidos para que no se puedan adivinar códigos.
+
 	if h.joinLimits.Blocked(user.ID) {
 		writeJSON(w, http.StatusTooManyRequests, model.ErrorResponse{Error: "demasiados intentos, espera unos minutos"})
 		return
@@ -174,13 +164,10 @@ func (h *ClassesHandler) Join(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, g)
 }
 
-// MySubmissions maneja GET /api/student/submissions.
 func (h *ClassesHandler) MySubmissions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, h.store.StudentSubmissions(auth.UserFrom(r.Context()).ID, 20))
 }
 
-// Submit maneja POST /api/student/submissions. El servidor compila y ejecuta el
-// código en el sandbox: el docente ve el resultado real, no uno enviado por el cliente.
 func (h *ClassesHandler) Submit(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		GroupID            string `json:"group_id"`
@@ -190,7 +177,7 @@ func (h *ClassesHandler) Submit(w http.ResponseWriter, r *http.Request) {
 		AIFeedback         string `json:"ai_feedback"`
 		AIFeedbackInformal string `json:"ai_feedback_informal"`
 	}
-	// Código + entrada + dos retroalimentaciones, con margen para el escape JSON.
+
 	if !decodeJSONLimit(w, r, &req, 2*(2*maxCodeSize+maxStdinSize+maxCodeSize)) {
 		return
 	}
@@ -245,7 +232,6 @@ func (h *ClassesHandler) Submit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, sub.SubmissionMeta)
 }
 
-// clip recorta s a max bytes sin partir caracteres UTF-8.
 func clip(s string, max int) string {
 	if len(s) <= max {
 		return s

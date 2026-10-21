@@ -1,11 +1,13 @@
 package auth
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 )
@@ -62,13 +64,9 @@ func safeFileName(name string) string {
 
 // CreateAssignment crea un taller en una clase del profesor y guarda sus archivos.
 func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric string, dueAt *time.Time, files []FileUpload) (*Assignment, error) {
-	s.mu.Lock()
-	_, _, err := s.ownedGroupLocked(teacherID, groupID)
-	s.mu.Unlock()
-	if err != nil {
+	if _, err := s.ownedGroup(s.db, teacherID, groupID); err != nil {
 		return nil, err
 	}
-
 	id, err := randomHex(12)
 	if err != nil {
 		return nil, err
@@ -79,64 +77,120 @@ func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric st
 		DueAt: dueAt, CreatedAt: time.Now().UTC(), Files: []AssignmentFile{},
 	}
 
-	// Los archivos se escriben fuera del lock; si algo falla se borra la carpeta.
+	// Primero los archivos en disco; si algo falla después, se borra la carpeta.
 	dir := s.assignmentDir(id)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, err
+	}
+	fail := func(err error) (*Assignment, error) {
+		os.RemoveAll(dir)
 		return nil, err
 	}
 	for _, f := range files {
 		fid, err := randomHex(12)
 		if err != nil {
-			os.RemoveAll(dir)
-			return nil, err
+			return fail(err)
 		}
 		out, err := os.OpenFile(filepath.Join(dir, fid), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 		if err != nil {
-			os.RemoveAll(dir)
-			return nil, err
+			return fail(err)
 		}
 		n, err := io.Copy(out, f.Body)
 		if cerr := out.Close(); err == nil {
 			err = cerr
 		}
 		if err != nil {
-			os.RemoveAll(dir)
-			return nil, fmt.Errorf("guardar %q: %w", f.Name, err)
+			return fail(fmt.Errorf("guardar %q: %w", f.Name, err))
 		}
 		a.Files = append(a.Files, AssignmentFile{ID: fid, Name: safeFileName(f.Name), Size: n, ContentType: f.ContentType})
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.data.Assignments[id] = a
-	if err := s.saveLocked(); err != nil {
-		delete(s.data.Assignments, id)
-		os.RemoveAll(dir)
-		return nil, err
+	// El taller y sus archivos se registran juntos o no se registra nada.
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fail(err)
 	}
-	cp := *a
-	return &cp, nil
+	defer tx.Rollback()
+	if _, err := tx.Exec(`INSERT INTO assignments (id, group_id, title, statement, rubric, due_at, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`, a.ID, a.GroupID, a.Title, a.Statement, a.Rubric, fmtTimePtr(a.DueAt), fmtTime(a.CreatedAt)); err != nil {
+		return fail(err)
+	}
+	for i, f := range a.Files {
+		if _, err := tx.Exec(`INSERT INTO assignment_files (id, assignment_id, name, size, content_type, position)
+			VALUES (?, ?, ?, ?, ?, ?)`, f.ID, a.ID, f.Name, f.Size, f.ContentType, i); err != nil {
+			return fail(err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fail(err)
+	}
+	return a, nil
 }
 
-func sortAssignments(list []Assignment) {
-	sort.Slice(list, func(i, j int) bool { return list[i].CreatedAt.After(list[j].CreatedAt) })
+// Columnas de assignments (alias "a"), en el orden que espera scanAssignment.
+const assignmentCols = `a.id, a.group_id, a.title, a.statement, a.rubric, a.due_at, a.created_at`
+
+func scanAssignment(sc scanner, extra ...any) (Assignment, error) {
+	var a Assignment
+	var due sql.NullString
+	var created string
+	dest := append([]any{&a.ID, &a.GroupID, &a.Title, &a.Statement, &a.Rubric, &due, &created}, extra...)
+	if err := sc.Scan(dest...); err != nil {
+		return a, err
+	}
+	a.DueAt, a.CreatedAt, a.Files = timePtr(due), parseTime(created), []AssignmentFile{}
+	return a, nil
+}
+
+// attachFiles completa la lista de archivos de cada taller (después de cerrar la
+// consulta de talleres, para no tener dos consultas abiertas a la vez).
+func (s *Store) attachFiles(list []Assignment) error {
+	for i := range list {
+		rows, err := s.db.Query(`SELECT id, name, size, content_type FROM assignment_files
+			WHERE assignment_id = ? ORDER BY position`, list[i].ID)
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var f AssignmentFile
+			if err := rows.Scan(&f.ID, &f.Name, &f.Size, &f.ContentType); err != nil {
+				rows.Close()
+				return err
+			}
+			list[i].Files = append(list[i].Files, f)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // GroupAssignments lista los talleres de una clase del profesor.
 func (s *Store) GroupAssignments(teacherID, groupID string) ([]Assignment, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if _, _, err := s.ownedGroupLocked(teacherID, groupID); err != nil {
+	if _, err := s.ownedGroup(s.db, teacherID, groupID); err != nil {
+		return nil, err
+	}
+	rows, err := s.db.Query(`SELECT `+assignmentCols+` FROM assignments a
+		WHERE a.group_id = ? ORDER BY a.created_at DESC`, groupID)
+	if err != nil {
 		return nil, err
 	}
 	out := []Assignment{}
-	for _, a := range s.data.Assignments {
-		if a.GroupID == groupID {
-			out = append(out, *a)
+	for rows.Next() {
+		a, err := scanAssignment(rows)
+		if err != nil {
+			rows.Close()
+			return nil, err
 		}
+		out = append(out, a)
 	}
-	sortAssignments(out)
-	return out, nil
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, s.attachFiles(out)
 }
 
 // StudentAssignment es un taller visto por el estudiante.
@@ -148,91 +202,112 @@ type StudentAssignment struct {
 
 // StudentAssignments lista los talleres de todas las clases del estudiante.
 func (s *Store) StudentAssignments(studentID string) []StudentAssignment {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	out := []StudentAssignment{}
-	for _, a := range s.data.Assignments {
-		g, ok := s.data.Groups[a.GroupID]
-		if !ok || !containsID(g.StudentIDs, studentID) {
-			continue
-		}
-		sg := s.studentGroupLocked(g)
-		out = append(out, StudentAssignment{Assignment: *a, GroupName: sg.Name, CourseName: sg.CourseName})
+	out, err := s.studentAssignments(studentID)
+	if err != nil {
+		slog.Error("listar talleres del estudiante", "student_id", studentID, "error", err)
+		return []StudentAssignment{}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
 	return out
 }
 
-func containsID(ids []string, id string) bool {
-	for _, x := range ids {
-		if x == id {
-			return true
-		}
+func (s *Store) studentAssignments(studentID string) ([]StudentAssignment, error) {
+	rows, err := s.db.Query(`SELECT `+assignmentCols+`, g.name, c.name
+		FROM assignments a
+		JOIN group_students gs ON gs.group_id = a.group_id
+		JOIN class_groups g ON g.id = a.group_id
+		JOIN courses c ON c.id = g.course_id
+		WHERE gs.student_id = ? ORDER BY a.created_at DESC`, studentID)
+	if err != nil {
+		return nil, err
 	}
-	return false
+	var list []Assignment
+	var names [][2]string
+	for rows.Next() {
+		var groupName, courseName string
+		a, err := scanAssignment(rows, &groupName, &courseName)
+		if err != nil {
+			rows.Close()
+			return nil, err
+		}
+		list = append(list, a)
+		names = append(names, [2]string{groupName, courseName})
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := s.attachFiles(list); err != nil {
+		return nil, err
+	}
+	out := make([]StudentAssignment, len(list))
+	for i, a := range list {
+		out[i] = StudentAssignment{Assignment: a, GroupName: names[i][0], CourseName: names[i][1]}
+	}
+	return out, nil
 }
 
-// canSeeAssignmentLocked: el profesor dueño de la materia o un estudiante inscrito en la clase.
-func (s *Store) canSeeAssignmentLocked(u *User, a *Assignment) bool {
-	g, ok := s.data.Groups[a.GroupID]
-	if !ok {
-		return false
+// visibleAssignment devuelve título y enunciado si el usuario puede ver el taller:
+// el profesor dueño de la materia o un estudiante inscrito en la clase.
+func (s *Store) visibleAssignment(u *User, assignmentID string) (title, statement string, err error) {
+	err = s.db.QueryRow(`SELECT a.title, a.statement FROM assignments a
+		JOIN class_groups g ON g.id = a.group_id
+		JOIN courses c ON c.id = g.course_id
+		WHERE a.id = ? AND (
+			(? = 'teacher' AND c.teacher_id = ?) OR
+			(? = 'student' AND EXISTS (SELECT 1 FROM group_students gs
+				WHERE gs.group_id = a.group_id AND gs.student_id = ?))
+		)`, assignmentID, u.Role, u.ID, u.Role, u.ID).Scan(&title, &statement)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = ErrNotFound
 	}
-	switch u.Role {
-	case RoleTeacher:
-		c, ok := s.data.Courses[g.CourseID]
-		return ok && c.TeacherID == u.ID
-	case RoleStudent:
-		return containsID(g.StudentIDs, u.ID)
-	}
-	return false
+	return
 }
 
 // AssignmentStatement devuelve el enunciado si el usuario puede ver el taller.
 func (s *Store) AssignmentStatement(u *User, assignmentID string) (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	a, ok := s.data.Assignments[assignmentID]
-	if !ok || !s.canSeeAssignmentLocked(u, a) {
-		return "", ErrNotFound
+	title, statement, err := s.visibleAssignment(u, assignmentID)
+	if err != nil {
+		return "", err
 	}
-	return a.Title + "\n" + a.Statement, nil
+	return title + "\n" + statement, nil
 }
 
 // AssignmentForGrading devuelve el enunciado y los criterios de un taller de una clase del profesor.
 func (s *Store) AssignmentForGrading(teacherID, assignmentID string) (statement, rubric string, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	a, ok := s.data.Assignments[assignmentID]
-	if !ok {
+	var title, body string
+	err = s.db.QueryRow(`SELECT a.title, a.statement, a.rubric FROM assignments a
+		JOIN class_groups g ON g.id = a.group_id
+		JOIN courses c ON c.id = g.course_id
+		WHERE a.id = ? AND c.teacher_id = ?`, assignmentID, teacherID).Scan(&title, &body, &rubric)
+	if errors.Is(err, sql.ErrNoRows) {
 		return "", "", ErrNotFound
 	}
-	if _, _, err := s.ownedGroupLocked(teacherID, a.GroupID); err != nil {
+	if err != nil {
 		return "", "", err
 	}
-	return a.Title + "\n" + a.Statement, a.Rubric, nil
+	return title + "\n" + body, rubric, nil
 }
 
 // AssignmentInGroup indica si el taller pertenece a la clase.
 func (s *Store) AssignmentInGroup(assignmentID, groupID string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	a, ok := s.data.Assignments[assignmentID]
-	return ok && a.GroupID == groupID
+	var n int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM assignments WHERE id = ? AND group_id = ?`, assignmentID, groupID).Scan(&n)
+	return err == nil && n > 0
 }
 
 // AssignmentFilePath devuelve la ruta en disco y los datos de un adjunto si el usuario puede verlo.
 func (s *Store) AssignmentFilePath(u *User, assignmentID, fileID string) (string, AssignmentFile, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	a, ok := s.data.Assignments[assignmentID]
-	if !ok || !s.canSeeAssignmentLocked(u, a) {
+	if _, _, err := s.visibleAssignment(u, assignmentID); err != nil {
+		return "", AssignmentFile{}, err
+	}
+	f := AssignmentFile{ID: fileID}
+	err := s.db.QueryRow(`SELECT name, size, content_type FROM assignment_files WHERE id = ? AND assignment_id = ?`,
+		fileID, assignmentID).Scan(&f.Name, &f.Size, &f.ContentType)
+	if errors.Is(err, sql.ErrNoRows) {
 		return "", AssignmentFile{}, ErrNotFound
 	}
-	for _, f := range a.Files {
-		if f.ID == fileID {
-			return filepath.Join(s.assignmentDir(a.ID), f.ID), f, nil
-		}
+	if err != nil {
+		return "", AssignmentFile{}, err
 	}
-	return "", AssignmentFile{}, ErrNotFound
+	return filepath.Join(s.assignmentDir(assignmentID), fileID), f, nil
 }

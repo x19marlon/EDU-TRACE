@@ -3,17 +3,20 @@ package auth
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
+	_ "embed"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
+
+	_ "modernc.org/sqlite" // driver SQLite en Go puro (sin CGO)
 )
 
+// Role identifica el tipo de cuenta.
 type Role string
 
 const (
@@ -26,6 +29,7 @@ var (
 	ErrInvalidCredentials = errors.New("email o contraseña incorrectos")
 )
 
+// Activity acumula el uso de la plataforma por usuario (visible para docentes).
 type Activity struct {
 	Compiles     int       `json:"compiles"`
 	Feedbacks    int       `json:"feedbacks"`
@@ -43,103 +47,111 @@ type User struct {
 	Activity     Activity  `json:"activity"`
 }
 
-type session struct {
-	UserID    string    `json:"user_id"`
-	ExpiresAt time.Time `json:"expires_at"`
-}
+//go:embed schema.sql
+var schemaSQL string
 
-// storeData es lo que se persiste en disco.
-type storeData struct {
-	Users       map[string]*User           `json:"users"`
-	Sessions    map[string]*session        `json:"sessions"`
-	Courses     map[string]*Course         `json:"courses"`
-	Groups      map[string]*Group          `json:"groups"`
-	Submissions map[string]*SubmissionMeta `json:"submissions"`
-	Assignments map[string]*Assignment     `json:"assignments"`
-	Reviews     map[string]*Review         `json:"reviews"`
-}
-
-// Store guarda usuarios y sesiones en un archivo JSON. Pensado para un curso
-// (decenas o cientos de cuentas), no para miles de usuarios concurrentes.
+// Store guarda los datos en SQLite (dir/edutrace.db). Los adjuntos de los talleres
+// siguen en disco, en dir/assignments/.
 type Store struct {
-	mu   sync.Mutex
-	dir  string
-	path string
-	ttl  time.Duration
-	data storeData
+	db  *sql.DB
+	dir string
+	ttl time.Duration
 }
 
-// OpenStore carga (o crea) el almacén en dir/edutrace.json.
+// OpenStore abre (o crea) la base en dir/edutrace.db. Si encuentra un edutrace.json
+// del formato anterior, lo importa una sola vez.
 func OpenStore(dir string, ttl time.Duration) (*Store, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, fmt.Errorf("crear directorio de datos: %w", err)
 	}
-	s := &Store{
-		dir:  dir,
-		path: filepath.Join(dir, "edutrace.json"),
-		ttl:  ttl,
-	}
-	if err := os.MkdirAll(filepath.Join(dir, "submissions"), 0o700); err != nil {
-		return nil, fmt.Errorf("crear directorio de envíos: %w", err)
-	}
-	raw, err := os.ReadFile(s.path)
-	switch {
-	case errors.Is(err, os.ErrNotExist):
-	case err != nil:
+	// foreign_keys: SQLite no valida las referencias si no se activa en cada conexión.
+	// WAL + busy_timeout: lecturas concurrentes y esperas en vez de "database is locked".
+	// _txlock=immediate: cada transacción toma el bloqueo de escritura al empezar, así
+	// dos escrituras simultáneas esperan su turno en lugar de fallar a mitad de camino.
+	dsn := "file:" + filepath.Join(dir, "edutrace.db") +
+		"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_txlock=immediate"
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
 		return nil, err
-	default:
-		if err := json.Unmarshal(raw, &s.data); err != nil {
-			return nil, fmt.Errorf("leer %s: %w", s.path, err)
-		}
 	}
-	if s.data.Users == nil {
-		s.data.Users = map[string]*User{}
+	if _, err := db.Exec(schemaSQL); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("crear esquema: %w", err)
 	}
-	if s.data.Sessions == nil {
-		s.data.Sessions = map[string]*session{}
-	}
-	if s.data.Courses == nil {
-		s.data.Courses = map[string]*Course{}
-	}
-	if s.data.Groups == nil {
-		s.data.Groups = map[string]*Group{}
-	}
-	if s.data.Submissions == nil {
-		s.data.Submissions = map[string]*SubmissionMeta{}
-	}
-	if s.data.Assignments == nil {
-		s.data.Assignments = map[string]*Assignment{}
-	}
-	if s.data.Reviews == nil {
-		s.data.Reviews = map[string]*Review{}
+	s := &Store{db: db, dir: dir, ttl: ttl}
+	if err := s.importLegacyJSON(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrar edutrace.json: %w", err)
 	}
 	return s, nil
 }
 
-// saveLocked escribe el archivo de forma atómica. Requiere s.mu.
-func (s *Store) saveLocked() error {
-	raw, err := json.MarshalIndent(s.data, "", "  ")
-	if err != nil {
-		return err
+// Close cierra la base de datos.
+func (s *Store) Close() error { return s.db.Close() }
+
+// ---------- Ayudas para SQL ----------
+
+// Ancho fijo: así el orden alfabético del TEXT coincide con el cronológico
+// (RFC3339Nano recorta ceros y desordenaría ORDER BY created_at).
+const timeLayout = "2006-01-02T15:04:05.000000000Z"
+
+func fmtTime(t time.Time) string { return t.UTC().Format(timeLayout) }
+
+func parseTime(s string) time.Time {
+	t, _ := time.Parse(timeLayout, s)
+	return t
+}
+
+// fmtTimePtr devuelve NULL para una fecha ausente o en cero.
+func fmtTimePtr(t *time.Time) any {
+	if t == nil || t.IsZero() {
+		return nil
 	}
-	tmp := s.path + ".tmp"
-	if err := os.WriteFile(tmp, raw, 0o600); err != nil {
-		return err
+	return fmtTime(*t)
+}
+
+func timePtr(ns sql.NullString) *time.Time {
+	if !ns.Valid {
+		return nil
 	}
-	return os.Rename(tmp, s.path)
+	t := parseTime(ns.String)
+	return &t
+}
+
+func floatPtr(n sql.NullFloat64) *float64 {
+	if !n.Valid {
+		return nil
+	}
+	v := n.Float64
+	return &v
+}
+
+// floatArg convierte *float64 en un valor para SQL (NULL si es nil).
+func floatArg(f *float64) any {
+	if f == nil {
+		return nil
+	}
+	return *f
+}
+
+func isUnique(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
+}
+
+// scanner lo cumplen *sql.Row y *sql.Rows.
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+// querier lo cumplen *sql.DB y *sql.Tx: así una consulta sirve dentro y fuera de una transacción.
+type querier interface {
+	QueryRow(query string, args ...any) *sql.Row
+	Query(query string, args ...any) (*sql.Rows, error)
+	Exec(query string, args ...any) (sql.Result, error)
 }
 
 func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
-}
-
-func (s *Store) findByEmailLocked(email string) *User {
-	for _, u := range s.data.Users {
-		if u.Email == email {
-			return u
-		}
-	}
-	return nil
 }
 
 func randomHex(n int) (string, error) {
@@ -155,7 +167,26 @@ func hashToken(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// CreateUser registra una cuenta nueva. La contraseña se hashea antes de tomar el lock.
+// ---------- Usuarios y sesiones ----------
+
+const userCols = `u.id, u.name, u.email, u.role, u.password_hash, u.created_at, u.compiles, u.feedbacks, u.last_active_at`
+
+func scanUser(sc scanner) (*User, error) {
+	var u User
+	var created string
+	var lastActive sql.NullString
+	if err := sc.Scan(&u.ID, &u.Name, &u.Email, &u.Role, &u.PasswordHash, &created,
+		&u.Activity.Compiles, &u.Activity.Feedbacks, &lastActive); err != nil {
+		return nil, err
+	}
+	u.CreatedAt = parseTime(created)
+	if t := timePtr(lastActive); t != nil {
+		u.Activity.LastActiveAt = *t
+	}
+	return &u, nil
+}
+
+// CreateUser registra una cuenta nueva. El email único lo garantiza la base (UNIQUE).
 func (s *Store) CreateUser(name, email, password string, role Role) (*User, error) {
 	email = normalizeEmail(email)
 	hash, err := HashPassword(password)
@@ -166,13 +197,6 @@ func (s *Store) CreateUser(name, email, password string, role Role) (*User, erro
 	if err != nil {
 		return nil, err
 	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.findByEmailLocked(email) != nil {
-		return nil, ErrEmailTaken
-	}
 	u := &User{
 		ID:           id,
 		Name:         strings.TrimSpace(name),
@@ -181,56 +205,46 @@ func (s *Store) CreateUser(name, email, password string, role Role) (*User, erro
 		PasswordHash: hash,
 		CreatedAt:    time.Now().UTC(),
 	}
-	s.data.Users[id] = u
-	if err := s.saveLocked(); err != nil {
-		delete(s.data.Users, id)
+	_, err = s.db.Exec(`INSERT INTO users (id, name, email, role, password_hash, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)`, u.ID, u.Name, u.Email, u.Role, u.PasswordHash, fmtTime(u.CreatedAt))
+	if isUnique(err) {
+		return nil, ErrEmailTaken
+	}
+	if err != nil {
 		return nil, err
 	}
-	cp := *u
-	return &cp, nil
+	return u, nil
 }
 
 // Authenticate verifica email y contraseña.
 func (s *Store) Authenticate(email, password string) (*User, error) {
-	email = normalizeEmail(email)
-
-	s.mu.Lock()
-	u := s.findByEmailLocked(email)
-	var cp User
-	if u != nil {
-		cp = *u
-	}
-	s.mu.Unlock()
-
-	if u == nil {
+	u, err := scanUser(s.db.QueryRow(`SELECT `+userCols+` FROM users u WHERE u.email = ?`, normalizeEmail(email)))
+	if errors.Is(err, sql.ErrNoRows) {
 		CheckPassword(password, dummyHash) // mismo coste que un login real
 		return nil, ErrInvalidCredentials
 	}
-	if !CheckPassword(password, cp.PasswordHash) {
+	if err != nil {
+		return nil, err
+	}
+	if !CheckPassword(password, u.PasswordHash) {
 		return nil, ErrInvalidCredentials
 	}
-	return &cp, nil
+	return u, nil
 }
 
-// CreateSession devuelve un token opaco nuevo para el usuario.
+// CreateSession devuelve un token opaco nuevo para el usuario (en la base solo se guarda su hash).
 func (s *Store) CreateSession(userID string) (string, time.Time, error) {
 	token, err := randomHex(32)
 	if err != nil {
 		return "", time.Time{}, err
 	}
-	expires := time.Now().Add(s.ttl).UTC()
+	now := time.Now().UTC()
+	expires := now.Add(s.ttl)
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	now := time.Now()
-	for k, sess := range s.data.Sessions {
-		if now.After(sess.ExpiresAt) {
-			delete(s.data.Sessions, k)
-		}
-	}
-	s.data.Sessions[hashToken(token)] = &session{UserID: userID, ExpiresAt: expires}
-	if err := s.saveLocked(); err != nil {
+	// Limpieza de sesiones vencidas: no es crítica, por eso se ignora su error.
+	_, _ = s.db.Exec(`DELETE FROM sessions WHERE expires_at < ?`, fmtTime(now))
+	if _, err := s.db.Exec(`INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)`,
+		hashToken(token), userID, fmtTime(expires)); err != nil {
 		return "", time.Time{}, err
 	}
 	return token, expires, nil
@@ -241,45 +255,28 @@ func (s *Store) UserForSession(token string) (*User, bool) {
 	if token == "" {
 		return nil, false
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	sess, ok := s.data.Sessions[hashToken(token)]
-	if !ok || time.Now().After(sess.ExpiresAt) {
+	u, err := scanUser(s.db.QueryRow(`SELECT `+userCols+`
+		FROM sessions se JOIN users u ON u.id = se.user_id
+		WHERE se.token_hash = ? AND se.expires_at > ?`, hashToken(token), fmtTime(time.Now())))
+	if err != nil {
 		return nil, false
 	}
-	u, ok := s.data.Users[sess.UserID]
-	if !ok {
-		return nil, false
-	}
-	cp := *u
-	return &cp, true
+	return u, true
 }
 
 // DeleteSession invalida un token (logout).
 func (s *Store) DeleteSession(token string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.data.Sessions, hashToken(token))
-	return s.saveLocked()
+	_, err := s.db.Exec(`DELETE FROM sessions WHERE token_hash = ?`, hashToken(token))
+	return err
 }
 
 // RecordCompile / RecordFeedback actualizan las estadísticas de actividad.
 func (s *Store) RecordCompile(userID string) {
-	s.recordActivity(userID, func(a *Activity) { a.Compiles++ })
-}
-func (s *Store) RecordFeedback(userID string) {
-	s.recordActivity(userID, func(a *Activity) { a.Feedbacks++ })
+	_, _ = s.db.Exec(`UPDATE users SET compiles = compiles + 1, last_active_at = ? WHERE id = ?`,
+		fmtTime(time.Now()), userID)
 }
 
-func (s *Store) recordActivity(userID string, f func(*Activity)) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	u, ok := s.data.Users[userID]
-	if !ok {
-		return
-	}
-	f(&u.Activity)
-	u.Activity.LastActiveAt = time.Now().UTC()
-	_ = s.saveLocked()
+func (s *Store) RecordFeedback(userID string) {
+	_, _ = s.db.Exec(`UPDATE users SET feedbacks = feedbacks + 1, last_active_at = ? WHERE id = ?`,
+		fmtTime(time.Now()), userID)
 }
