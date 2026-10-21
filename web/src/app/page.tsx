@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import OutputPanel from "@/components/OutputPanel";
 import FeedbackPanel from "@/components/FeedbackPanel";
+import ChatPanel from "@/components/ChatPanel";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/AppShell";
 import { Avatar, Card, Spinner } from "@/components/ui";
@@ -135,7 +136,7 @@ function CompilerPage() {
     }
   }, [groupId, assignments, assignmentId]);
 
-  const [activeTab, setActiveTab] = useState<"output" | FeedbackMode>("output");
+  const [activeTab, setActiveTab] = useState<"output" | FeedbackMode | "chat">("output");
 
   // Contadores del saludo: parten de la sesión y se actualizan localmente.
   const [stats, setStats] = useState({
@@ -389,12 +390,13 @@ function CompilerPage() {
             />
           </section>
 
-          {/* Resultado / Retroalimentación formal / informal */}
-          <Card className="rise-in flex-1 min-h-[360px] overflow-hidden" bodyClassName="">
+          {/* Resultado / Retroalimentación formal / informal / Chat con IA */}
+          <Card className="rise-in flex-1 min-h-[420px] overflow-hidden" bodyClassName="">
             <div className="flex flex-wrap gap-1 p-2 pb-0">
               {(
                 [
                   ["output", "Resultado"],
+                  ["chat", "Tutor Chat IA"],
                   ["formal", "Formal"],
                   ["informal", "Informal"],
                 ] as const
@@ -407,8 +409,13 @@ function CompilerPage() {
                   }`}
                 >
                   {label}
-                  {tab !== "output" && feedback[tab].loading && <Spinner className="h-3 w-3 border-lavender-500" />}
-                  {tab !== "output" && !feedback[tab].loading && feedback[tab].text && (
+                  {tab === "chat" && (
+                    <span className="flex h-1.5 w-1.5 rounded-full bg-mint-500" aria-label="en línea" />
+                  )}
+                  {tab !== "output" && tab !== "chat" && feedback[tab].loading && (
+                    <Spinner className="h-3 w-3 border-lavender-500" />
+                  )}
+                  {tab !== "output" && tab !== "chat" && !feedback[tab].loading && feedback[tab].text && (
                     <span className="h-1.5 w-1.5 rounded-full bg-current" aria-label="con respuesta" />
                   )}
                 </button>
@@ -416,6 +423,8 @@ function CompilerPage() {
             </div>
             {activeTab === "output" ? (
               <OutputPanel result={compileResult} isLoading={isCompiling} error={compileError} />
+            ) : activeTab === "chat" ? (
+              <ChatPanel code={code} stdin={stdin} assignmentId={assignmentId ?? undefined} />
             ) : (
               <FeedbackPanel
                 mode={activeTab}

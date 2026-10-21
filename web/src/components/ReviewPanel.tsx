@@ -162,7 +162,14 @@ export default function ReviewPanel({ submissionId, onSaved }: { submissionId: s
         </label>
       </div>
 
-      {error && <p className="rounded-2xl bg-peach-50 px-3 py-2 text-sm font-semibold text-peach-700">{error}</p>}
+      {error && (
+        <div className="rounded-2xl bg-peach-50 px-3 py-2 text-xs text-peach-700 font-medium">
+          <span className="font-bold block">Aviso del sistema (RNF-15): {error}</span>
+          <span className="text-[11px] text-peach-600 block mt-0.5">
+            La entrega del estudiante se conserva intacta en el servidor (RNF-14). Puedes completar la evaluación manualmente.
+          </span>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {review.ai_grade !== undefined && (
