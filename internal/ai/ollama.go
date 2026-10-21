@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/marlon/edu-trace/internal/config"
+	"github.com/marlon/edu-trace/internal/model"
 	"io"
 	"log/slog"
 	"net/http"
@@ -13,9 +15,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/marlon/edu-trace/internal/config"
-	"github.com/marlon/edu-trace/internal/model"
 )
 
 // OllamaClient communicates with a local Ollama instance.
@@ -28,12 +27,13 @@ type OllamaClient struct {
 
 // chatRequest is the JSON body sent to Ollama /api/chat.
 type chatRequest struct {
-	Model     string        `json:"model"`
-	Messages  []chatMessage `json:"messages"`
-	Stream    bool          `json:"stream"`
-	Think     bool          `json:"think"`                // siempre explícito: false es válido en cualquier modelo
-	KeepAlive string        `json:"keep_alive,omitempty"` // evita recargar el modelo (≈25 s) tras cada pausa
-	Options   chatOptions   `json:"options,omitempty"`
+	Model     string          `json:"model"`
+	Messages  []chatMessage   `json:"messages"`
+	Stream    bool            `json:"stream"`
+	Think     bool            `json:"think"` // siempre explícito: false es válido en cualquier modelo
+	KeepAlive string          `json:"keep_alive,omitempty"`
+	Format    json.RawMessage `json:"format,omitempty"`
+	Options   chatOptions     `json:"options,omitempty"`
 }
 
 type chatMessage struct {
@@ -48,9 +48,9 @@ type chatOptions struct {
 	NumPredict  int     `json:"num_predict,omitempty"`
 }
 
-// chatResponse is the non-streaming response from Ollama.
 type chatResponse struct {
-	Message chatMessage `json:"message"`
+	Message    chatMessage `json:"message"`
+	DoneReason string      `json:"done_reason"`
 }
 
 // NewOllamaClient creates a client and loads syllabus documents.
@@ -382,70 +382,75 @@ func (o *OllamaClient) contextLimit() int {
 	return o.cfg.OllamaContextSize
 }
 
-// streamChat envía los mensajes a Ollama y entrega la respuesta trozo a trozo.
-func (o *OllamaClient) streamChat(ctx context.Context, messages []chatMessage, onToken func(token string)) error {
-	// Si el mensaje no cabe, Ollama recorta el INICIO en silencio y se perderían
-	// las instrucciones y los criterios: mejor avisar.
+func (o *OllamaClient) newChatRequest(messages []chatMessage, stream bool, temperature float64) (chatRequest, error) {
 	needed := estimateTokens(messages) + o.outputTokens()
 	if needed > o.contextLimit() {
-		return ErrPromptTooLong
+		return chatRequest{}, ErrPromptTooLong
 	}
-	numCtx := o.cfg.OllamaContextSize
-	if needed > numCtx {
-		numCtx = (needed + 1023) / 1024 * 1024 // solo pasa con modelos que razonan
+	numctx := o.cfg.OllamaContextSize
+	if needed > numctx {
+		numctx = (needed + 1023) / 1024 * 1024
 	}
-
-	reqBody := chatRequest{
+	return chatRequest{
 		Model:     o.cfg.OllamaModel,
 		Messages:  messages,
-		Stream:    true,
+		Stream:    stream,
 		Think:     o.think,
 		KeepAlive: o.cfg.OllamaKeepAlive,
 		Options: chatOptions{
-			NumCtx:      numCtx,
-			Temperature: 0.2,
+			NumCtx:      numctx,
+			Temperature: temperature,
 			NumPredict:  o.outputTokens(),
 		},
-	}
+	}, nil
+}
 
+func (o *OllamaClient) doChat(ctx context.Context, reqBody chatRequest) (*http.Response, error) {
 	bodyBytes, err := json.Marshal(reqBody)
 	if err != nil {
-		return fmt.Errorf("marshaling request: %w", err)
+		return nil, fmt.Errorf("marshaling request: %w", err)
 	}
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.cfg.OllamaBaseURL+"/api/chat", bytes.NewReader(bodyBytes))
 	if err != nil {
-		return fmt.Errorf("creating request: %w", err)
+		return nil, fmt.Errorf("creating request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := o.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("no se pudo contactar a Ollama: %w", err)
+		return nil, fmt.Errorf("no se pudo conectar a ollama: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Ollama respondio %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	return resp, nil
+}
+
+func (o *OllamaClient) streamChat(ctx context.Context, messages []chatMessage, onToken func(token string)) error {
+	reqBody, err := o.newChatRequest(messages, true, 0.2)
+	if err != nil {
+		return err
+	}
+	resp, err := o.doChat(ctx, reqBody)
+	if err != nil {
+		return err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("Ollama respondió %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
-	}
-
-	// Read streaming NDJSON response line by line.
 	decoder := json.NewDecoder(resp.Body)
 	for decoder.More() {
 		var chunk streamChunk
 		if err := decoder.Decode(&chunk); err != nil {
 			return fmt.Errorf("decoding stream chunk: %w", err)
 		}
-
 		if chunk.Error != "" {
 			return fmt.Errorf("Ollama: %s", chunk.Error)
 		}
-
 		if chunk.Message.Content != "" {
 			onToken(chunk.Message.Content)
 		}
-
 		if chunk.Done {
 			if chunk.DoneReason == "length" {
 				return ErrIncomplete
@@ -453,11 +458,9 @@ func (o *OllamaClient) streamChat(ctx context.Context, messages []chatMessage, o
 			break
 		}
 	}
-
 	return nil
 }
 
-// Ping checks if Ollama is reachable and the model is available.
 func (o *OllamaClient) Ping(ctx context.Context) error {
 	url := o.cfg.OllamaBaseURL + "/api/tags"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

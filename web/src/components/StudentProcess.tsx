@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GroupStudent, listGroupSubmissions, streamStudentAnalysis, SubmissionMeta } from "@/lib/api";
 import { Card, Spinner } from "@/components/ui";
-import { KindPill, StatusPill, SubmissionDetail } from "@/components/SubmissionView";
+import { KindPill, ReviewPill, StatusPill, SubmissionDetail } from "@/components/SubmissionView";
 import { formatDateTime, formatFeedback } from "@/lib/format";
 
 type Filter = "all" | "official" | "attempt";
@@ -95,11 +96,15 @@ export default function StudentProcess({
   const [filter, setFilter] = useState<Filter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     listGroupSubmissions(groupId, student.id, "all")
       .then(setItems)
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar el proceso"));
   }, [groupId, student.id]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const stats = useMemo(() => {
     const list = items ?? [];
@@ -208,6 +213,7 @@ export default function StudentProcess({
                         </code>
                       )}
                       <span className="flex-1" />
+                      <ReviewPill meta={m} />
                       <StatusPill meta={m} />
                     </button>
                   </li>
@@ -221,6 +227,7 @@ export default function StudentProcess({
               <SubmissionDetail
                 id={selectedId}
                 studentName={student.name}
+                onReviewSaved={reload}
                 assignmentTitle={(() => {
                   const aid = items.find((m) => m.id === selectedId)?.assignment_id;
                   return aid ? assignmentTitles.get(aid) ?? "Taller" : undefined;

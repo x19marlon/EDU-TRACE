@@ -3,8 +3,7 @@
 ## Objetivo
 
 Estos criterios guían la retroalimentación pedagógica que se ofrece a estudiantes
-de Introducción a la Programación. **No es una calificación**, es un apoyo para
-que el estudiante mejore su código con orientación constructiva.
+de Introducción a la Programación. **No es una calificación**, es un apoyo para que el estudiante mejore su código con orientación constructiva y completamente objetiva.
 
 ---
 

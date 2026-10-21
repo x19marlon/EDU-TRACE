@@ -24,6 +24,7 @@ type Assignment struct {
 	GroupID   string           `json:"group_id"`
 	Title     string           `json:"title"`
 	Statement string           `json:"statement"`
+	Rubric    string           `json:"rubric,omitempty"`
 	DueAt     *time.Time       `json:"due_at,omitempty"`
 	CreatedAt time.Time        `json:"created_at"`
 	Files     []AssignmentFile `json:"files"`
@@ -60,7 +61,7 @@ func safeFileName(name string) string {
 }
 
 // CreateAssignment crea un taller en una clase del profesor y guarda sus archivos.
-func (s *Store) CreateAssignment(teacherID, groupID, title, statement string, dueAt *time.Time, files []FileUpload) (*Assignment, error) {
+func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric string, dueAt *time.Time, files []FileUpload) (*Assignment, error) {
 	s.mu.Lock()
 	_, _, err := s.ownedGroupLocked(teacherID, groupID)
 	s.mu.Unlock()
@@ -74,7 +75,7 @@ func (s *Store) CreateAssignment(teacherID, groupID, title, statement string, du
 	}
 	a := &Assignment{
 		ID: id, GroupID: groupID,
-		Title: strings.TrimSpace(title), Statement: strings.TrimSpace(statement),
+		Title: strings.TrimSpace(title), Statement: strings.TrimSpace(statement), Rubric: strings.TrimSpace(rubric),
 		DueAt: dueAt, CreatedAt: time.Now().UTC(), Files: []AssignmentFile{},
 	}
 
@@ -195,7 +196,21 @@ func (s *Store) AssignmentStatement(u *User, assignmentID string) (string, error
 	if !ok || !s.canSeeAssignmentLocked(u, a) {
 		return "", ErrNotFound
 	}
-	return a.Title + "\n\n" + a.Statement, nil
+	return a.Title + "\n" + a.Statement, nil
+}
+
+// AssignmentForGrading devuelve el enunciado y los criterios de un taller de una clase del profesor.
+func (s *Store) AssignmentForGrading(teacherID, assignmentID string) (statement, rubric string, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	a, ok := s.data.Assignments[assignmentID]
+	if !ok {
+		return "", "", ErrNotFound
+	}
+	if _, _, err := s.ownedGroupLocked(teacherID, a.GroupID); err != nil {
+		return "", "", err
+	}
+	return a.Title + "\n" + a.Statement, a.Rubric, nil
 }
 
 // AssignmentInGroup indica si el taller pertenece a la clase.

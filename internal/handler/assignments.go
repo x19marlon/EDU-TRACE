@@ -2,6 +2,8 @@ package handler
 
 import (
 	"errors"
+	"github.com/marlon/edu-trace/internal/auth"
+	"github.com/marlon/edu-trace/internal/model"
 	"log/slog"
 	"mime"
 	"net/http"
@@ -9,17 +11,15 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"github.com/marlon/edu-trace/internal/auth"
-	"github.com/marlon/edu-trace/internal/model"
 )
 
 const (
 	maxAssignmentFiles     = 10
-	maxAssignmentFileSize  = 10 << 20 // 10 MB por archivo
-	maxAssignmentUpload    = 30 << 20 // 30 MB por taller
-	maxStatementLen        = 20000    // caracteres del enunciado
-	multipartMemoryLimit   = 8 << 20  // lo que excede va a archivos temporales
+	maxAssignmentFileSize  = 10 << 20
+	maxAssignmentUpload    = 30 << 20
+	maxStatementLen        = 20000
+	maxRubricLen           = 5000
+	multipartMemoryLimit   = 8 << 20
 	assignmentTitleMaxLen  = 120
 	assignmentTitleMinLen  = 2
 	assignmentStatementMin = 1
@@ -42,6 +42,7 @@ func (h *ClassesHandler) CreateAssignment(w http.ResponseWriter, r *http.Request
 
 	title := strings.TrimSpace(r.FormValue("title"))
 	statement := strings.TrimSpace(r.FormValue("statement"))
+	rubric := strings.TrimSpace(r.FormValue("rubric"))
 	if n := utf8.RuneCountInString(title); n < assignmentTitleMinLen || n > assignmentTitleMaxLen {
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "el título debe tener entre 2 y 120 caracteres"})
 		return
@@ -50,7 +51,10 @@ func (h *ClassesHandler) CreateAssignment(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "escribe el enunciado (máximo 20.000 caracteres)"})
 		return
 	}
-
+	if utf8.RuneCountInString(rubric) > maxRubricLen {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "los criterios de evaluacion superan los 5000 caracteres"})
+		return
+	}
 	var dueAt *time.Time
 	if v := strings.TrimSpace(r.FormValue("due_at")); v != "" {
 		t, err := time.Parse(time.RFC3339, v)
@@ -83,7 +87,7 @@ func (h *ClassesHandler) CreateAssignment(w http.ResponseWriter, r *http.Request
 	}
 
 	user := auth.UserFrom(r.Context())
-	a, err := h.store.CreateAssignment(user.ID, r.PathValue("id"), title, statement, dueAt, uploads)
+	a, err := h.store.CreateAssignment(user.ID, r.PathValue("id"), title, statement, rubric, dueAt, uploads)
 	if err != nil {
 		writeStoreErr(w, err, "crear el taller")
 		return

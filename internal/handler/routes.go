@@ -12,25 +12,24 @@ import (
 	"github.com/marlon/edu-trace/internal/config"
 )
 
-// NewRouter builds the HTTP router with all middleware and routes.
 func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaClient, store *auth.Store) http.Handler {
 	mux := http.NewServeMux()
 	authH := NewAuthHandler(store, cfg)
 	compileFlight := auth.NewSingleFlight()
 	feedbackFlight := auth.NewSingleFlight()
 
-	// --- Health check ---
+	// Health check
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	// --- Auth ---
+	// Auth
 	mux.HandleFunc("POST /api/auth/register", authH.Register)
 	mux.HandleFunc("POST /api/auth/login", authH.Login)
 	mux.HandleFunc("POST /api/auth/logout", authH.Logout)
 	mux.Handle("GET /api/auth/me", auth.RequireAuth(store, http.HandlerFunc(authH.Me)))
 
-	// --- Docente: materias, clases y envíos (solo de sus propias materias) ---
+	// docente y sus clases
 	classes := NewClassesHandler(store, comp)
 	teacher := func(f http.HandlerFunc) http.Handler { return auth.RequireRole(store, auth.RoleTeacher, f) }
 	student := func(h http.Handler) http.Handler { return auth.RequireRole(store, auth.RoleStudent, h) }
@@ -42,25 +41,30 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("GET /api/teacher/submissions/{id}", teacher(classes.Submission))
 	mux.Handle("POST /api/teacher/groups/{id}/assignments", teacher(classes.CreateAssignment))
 	mux.Handle("GET /api/teacher/groups/{id}/assignments", teacher(classes.GroupAssignments))
+	reviews := NewReviewsHandler(store, ollama)
+	mux.Handle("GET /api/teacher/submissions/{id}/review", teacher(reviews.Get))
+	mux.Handle("PUT /api/teacher/submissions/{id}/review", teacher(reviews.Save))
 
-	// --- Adjuntos de talleres: profesor dueño o estudiante inscrito (se verifica en el store) ---
+	//  adjuntos de talleres
 	mux.Handle("GET /api/assignments/{id}/files/{file}", auth.RequireAuth(store, http.HandlerFunc(classes.AssignmentFile)))
 
-	// --- Estudiante: clases y envíos ---
+	// Clases y envios del estudiante
 	mux.Handle("GET /api/student/groups", student(http.HandlerFunc(classes.MyGroups)))
 	mux.Handle("POST /api/student/groups/join", student(http.HandlerFunc(classes.Join)))
 	mux.Handle("GET /api/student/submissions", student(http.HandlerFunc(classes.MySubmissions)))
 	mux.Handle("GET /api/student/assignments", student(http.HandlerFunc(classes.MyAssignments)))
 	mux.Handle("POST /api/student/submissions", student(compileFlight.Wrap(http.HandlerFunc(classes.Submit))))
 
-	// --- Compile endpoint ---
+	// Endpoint de compilacion
 	mux.Handle("POST /api/compile", auth.RequireAuth(store, compileFlight.Wrap(NewCompileHandler(comp, store))))
 
-	// --- Feedback endpoint (Ollama) ---
+	// Endpoint de feedback
 	if ollama != nil {
 		mux.Handle("POST /api/feedback", auth.RequireAuth(store, feedbackFlight.Wrap(NewFeedbackHandler(ollama, cfg.OllamaModel, store))))
-		mux.Handle("POST /api/teacher/groups/{id}/students/{student}/analysis",
-			auth.RequireRole(store, auth.RoleTeacher, feedbackFlight.Wrap(NewAnalysisHandler(ollama, cfg.OllamaModel, store))))
+		analysisHandler := auth.RequireRole(store, auth.RoleTeacher, feedbackFlight.Wrap(NewAnalysisHandler(ollama, cfg.OllamaModel, store)))
+		mux.Handle("POST /api/teacher/groups/{id}/students/{student}/analysis", analysisHandler)
+		mux.Handle("POST /api/teacher/submissions/{id}/review/draft",
+			auth.RequireRole(store, auth.RoleTeacher, feedbackFlight.Wrap(http.HandlerFunc(reviews.Draft))))
 		slog.Info("feedback endpoint enabled", "model", cfg.OllamaModel)
 	} else {
 		unavailable := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -68,12 +72,13 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 				"error": "Ollama no está configurado. La retroalimentación con IA no está disponible.",
 			})
 		})
+		mux.Handle("POST /api/teacher/submissions/{id}/review/draft", auth.RequireRole(store, auth.RoleTeacher, unavailable))
 		mux.Handle("POST /api/feedback", auth.RequireAuth(store, unavailable))
 		mux.Handle("POST /api/teacher/groups/{id}/students/{student}/analysis", auth.RequireRole(store, auth.RoleTeacher, unavailable))
 		slog.Warn("feedback endpoint disabled — Ollama client not available")
 	}
 
-	// Apply middleware.
+	// Middleware
 	var handler http.Handler = mux
 	handler = corsMiddleware(handler, cfg.AllowedOrigins)
 	handler = loggingMiddleware(handler)
@@ -81,9 +86,6 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	return handler
 }
 
-// corsMiddleware adds CORS headers for the allowed origins and rejects
-// state-changing requests coming from any other origin (CSRF protection,
-// since the session travels in a cookie).
 func corsMiddleware(next http.Handler, allowedOrigins string) http.Handler {
 	allowed := map[string]bool{}
 	for _, o := range strings.Split(allowedOrigins, ",") {
@@ -103,8 +105,7 @@ func corsMiddleware(next http.Handler, allowedOrigins string) http.Handler {
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Add("Vary", "Origin")
 		}
-
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 

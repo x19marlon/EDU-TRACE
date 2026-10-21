@@ -1,4 +1,3 @@
-"""Small Ollama HTTP client with mandatory GPU checks; no remote LLM fallback."""
 
 import json
 from urllib.error import HTTPError, URLError
@@ -54,7 +53,6 @@ def require_gpu() -> dict:
     These are Ollama allocation metrics, not hardware utilization percentages.
     CPU-only, mixed placement, missing models and unknown metrics are rejected.
     """
-
     model = OLLAMA_MODEL
     if ":" not in model.rsplit("/", 1)[-1]:
         model += ":latest"

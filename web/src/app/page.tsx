@@ -10,6 +10,8 @@ import { Avatar, Card, Spinner } from "@/components/ui";
 import { useAuth } from "@/components/AuthProvider";
 import StudentClasses from "@/components/StudentClasses";
 import StudentAssignments from "@/components/StudentAssignments";
+import MySubmissions from "@/components/MySubmissions";
+
 import {
   compileCode,
   streamFeedback,
@@ -25,7 +27,7 @@ import {
   UnauthorizedError,
 } from "@/lib/api";
 
-// CodeMirror no es SSR-safe, se carga solo en el cliente.
+
 const CodeEditor = dynamic(() => import("@/components/CodeEditor"), {
   ssr: false,
   loading: () => (
@@ -69,7 +71,7 @@ type FeedbackState = {
   meta: FeedbackMeta | null;
   loading: boolean;
   error: string | null;
-  code: string | null; // código sobre el que se generó (se adjunta al envío solo si coincide)
+  code: string | null; 
 };
 
 const EMPTY_FEEDBACK: FeedbackState = { text: "", meta: null, loading: false, error: null, code: null };
@@ -106,6 +108,7 @@ function CompilerPage() {
   const [assignmentId, setAssignmentId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [sendStatus, setSendStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  const [sentCount, setSentCount] = useState(0);
 
   const loadAssignments = useCallback(() => {
     listMyAssignments()
@@ -225,6 +228,7 @@ function CompilerPage() {
         ai_feedback_informal: informal,
       });
       setStats((s) => ({ ...s, compiles: s.compiles + 1 }));
+      setSentCount((n) => n + 1);
       const extras = [formal && "la retroalimentación formal", informal && "la informal"].filter(Boolean);
       setSendStatus({
         ok: true,
@@ -287,7 +291,7 @@ function CompilerPage() {
           </div>
         )}
       </section>
-
+      {isStudent && <MySubmissions refreshKey={sentCount} />}
       {isStudent && groupAssignments.length > 0 && (
         <StudentAssignments assignments={groupAssignments} selectedId={assignmentId} onSelect={setAssignmentId} />
       )}

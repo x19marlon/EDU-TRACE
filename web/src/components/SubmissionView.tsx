@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getSubmission, Submission, SubmissionMeta } from "@/lib/api";
 import { Spinner } from "@/components/ui";
 import { formatDateTime, formatFeedback } from "@/lib/format";
+import ReviewPanel from "@/components/ReviewPanel" 
 
 /** Estado de compilación/ejecución de un envío o intento. */
 export function StatusPill({ meta }: { meta: SubmissionMeta }) {
@@ -13,7 +14,20 @@ export function StatusPill({ meta }: { meta: SubmissionMeta }) {
   return <span className="rounded-full bg-mint-100 px-2.5 py-0.5 text-[11px] font-bold text-mint-700">Compila y ejecuta</span>;
 }
 
-/** Distingue la entrega oficial (botón Enviar) de un intento de compilación. */
+export function ReviewPill({ meta }: { meta: SubmissionMeta }) {
+  if (meta.kind === "attempt") return null;
+  const r = meta.review_state;
+  if (!r) return <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">Sin revisar</span>;
+  if (r.status === "draft")
+    return <span className="rounded-full bg-lavender-50 px-2.5 py-0.5 text-[11px] font-bold text-lavender-700">Borrador</span>;
+  return (
+    <span className="rounded-full bg-mint-100 px-2.5 py-0.5 text-[11px] font-bold text-mint-700">
+      Devuelta{r.grade !== undefined ? ` · ${r.grade.toFixed(1)}` : ""}
+    </span>
+  );
+}
+
+
 export function KindPill({ meta }: { meta: SubmissionMeta }) {
   return meta.kind === "attempt" ? (
     <span className="rounded-full border border-lavender-200 px-2.5 py-0.5 text-[11px] font-bold text-ink-soft">Intento</span>
@@ -53,10 +67,12 @@ export function SubmissionDetail({
   id,
   studentName,
   assignmentTitle,
+  onReviewSaved,
 }: {
   id: string;
   studentName: string;
   assignmentTitle?: string;
+  onReviewSaved?: () => void;
 }) {
   const [sub, setSub] = useState<Submission | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +127,7 @@ export function SubmissionDetail({
       )}
       {sub.run_error && <p className="rounded-2xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">{sub.run_error}</p>}
 
-      {/* Los intentos no guardan retroalimentación: solo la entrega oficial la adjunta. */}
+      
       {sub.kind !== "attempt" && (
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-ink-soft">Retroalimentación de la IA que vio el estudiante</h4>
@@ -126,6 +142,9 @@ export function SubmissionDetail({
           )}
         </div>
       )}
+
+      {/* Revisión del profesor: solo para entregas oficiales */}
+      {sub.kind !== "attempt" && <ReviewPanel submissionId={sub.id} onSaved={onReviewSaved} />}
     </div>
   );
 }

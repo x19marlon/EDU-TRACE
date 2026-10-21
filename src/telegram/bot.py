@@ -1,6 +1,5 @@
 """
 FIS Grader Telegram Bot.
-
 Provides read-only access to grading and repository activity
 stored in MongoDB Atlas.
 
@@ -16,7 +15,6 @@ Available commands:
     /excel <group>
     /ask <question>
 """
-
 import logging
 import os
 import sys

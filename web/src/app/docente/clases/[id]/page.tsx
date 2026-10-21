@@ -8,7 +8,7 @@ import AppShell from "@/components/AppShell";
 import { Avatar, Card, ProgressRing } from "@/components/ui";
 import TeacherAssignments from "@/components/TeacherAssignments";
 import StudentProcess from "@/components/StudentProcess";
-import { StatusPill, SubmissionDetail } from "@/components/SubmissionView";
+import { ReviewPill, StatusPill, SubmissionDetail } from "@/components/SubmissionView";
 import {
   Assignment,
   getGroup,
@@ -22,7 +22,7 @@ import { formatDateTime, relativeTime } from "@/lib/format";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Última señal de actividad del estudiante: compilar, pedir orientación o enviar. */
+
 function lastSeen(s: GroupStudent): string | undefined {
   const a = s.activity.last_active_at;
   const candidates = [a && !a.startsWith("0001") ? a : undefined, s.last_submission_at, s.last_attempt_at].filter(
@@ -133,10 +133,11 @@ function GroupView() {
           </div>
         </Card>
         <Card title="Resumen de la clase" className="rise-in">
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
             {[
               { v: total, l: "estudiantes", c: "bg-lavender-50 text-lavender-700" },
               { v: submissions.length, l: "entregas", c: "bg-mint-50 text-mint-700" },
+              { v: submissions.filter((m) => m.review_state?.status !== "returned").length, l: "por revisar", c: "bg-amber-50 text-amber-800" },
               { v: total - withSubmission, l: "sin enviar", c: "bg-peach-50 text-peach-700" },
             ].map((x) => (
               <div key={x.l} className={`rounded-2xl py-4 ${x.c}`}>
@@ -242,6 +243,7 @@ function GroupView() {
                       {m.has_ai_feedback && (
                         <span className="rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-lavender-600">Con retroalimentación IA</span>
                       )}
+                        <ReviewPill meta={m} />
                       <StatusPill meta={m} />
                     </button>
                   </li>
@@ -251,6 +253,7 @@ function GroupView() {
                 <div className="border-t border-lavender-100 pt-4">
                   <SubmissionDetail
                     id={submissionId}
+                    onReviewSaved={() => listGroupSubmissions(id).then(setSubmissions).catch(() => {})}
                     studentName={names.get(visible.find((m) => m.id === submissionId)?.student_id ?? "") ?? "Estudiante"}
                     assignmentTitle={(() => {
                       const aid = visible.find((m) => m.id === submissionId)?.assignment_id;

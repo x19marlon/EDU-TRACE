@@ -2,15 +2,14 @@ package handler
 
 import (
 	"errors"
+	"github.com/marlon/edu-trace/internal/auth"
+	"github.com/marlon/edu-trace/internal/compiler"
+	"github.com/marlon/edu-trace/internal/model"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"github.com/marlon/edu-trace/internal/auth"
-	"github.com/marlon/edu-trace/internal/compiler"
-	"github.com/marlon/edu-trace/internal/model"
 )
 
 // ClassesHandler agrupa materias, clases, inscripciones y envíos.
@@ -48,8 +47,6 @@ func writeStoreErr(w http.ResponseWriter, err error, action string) {
 		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Error: "no se pudo " + action})
 	}
 }
-
-// ---------- Docente ----------
 
 // Courses maneja GET /api/teacher/courses.
 func (h *ClassesHandler) Courses(w http.ResponseWriter, r *http.Request) {
@@ -114,10 +111,25 @@ func (h *ClassesHandler) GroupSubmissions(w http.ResponseWriter, r *http.Request
 		writeStoreErr(w, err, "cargar los envíos")
 		return
 	}
-	writeJSON(w, http.StatusOK, subs)
+	ids := make([]string, len(subs))
+	for i, m := range subs {
+		ids[i] = m.ID
+	}
+	states := h.store.ReviewStates(ids)
+	type item struct {
+		auth.SubmissionMeta
+		ReviewState *auth.ReviewState `json:"review_state,omitempty"`
+	}
+	out := make([]item, len(subs))
+	for i, m := range subs {
+		out[i] = item{SubmissionMeta: m}
+		if st, ok := states[m.ID]; ok {
+			out[i].ReviewState = &st
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
-// Submission maneja GET /api/teacher/submissions/{id}.
 func (h *ClassesHandler) Submission(w http.ResponseWriter, r *http.Request) {
 	sub, err := h.store.SubmissionForTeacher(auth.UserFrom(r.Context()).ID, r.PathValue("id"))
 	if err != nil {

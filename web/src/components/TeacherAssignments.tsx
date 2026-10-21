@@ -15,6 +15,7 @@ const fieldClass =
 function NewAssignmentForm({ groupId, onCreated }: { groupId: string; onCreated: (a: Assignment) => void }) {
   const [title, setTitle] = useState("");
   const [statement, setStatement] = useState("");
+  const [rubric, setRubric] = useState("");
   const [due, setDue] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
@@ -42,12 +43,13 @@ function NewAssignmentForm({ groupId, onCreated }: { groupId: string; onCreated:
       const form = new FormData();
       form.append("title", title.trim());
       form.append("statement", statement.trim());
-      // datetime-local no trae zona horaria: se interpreta en la hora local del profesor.
+      if (rubric.trim()) form.append("rubric", rubric.trim());
       if (due) form.append("due_at", new Date(due).toISOString());
       files.forEach((f) => form.append("files", f, f.name));
       const a = await createAssignment(groupId, form);
       setTitle("");
       setStatement("");
+      setRubric("");
       setDue("");
       setFiles([]);
       onCreated(a);
@@ -75,6 +77,13 @@ function NewAssignmentForm({ groupId, onCreated }: { groupId: string; onCreated:
         required
         maxLength={20000}
         className={`${fieldClass} h-36 resize-y`}
+      />
+      <textarea
+        value={rubric}
+        onChange={(e) => setRubric(e.target.value)}
+        placeholder="Criterios de evaluación (opcional): p. ej. Compila (1.0) · Lee bien la entrada (1.0) · Resultado correcto (2.0) · Legibilidad (1.0)"
+        maxLength={5000}
+        className={`${fieldClass} h-20 resize-y`}
       />
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-sm font-semibold text-ink-soft">
