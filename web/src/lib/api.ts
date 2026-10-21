@@ -14,7 +14,6 @@ export interface FeedbackMeta {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
 export type Role = "student" | "teacher";
 
 export interface Activity {
@@ -30,8 +29,6 @@ export interface User {
   role: Role;
   activity: Activity;
 }
-
-// ---------- Materias, clases y envíos ----------
 
 export interface GroupSummary {
   id: string;
@@ -69,6 +66,11 @@ export interface GroupDetail {
 
 export type SubmissionKind = "official" | "attempt";
 
+export interface ReviewState {
+  status: "draft" | "returned";
+  grade?: number;
+}
+
 export interface SubmissionMeta {
   id: string;
   kind: SubmissionKind;
@@ -82,6 +84,7 @@ export interface SubmissionMeta {
   exit_code: number;
   lines: number;
   has_ai_feedback: boolean;
+  review_state?: ReviewState;
 }
 
 export interface Submission extends SubmissionMeta {
@@ -104,6 +107,7 @@ export interface Assignment {
   group_id: string;
   title: string;
   statement: string;
+  rubric?: string;
   due_at?: string;
   created_at: string;
   files: AssignmentFile[];
@@ -121,7 +125,32 @@ export interface StudentGroup {
   teacher_name: string;
 }
 
-/** Error 401: la sesión no existe o expiró. */
+export interface Review {
+  submission_id: string;
+  ai_feedback?: string;
+  ai_grade?: number;
+  ai_reason?: string;
+  ai_confidence?: "alta" | "media" | "baja";
+  ai_at?: string;
+  feedback: string;
+  grade?: number;
+  status: "draft" | "returned";
+  returned_at?: string;
+  grade_source: "ai_confirmed"|"profesor" |"";
+}
+
+export interface StudentReview {
+  feedback: string;
+  grade?: number;
+  returned_at: string;
+  ai_assisted: boolean;
+}
+export interface StudentSubmission extends SubmissionMeta {
+  group_name: string;
+  course_name: string;
+  review?: StudentReview;
+}
+
 export class UnauthorizedError extends Error {}
 
 async function throwForStatus(response: Response): Promise<never> {
@@ -131,7 +160,7 @@ async function throwForStatus(response: Response): Promise<never> {
   throw new Error(message);
 }
 
-/** fetch con la cookie de sesión incluida (el backend está en otro puerto). */
+
 function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   return fetch(`${API_BASE}${path}`, { ...init, credentials: "include" });
 }
@@ -190,7 +219,7 @@ export const listGroupSubmissions = (groupId: string, studentId?: string, kind: 
   return getJSON<SubmissionMeta[]>(`/api/teacher/groups/${encodeURIComponent(groupId)}/submissions?${q}`);
 };
 
-/** Análisis con IA del proceso de un estudiante, para el profesor (SSE). */
+
 export async function streamStudentAnalysis(
   groupId: string,
   studentId: string,
@@ -206,7 +235,24 @@ export async function streamStudentAnalysis(
 export const getSubmission = (id: string) =>
   getJSON<Submission>(`/api/teacher/submissions/${encodeURIComponent(id)}`);
 
-// Estudiante
+// revision profesor
+export const getReview = (submissionId: string) =>
+  getJSON<Review>(`/api/teacher/submissions/${encodeURIComponent(submissionId)}/review`);
+export const generateReviewDraft = (submissionId: string) =>
+  postJSON<Review>(`/api/teacher/submissions/${encodeURIComponent(submissionId)}/review/draft`, {});
+export async function saveReview(
+  submissionId: string,
+  data: { feedback: string; grade: number | null; return: boolean }
+): Promise<Review> {
+  const response = await apiFetch(`/api/teacher/submissions/${encodeURIComponent(submissionId)}/review`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) await throwForStatus(response);
+  return response.json();
+}
+
 export const listMyGroups = () => getJSON<StudentGroup[]>("/api/student/groups");
 export const joinGroup = (code: string) => postJSON<StudentGroup>("/api/student/groups/join", { code });
 export const submitCode = (data: {
@@ -218,29 +264,27 @@ export const submitCode = (data: {
   ai_feedback_informal: string;
 }) => postJSON<SubmissionMeta>("/api/student/submissions", data);
 export const listMyAssignments = () => getJSON<StudentAssignment[]>("/api/student/assignments");
+export const listMySubmissions = () => getJSON<StudentSubmission[]>("/api/student/submissions");
 
 // Talleres
 export const listGroupAssignments = (groupId: string) =>
   getJSON<Assignment[]>(`/api/teacher/groups/${encodeURIComponent(groupId)}/assignments`);
 
-/** Crea un taller (multipart: title, statement, due_at opcional y files). */
+
 export async function createAssignment(groupId: string, form: FormData): Promise<Assignment> {
   const response = await apiFetch(`/api/teacher/groups/${encodeURIComponent(groupId)}/assignments`, {
     method: "POST",
-    body: form, // el navegador pone el Content-Type multipart con su boundary
+    body: form, 
   });
   if (!response.ok) await throwForStatus(response);
   return response.json();
 }
 
-/** URL de descarga de un adjunto (la cookie de sesión viaja con el enlace). */
+
 export const assignmentFileUrl = (assignmentId: string, fileId: string) =>
   `${API_BASE}/api/assignments/${encodeURIComponent(assignmentId)}/files/${encodeURIComponent(fileId)}`;
 
-/**
- * Compila y ejecuta. Si el estudiante indica su clase (y taller), la compilación
- * se guarda como intento para que su profesor vea el proceso.
- */
+
 export function compileCode(
   code: string,
   stdin: string = "",
@@ -249,10 +293,7 @@ export function compileCode(
   return postJSON("/api/compile", { code, stdin, ...context });
 }
 
-/**
- * Datos de la última compilación de exactamente el código que se envía.
- * Si el código cambió desde entonces, se envía `compiled: false`.
- */
+
 export type FeedbackMode = "formal" | "informal";
 
 export interface FeedbackContext {
@@ -268,11 +309,7 @@ export interface FeedbackContext {
   run_error?: string;
 }
 
-/**
- * Streams AI feedback via Server-Sent Events.
- * onToken is called for each chunk of text as it arrives.
- * Returns metadata (model, time) when the stream completes.
- */
+
 export async function streamFeedback(
   context: FeedbackContext,
   onToken: (token: string) => void

@@ -14,7 +14,6 @@ import (
 	"time"
 )
 
-// Role identifica el tipo de cuenta.
 type Role string
 
 const (
@@ -27,7 +26,6 @@ var (
 	ErrInvalidCredentials = errors.New("email o contraseña incorrectos")
 )
 
-// Activity acumula el uso de la plataforma por usuario (visible para docentes).
 type Activity struct {
 	Compiles     int       `json:"compiles"`
 	Feedbacks    int       `json:"feedbacks"`
@@ -53,11 +51,12 @@ type session struct {
 // storeData es lo que se persiste en disco.
 type storeData struct {
 	Users       map[string]*User           `json:"users"`
-	Sessions    map[string]*session        `json:"sessions"` // clave: SHA-256 del token, nunca el token en claro
+	Sessions    map[string]*session        `json:"sessions"`
 	Courses     map[string]*Course         `json:"courses"`
 	Groups      map[string]*Group          `json:"groups"`
-	Submissions map[string]*SubmissionMeta `json:"submissions"` // el código va en dir/submissions/<id>.json
-	Assignments map[string]*Assignment     `json:"assignments"` // los adjuntos van en dir/assignments/<id>/
+	Submissions map[string]*SubmissionMeta `json:"submissions"`
+	Assignments map[string]*Assignment     `json:"assignments"`
+	Reviews     map[string]*Review         `json:"reviews"`
 }
 
 // Store guarda usuarios y sesiones en un archivo JSON. Pensado para un curso
@@ -110,6 +109,9 @@ func OpenStore(dir string, ttl time.Duration) (*Store, error) {
 	}
 	if s.data.Assignments == nil {
 		s.data.Assignments = map[string]*Assignment{}
+	}
+	if s.data.Reviews == nil {
+		s.data.Reviews = map[string]*Review{}
 	}
 	return s, nil
 }

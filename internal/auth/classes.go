@@ -199,7 +199,6 @@ func (s *Store) submissionCountsLocked() map[string]int {
 	return counts
 }
 
-// TeacherCourses lista las materias del docente con sus clases.
 func (s *Store) TeacherCourses(teacherID string) []CourseSummary {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -539,11 +538,11 @@ func (s *Store) AddSubmission(sub *Submission) error {
 	return nil
 }
 
-// StudentSubmission es un envío propio visto por el estudiante.
 type StudentSubmission struct {
 	SubmissionMeta
-	GroupName  string `json:"group_name"`
-	CourseName string `json:"course_name"`
+	GroupName  string         `json:"group_name"`
+	CourseName string         `json:"course_name"`
+	Review     *StudentReview `json:"review,omitempty"`
 }
 
 // StudentSubmissions lista los últimos envíos del estudiante.
@@ -560,6 +559,7 @@ func (s *Store) StudentSubmissions(studentID string, limit int) []StudentSubmiss
 			sg := s.studentGroupLocked(g)
 			ss.GroupName, ss.CourseName = sg.Name, sg.CourseName
 		}
+		ss.Review = s.returnedReviewLocked(m.ID)
 		out = append(out, ss)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
