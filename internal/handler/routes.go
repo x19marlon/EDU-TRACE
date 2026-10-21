@@ -58,9 +58,10 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	// Endpoint de compilacion
 	mux.Handle("POST /api/compile", auth.RequireAuth(store, compileFlight.Wrap(NewCompileHandler(comp, store))))
 
-	// Endpoint de feedback
+	// Endpoint de feedback y chat pedagógico
 	if ollama != nil {
 		mux.Handle("POST /api/feedback", auth.RequireAuth(store, feedbackFlight.Wrap(NewFeedbackHandler(ollama, cfg.OllamaModel, store))))
+		mux.Handle("POST /api/chat", auth.RequireAuth(store, feedbackFlight.Wrap(NewChatHandler(ollama, cfg.OllamaModel, store))))
 		analysisHandler := auth.RequireRole(store, auth.RoleTeacher, feedbackFlight.Wrap(NewAnalysisHandler(ollama, cfg.OllamaModel, store)))
 		mux.Handle("POST /api/teacher/groups/{id}/students/{student}/analysis", analysisHandler)
 		mux.Handle("POST /api/teacher/submissions/{id}/review/draft",
@@ -74,6 +75,7 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 		})
 		mux.Handle("POST /api/teacher/submissions/{id}/review/draft", auth.RequireRole(store, auth.RoleTeacher, unavailable))
 		mux.Handle("POST /api/feedback", auth.RequireAuth(store, unavailable))
+		mux.Handle("POST /api/chat", auth.RequireAuth(store, unavailable))
 		mux.Handle("POST /api/teacher/groups/{id}/students/{student}/analysis", auth.RequireRole(store, auth.RoleTeacher, unavailable))
 		slog.Warn("feedback endpoint disabled — Ollama client not available")
 	}
