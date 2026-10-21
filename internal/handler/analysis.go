@@ -12,9 +12,9 @@ const analysisMaxEntries = 20
 
 // AnalysisHandler genera para el profesor un análisis del proceso de un estudiante.
 type AnalysisHandler struct {
-	ollama    *ai.OllamaClient
+	ollama *ai.OllamaClient
 	modelName string
-	store     *auth.Store
+	store *auth.Store
 }
 
 func NewAnalysisHandler(ollama *ai.OllamaClient, modelName string, store *auth.Store) *AnalysisHandler {
@@ -46,16 +46,16 @@ func (h *AnalysisHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	entries := make([]ai.ProcessEntry, 0, len(subs))
 	for _, s := range subs {
 		entries = append(entries, ai.ProcessEntry{
-			When:            s.CreatedAt,
-			Official:        !s.IsAttempt(),
+			When: s.CreatedAt,
+			Official: !s.IsAttempt(),
 			AssignmentTitle: titles[s.AssignmentID],
-			Success:         s.Success,
-			RunError:        s.RunError,
-			ExitCode:        s.ExitCode,
-			CompilerOutput:  s.CompilerOutput,
-			Stdin:           s.Stdin,
-			ProgramOutput:   s.ProgramOutput,
-			Code:            s.Code,
+			Success: s.Success,
+			RunError: s.RunError,
+			ExitCode: s.ExitCode,
+			CompilerOutput: s.CompilerOutput,
+			Stdin: s.Stdin,
+			ProgramOutput: s.ProgramOutput,
+			Code: s.Code,
 		})
 	}
 

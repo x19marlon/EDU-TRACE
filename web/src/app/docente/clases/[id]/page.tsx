@@ -2,16 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/AppShell";
-import { Avatar, Card, ProgressRing } from "@/components/ui";
+import { Avatar, Card, ProgressRing, RenameForm, SmallButton } from "@/components/ui";
+import { MonitorsCard } from "@/components/ClassAdmin";
 import TeacherAssignments from "@/components/TeacherAssignments";
 import StudentProcess from "@/components/StudentProcess";
 import { ReviewPill, StatusPill, SubmissionDetail } from "@/components/SubmissionView";
 import {
   Assignment,
+  deleteGroup,
   getGroup,
+  regenerateJoinCode,
+  removeStudent,
+  renameGroup,
   listGroupAssignments,
   GroupDetail,
   GroupStudent,
@@ -66,6 +71,10 @@ function GroupView() {
   const [error, setError] = useState<string | null>(null);
   const [studentId, setStudentId] = useState<string | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [managing, setManaging] = useState(false);
+  const [adminError, setAdminError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     Promise.all([getGroup(id), listGroupSubmissions(id), listGroupAssignments(id)])
@@ -98,6 +107,49 @@ function GroupView() {
     );
   if (!group || !submissions) return <p className="mx-auto max-w-7xl text-sm text-ink-soft">Cargando...</p>;
 
+  const run = async (action: () => Promise<void>, fallback: string) => {
+    setAdminError(null);
+    try {
+      await action();
+    } catch (err) {
+      setAdminError(err instanceof Error ? err.message : fallback);
+    }
+  };
+
+  const newCode = () => {
+    if (!window.confirm("¿Generar un código nuevo? El código actual dejará de funcionar; los estudiantes ya inscritos siguen en la clase.")) return;
+    run(async () => {
+      const { join_code } = await regenerateJoinCode(group.id);
+      setGroup({ ...group, join_code });
+    }, "No se pudo generar el código");
+  };
+
+  const removeGroup = () => {
+    if (
+      !window.confirm(
+        `¿Eliminar la clase «${group.name}»? Se borrarán sus talleres, entregas, intentos, revisiones y la retroalimentación de los monitores. No se puede deshacer.`
+      )
+    )
+      return;
+    run(async () => {
+      await deleteGroup(group.id);
+      router.replace("/docente");
+    }, "No se pudo eliminar la clase");
+  };
+
+  const kick = (s: GroupStudent) => {
+    if (!window.confirm(`¿Quitar a ${s.name} de la clase? Se borrarán sus entregas e intentos en esta clase.`)) return;
+    run(async () => {
+      await removeStudent(group.id, s.id);
+      setGroup({ ...group, students: group.students.filter((x) => x.id !== s.id) });
+      setSubmissions(submissions.filter((m) => m.student_id !== s.id));
+      if (studentId === s.id) {
+        setStudentId(null);
+        setSubmissionId(null);
+      }
+    }, "No se pudo quitar al estudiante");
+  };
+
   const total = group.students.length;
   const active = group.students.filter(isActive).length;
   const withSubmission = group.students.filter((s) => s.submission_count > 0).length;
@@ -114,10 +166,32 @@ function GroupView() {
       </nav>
 
       <section className="rise-in flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-white p-5 sm:p-6 shadow-soft">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-xs font-bold uppercase tracking-wider text-lavender-600">{group.course_name}</p>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">{group.name}</h1>
+          {renaming ? (
+            <div className="my-1 flex">
+              <RenameForm
+                initial={group.name}
+                onCancel={() => setRenaming(false)}
+                onSave={async (name) => {
+                  await renameGroup(group.id, name);
+                  setGroup({ ...group, name });
+                  setRenaming(false);
+                }}
+              />
+            </div>
+          ) : (
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">{group.name}</h1>
+          )}
           <p className="mt-0.5 text-sm text-ink-soft">Comparte este código para que tus estudiantes se unan a la clase.</p>
+          <div className="mt-2 -ml-3 flex flex-wrap gap-1">
+            <SmallButton onClick={() => setRenaming(true)}>Renombrar clase</SmallButton>
+            <SmallButton onClick={newCode}>Generar código nuevo</SmallButton>
+            <SmallButton tone="danger" onClick={removeGroup}>
+              Eliminar clase
+            </SmallButton>
+          </div>
+          {adminError && <p className="mt-2 rounded-2xl bg-peach-50 px-4 py-2 text-sm font-semibold text-peach-700">{adminError}</p>}
         </div>
         <CopyCode code={group.join_code} />
       </section>
@@ -154,7 +228,14 @@ function GroupView() {
         assignments={assignments}
         submissionCounts={perAssignment}
         onCreated={(a) => setAssignments((list) => [a, ...list])}
+        onUpdated={(a) => setAssignments((list) => list.map((x) => (x.id === a.id ? a : x)))}
+        onDeleted={(aid) => {
+          setAssignments((list) => list.filter((x) => x.id !== aid));
+          setSubmissions((list) => list?.map((m) => (m.assignment_id === aid ? { ...m, assignment_id: undefined } : m)) ?? null);
+        }}
       />
+
+      <MonitorsCard groupId={group.id} monitors={group.monitors} onChange={(monitors) => setGroup({ ...group, monitors })} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
         {/* Estudiantes */}
@@ -162,7 +243,14 @@ function GroupView() {
           title="Estudiantes"
           className="rise-in lg:col-span-2 self-start"
           bodyClassName="p-2"
-          action={<span className="text-xs font-semibold text-ink-faint">{total}</span>}
+          action={
+            <span className="flex items-center gap-2">
+              {total > 0 && (
+                <SmallButton onClick={() => setManaging((m) => !m)}>{managing ? "Listo" : "Administrar"}</SmallButton>
+              )}
+              <span className="text-xs font-semibold text-ink-faint">{total}</span>
+            </span>
+          }
         >
           {total === 0 ? (
             <p className="p-3 text-sm text-ink-soft">Nadie se ha unido todavía. Comparte el código {group.join_code}.</p>
@@ -179,10 +267,10 @@ function GroupView() {
                 </button>
               </li>
               {group.students.map((s) => (
-                <li key={s.id}>
+                <li key={s.id} className="flex items-center gap-1">
                   <button
                     onClick={() => { setStudentId(s.id); setSubmissionId(null); }}
-                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors ${
+                    className={`flex w-full min-w-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors ${
                       studentId === s.id ? "bg-lavender-100" : "hover:bg-lavender-50"
                     }`}
                   >
@@ -201,6 +289,11 @@ function GroupView() {
                       title={isActive(s) ? "Activo esta semana" : lastSeen(s) ? "Sin actividad reciente" : "Aún no empieza"}
                     />
                   </button>
+                  {managing && (
+                    <SmallButton tone="danger" onClick={() => kick(s)}>
+                      Quitar
+                    </SmallButton>
+                  )}
                 </li>
               ))}
             </ul>

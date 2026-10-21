@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { listMySubmissions, StudentSubmission } from "@/lib/api";
 import { Card } from "@/components/ui";
+import { MonitorNotes } from "@/components/MonitorFeedback";
 import { formatDateTime, formatFeedback } from "@/lib/format";
 
 
@@ -35,6 +36,11 @@ export default function MySubmissions({ refreshKey }: { refreshKey: number }) {
                   {s.group_name} · {formatDateTime(s.created_at)}
                 </span>
                 <span className="flex-1" />
+                {(s.monitor_feedback?.length ?? 0) > 0 && (
+                  <span className="rounded-full bg-mint-50 px-3 py-1 text-xs font-bold text-mint-700">
+                    {s.monitor_feedback!.length === 1 ? "1 comentario del monitor" : `${s.monitor_feedback!.length} comentarios del monitor`}
+                  </span>
+                )}
                 {s.review ? (
                   <span className="rounded-full bg-mint-100 px-3 py-1 text-xs font-bold text-mint-700">
                     Revisada{s.review.grade !== undefined ? ` · ${s.review.grade.toFixed(1)} / 5.0` : ""}
@@ -57,6 +63,12 @@ export default function MySubmissions({ refreshKey }: { refreshKey: number }) {
               )}
               {open && !s.review && (
                 <p className="px-4 pb-4 text-sm text-ink-soft">Tu profesor aún no ha revisado esta entrega.</p>
+              )}
+              {open && (s.monitor_feedback?.length ?? 0) > 0 && (
+                <div className="space-y-2 px-4 pb-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-ink-soft">Retroalimentación de tu monitor</p>
+                  <MonitorNotes notes={s.monitor_feedback!} />
+                </div>
               )}
             </li>
           );

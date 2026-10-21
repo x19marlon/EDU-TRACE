@@ -126,8 +126,8 @@ func (c *Compiler) Compile(ctx context.Context, sourceCode string, stdin string)
 // limitedBuffer guarda como máximo max bytes y descarta el resto sin fallar,
 // para que el proceso hijo no se bloquee al escribir.
 type limitedBuffer struct {
-	buf       bytes.Buffer
-	max       int
+	buf bytes.Buffer
+	max int
 	truncated bool
 }
 

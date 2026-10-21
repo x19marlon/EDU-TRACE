@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/marlon/edu-trace/internal/model"
@@ -19,6 +20,7 @@ REGLAS PEDAGÓGICAS ESTRICTAS:
 3. No des la corrección inmediata. Haz preguntas que lleven al estudiante a reflexionar (método socrático).
 4. Usa conceptos adecuados al nivel de principiante: variables, tipos primitivos, condicionales (if/else, switch), ciclos (while, for, do-while), arreglos unidimensionales/matrices y funciones. No utilices temas avanzados (punteros complejos, memoria dinámica, clases avanzadas o plantillas) a menos que sean estrictamente necesarios y acordes.
 5. Sé conciso, empático, motivador y claro en tus respuestas en español.
+6. Cuando menciones código, escríbelo siempre entre comillas invertidas o en un bloque de código cpp, nunca suelto dentro de una frase.
 
 CRITERIOS DEL CURSO:
 %s`
@@ -31,7 +33,7 @@ func (o *OllamaClient) StreamChat(ctx context.Context, req model.ChatRequest, st
 	// 1. System Prompt
 	sysPrompt := fmt.Sprintf(systemPromptChat, o.syllabus)
 	chatMsgs = append(chatMsgs, chatMessage{
-		Role:    "system",
+		Role: "system",
 		Content: sysPrompt,
 	})
 
@@ -58,21 +60,33 @@ func (o *OllamaClient) StreamChat(ctx context.Context, req model.ChatRequest, st
 	ctxBuilder.WriteString("\nRecuerda: Si el estudiante te pide resolver su código o corregir su error, NO le des la respuesta directa; guíalo con pistas y sólo con ejemplos genéricos distintos a su ejercicio.")
 
 	chatMsgs = append(chatMsgs, chatMessage{
-		Role:    "system",
+		Role: "system",
 		Content: ctxBuilder.String(),
 	})
 
 	// 3. Conversation Messages
+	// El filtro compara la respuesta con lo que aportó el estudiante. Los mensajes
+	// "assistant" no cuentan: los envía el navegador y se pueden falsificar.
+	texts := []string{statement}
 	for _, m := range req.Messages {
 		role := m.Role
 		if role != "user" && role != "assistant" {
 			role = "user"
 		}
+		if role == "user" {
+			texts = append(texts, m.Content)
+		}
 		chatMsgs = append(chatMsgs, chatMessage{
-			Role:    role,
+			Role: role,
 			Content: m.Content,
 		})
 	}
 
-	return o.streamChat(ctx, chatMsgs, onToken)
+	guard := NewSolutionGuard(onToken, req.Code, texts...)
+	err := o.streamChat(ctx, chatMsgs, guard.Write)
+	guard.Close()
+	if n := guard.Omitted(); n > 0 {
+		slog.Info("filtro anti-solución: código omitido en el chat", "fragmentos", n)
+	}
+	return err
 }

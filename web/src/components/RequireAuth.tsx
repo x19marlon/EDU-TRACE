@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { Role } from "@/lib/api";
+import { homeFor } from "@/lib/role";
 
 /**
  * Muestra el contenido solo con sesión iniciada (y el rol indicado, si se pasa).
@@ -22,7 +23,7 @@ export default function RequireAuth({
   useEffect(() => {
     if (isLoading) return;
     if (!user) router.replace("/login");
-    else if (role && user.role !== role) router.replace("/");
+    else if (role && user.role !== role) router.replace(homeFor(user.role));
   }, [user, isLoading, role, router]);
 
   if (isLoading || !user || (role && user.role !== role)) {

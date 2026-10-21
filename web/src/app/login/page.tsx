@@ -5,17 +5,17 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import Logo from "@/components/Logo";
 import { login, register, Role } from "@/lib/api";
-import { loadRole, saveRole } from "@/lib/role";
+import { homeFor, isRole, loadRole, ROLE_LABELS, saveRole } from "@/lib/role";
 
-const ROLE_OPTIONS: { value: Role; label: string }[] = [
-  { value: "student", label: "Estudiante" },
-  { value: "teacher", label: "Profesor" },
-];
+const ROLE_OPTIONS: { value: Role; label: string }[] = (["student", "teacher", "monitor"] as const).map((value) => ({
+  value,
+  label: ROLE_LABELS[value],
+}));
 
 /** Pestañas para elegir con qué tipo de cuenta entrar, visibles de una vez. */
 function RoleTabs({ role, onChange }: { role: Role; onChange: (r: Role) => void }) {
   return (
-    <div role="radiogroup" aria-label="Entrar como" className="grid grid-cols-2 gap-1 rounded-full bg-lavender-50 p-1">
+    <div role="radiogroup" aria-label="Entrar como" className="grid grid-cols-3 gap-1 rounded-full bg-lavender-50 p-1">
       {ROLE_OPTIONS.map((o) => (
         <button
           key={o.value}
@@ -38,10 +38,12 @@ const SUBTITLES: Record<"login" | "register", Record<Role, string>> = {
   login: {
     student: "Entra para seguir practicando.",
     teacher: "Entra para acompañar a tu grupo.",
+    monitor: "Entra para retroalimentar a los estudiantes de tus clases.",
   },
   register: {
     student: "Empieza a practicar en un minuto.",
     teacher: "Necesitarás el código de profesor de tu institución.",
+    monitor: "Después, pídele a tu profesor que te agregue a su clase con este email.",
   },
 };
 
@@ -67,7 +69,7 @@ export default function LoginPage() {
   // ?rol=teacher|student (desde "Cambiar de rol") tiene prioridad sobre la última elección.
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("rol");
-    if (fromUrl === "teacher" || fromUrl === "student") {
+    if (isRole(fromUrl)) {
       setRole(fromUrl);
       saveRole(fromUrl);
     } else {
@@ -76,7 +78,7 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (!isLoading && user) router.replace(user.role === "teacher" ? "/docente" : "/");
+    if (!isLoading && user) router.replace(homeFor(user.role));
   }, [user, isLoading, router]);
 
   const chooseRole = (r: Role) => {

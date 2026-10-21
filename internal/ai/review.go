@@ -12,22 +12,22 @@ import (
 const GradeMax = 5.0
 
 type ReviewInput struct {
-	Statement      string
-	Rubric         string
-	Code           string
-	Stdin          string
-	Success        bool
+	Statement string
+	Rubric string
+	Code string
+	Stdin string
+	Success bool
 	CompilerOutput string
-	ProgramOutput  string
-	RunError       string
-	ExitCode       int
+	ProgramOutput string
+	RunError string
+	ExitCode int
 }
 
 type ReviewSuggestion struct {
-	Feedback   string  `json:"retroalimentacion"`
-	Grade      float64 `json:"nota"`
-	Reason     string  `json:"justificacion"`
-	Confidence string  `json:"confianza"`
+	Feedback string `json:"retroalimentacion"`
+	Grade float64 `json:"nota"`
+	Reason string `json:"justificacion"`
+	Confidence string `json:"confianza"`
 }
 
 // reviewSchema obliga al modelo a responder con este JSON (salidas estructuradas de Ollama).
@@ -121,6 +121,11 @@ func (o *OllamaClient) SuggestReview(ctx context.Context, in ReviewInput) (*Revi
 		return nil, errors.New("la IA no devolvió una propuesta válida, inténtalo de nuevo")
 	}
 	sug.Feedback = strings.TrimSpace(sug.Feedback)
+	// La retroalimentación es para el estudiante: tampoco debe traer la solución.
+	if filtered, n := FilterSolution(sug.Feedback, in.Code, in.Statement); n > 0 {
+		slog.Info("filtro anti-solución: código omitido en la propuesta", "fragmentos", n)
+		sug.Feedback = filtered
+	}
 	sug.Reason = strings.TrimSpace(sug.Reason)
 	if sug.Feedback == "" {
 		return nil, errors.New("la IA devolvió una retroalimentación vacía, inténtalo de nuevo")

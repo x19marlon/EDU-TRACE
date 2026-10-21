@@ -6,6 +6,7 @@ import (
 	"github.com/marlon/edu-trace/internal/model"
 	"log/slog"
 	"mime"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
@@ -14,84 +15,153 @@ import (
 )
 
 const (
-	maxAssignmentFiles     = 10
-	maxAssignmentFileSize  = 10 << 20
-	maxAssignmentUpload    = 30 << 20
-	maxStatementLen        = 20000
-	maxRubricLen           = 5000
-	multipartMemoryLimit   = 8 << 20
-	assignmentTitleMaxLen  = 120
-	assignmentTitleMinLen  = 2
+	maxAssignmentFiles = auth.MaxAssignmentFiles
+	maxAssignmentFileSize = 10 << 20
+	maxAssignmentUpload = 30 << 20
+	maxStatementLen = 20000
+	maxRubricLen = 5000
+	multipartMemoryLimit = 8 << 20
+	assignmentTitleMaxLen = 120
+	assignmentTitleMinLen = 2
 	assignmentStatementMin = 1
 )
 
-func (h *ClassesHandler) CreateAssignment(w http.ResponseWriter, r *http.Request) {
+type assignmentForm struct {
+	title string
+	statement string
+	rubric string
+	dueAt *time.Time
+	files []*multipart.FileHeader
+}
+
+func parseAssignmentForm(w http.ResponseWriter, r *http.Request) (*assignmentForm, bool) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxAssignmentUpload+1<<20)
 	if err := r.ParseMultipartForm(multipartMemoryLimit); err != nil {
 		var tooBig *http.MaxBytesError
 		if errors.As(err, &tooBig) {
 			writeJSON(w, http.StatusRequestEntityTooLarge, model.ErrorResponse{Error: "los archivos superan el máximo de 30 MB por taller"})
-			return
+			return nil, false
 		}
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "formulario inválido"})
-		return
+		return nil, false
 	}
-	defer r.MultipartForm.RemoveAll()
-
-	title := strings.TrimSpace(r.FormValue("title"))
-	statement := strings.TrimSpace(r.FormValue("statement"))
-	rubric := strings.TrimSpace(r.FormValue("rubric"))
-	if n := utf8.RuneCountInString(title); n < assignmentTitleMinLen || n > assignmentTitleMaxLen {
-		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "el título debe tener entre 2 y 120 caracteres"})
-		return
+	f := &assignmentForm{
+		title: strings.TrimSpace(r.FormValue("title")),
+		statement: strings.TrimSpace(r.FormValue("statement")),
+		rubric: strings.TrimSpace(r.FormValue("rubric")),
+		files: r.MultipartForm.File["files"],
 	}
-	if n := utf8.RuneCountInString(statement); n < assignmentStatementMin || n > maxStatementLen {
-		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "escribe el enunciado (máximo 20.000 caracteres)"})
-		return
+	fail := func(status int, msg string) (*assignmentForm, bool) {
+		r.MultipartForm.RemoveAll()
+		writeJSON(w, status, model.ErrorResponse{Error: msg})
+		return nil, false
 	}
-	if utf8.RuneCountInString(rubric) > maxRubricLen {
-		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "los criterios de evaluacion superan los 5000 caracteres"})
-		return
+	if n := utf8.RuneCountInString(f.title); n < assignmentTitleMinLen || n > assignmentTitleMaxLen {
+		return fail(http.StatusBadRequest, "el título debe tener entre 2 y 120 caracteres")
 	}
-	var dueAt *time.Time
+	if n := utf8.RuneCountInString(f.statement); n < assignmentStatementMin || n > maxStatementLen {
+		return fail(http.StatusBadRequest, "escribe el enunciado (máximo 20.000 caracteres)")
+	}
+	if utf8.RuneCountInString(f.rubric) > maxRubricLen {
+		return fail(http.StatusBadRequest, "los criterios de evaluacion superan los 5000 caracteres")
+	}
 	if v := strings.TrimSpace(r.FormValue("due_at")); v != "" {
 		t, err := time.Parse(time.RFC3339, v)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "fecha límite inválida"})
-			return
+			return fail(http.StatusBadRequest, "fecha límite inválida")
 		}
 		t = t.UTC()
-		dueAt = &t
+		f.dueAt = &t
 	}
+	if len(f.files) > maxAssignmentFiles {
+		return fail(http.StatusBadRequest, "máximo 10 archivos por taller")
+	}
+	for _, fh := range f.files {
+		if fh.Size > maxAssignmentFileSize {
+			return fail(http.StatusBadRequest, "«"+fh.Filename+"» supera el máximo de 10 MB")
+		}
+	}
+	return f, true
+}
 
-	headers := r.MultipartForm.File["files"]
-	if len(headers) > maxAssignmentFiles {
-		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "máximo 10 archivos por taller"})
-		return
+func openUploads(w http.ResponseWriter, headers []*multipart.FileHeader) ([]auth.FileUpload, func(), bool) {
+	var opened []multipart.File
+	closeAll := func() {
+		for _, f := range opened {
+			f.Close()
+		}
 	}
 	uploads := make([]auth.FileUpload, 0, len(headers))
 	for _, fh := range headers {
-		if fh.Size > maxAssignmentFileSize {
-			writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "«" + fh.Filename + "» supera el máximo de 10 MB"})
-			return
-		}
 		f, err := fh.Open()
 		if err != nil {
+			closeAll()
 			writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "no se pudo leer «" + fh.Filename + "»"})
-			return
+			return nil, nil, false
 		}
-		defer f.Close()
+		opened = append(opened, f)
 		uploads = append(uploads, auth.FileUpload{Name: fh.Filename, ContentType: fh.Header.Get("Content-Type"), Body: f})
 	}
+	return uploads, closeAll, true
+}
+
+func (h *ClassesHandler) CreateAssignment(w http.ResponseWriter, r *http.Request) {
+	form, ok := parseAssignmentForm(w, r)
+	if !ok {
+		return
+	}
+	defer r.MultipartForm.RemoveAll()
+	uploads, closeAll, ok := openUploads(w, form.files)
+	if !ok {
+		return
+	}
+	defer closeAll()
 
 	user := auth.UserFrom(r.Context())
-	a, err := h.store.CreateAssignment(user.ID, r.PathValue("id"), title, statement, rubric, dueAt, uploads)
+	a, err := h.store.CreateAssignment(user.ID, r.PathValue("id"), form.title, form.statement, form.rubric, form.dueAt, uploads)
 	if err != nil {
 		writeStoreErr(w, err, "crear el taller")
 		return
 	}
 	slog.Info("assignment created", "user_id", user.ID, "group_id", a.GroupID, "assignment_id", a.ID, "files", len(a.Files))
 	writeJSON(w, http.StatusCreated, a)
+}
+
+func (h *ClassesHandler) UpdateAssignment(w http.ResponseWriter, r *http.Request) {
+	form, ok := parseAssignmentForm(w, r)
+	if !ok {
+		return
+	}
+	defer r.MultipartForm.RemoveAll()
+	uploads, closeAll, ok := openUploads(w, form.files)
+	if !ok {
+		return
+	}
+	defer closeAll()
+
+	user := auth.UserFrom(r.Context())
+	a, err := h.store.UpdateAssignment(user.ID, r.PathValue("id"), form.title, form.statement, form.rubric, form.dueAt,
+		r.MultipartForm.Value["remove_files"], uploads)
+	if errors.Is(err, auth.ErrTooManyFiles) {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: err.Error()})
+		return
+	}
+	if err != nil {
+		writeStoreErr(w, err, "guardar el taller")
+		return
+	}
+	slog.Info("assignment updated", "user_id", user.ID, "assignment_id", a.ID, "files", len(a.Files))
+	writeJSON(w, http.StatusOK, a)
+}
+
+func (h *ClassesHandler) DeleteAssignment(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFrom(r.Context())
+	if err := h.store.DeleteAssignment(user.ID, r.PathValue("id")); err != nil {
+		writeStoreErr(w, err, "eliminar el taller")
+		return
+	}
+	slog.Info("assignment deleted", "user_id", user.ID, "assignment_id", r.PathValue("id"))
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *ClassesHandler) GroupAssignments(w http.ResponseWriter, r *http.Request) {

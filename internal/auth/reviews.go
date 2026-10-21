@@ -9,34 +9,33 @@ import (
 )
 
 const (
-	ReviewDraft    = "draft"    // el profesor aún no la devuelve
-	ReviewReturned = "returned" // el estudiante ya la ve
+	ReviewDraft = "draft" 
+	ReviewReturned = "returned" 
 )
 
-// Review: propuesta de la IA (solo la ve el profesor) + decisión del profesor
-// (lo que ve el estudiante cuando se devuelve).
+// Review: propuesta de la IA (solo la ve el profesor) 
 type Review struct {
-	SubmissionID string     `json:"submission_id"`
-	TeacherID    string     `json:"teacher_id"`
-	AIFeedback   string     `json:"ai_feedback,omitempty"`
-	AIGrade      *float64   `json:"ai_grade,omitempty"`
-	AIReason     string     `json:"ai_reason,omitempty"`
-	AIConfidence string     `json:"ai_confidence,omitempty"`
-	AIAt         *time.Time `json:"ai_at,omitempty"`
-	Feedback     string     `json:"feedback"`
-	Grade        *float64   `json:"grade,omitempty"`
-	Status       string     `json:"status"`
-	ReturnedAt   *time.Time `json:"returned_at,omitempty"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	SubmissionID string `json:"submission_id"`
+	TeacherID string `json:"teacher_id"`
+	AIFeedback string `json:"ai_feedback,omitempty"`
+	AIGrade *float64 `json:"ai_grade,omitempty"`
+	AIReason string `json:"ai_reason,omitempty"`
+	AIConfidence string `json:"ai_confidence,omitempty"`
+	AIAt *time.Time `json:"ai_at,omitempty"`
+	Feedback string `json:"feedback"`
+	Grade *float64 `json:"grade,omitempty"`
+	Status string `json:"status"`
+	ReturnedAt *time.Time `json:"returned_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// ReviewState es el estado de revisión de una entrega, para los listados del profesor.
+
 type ReviewState struct {
-	Status string   `json:"status"`
-	Grade  *float64 `json:"grade,omitempty"`
+	Status string `json:"status"`
+	Grade *float64 `json:"grade,omitempty"`
 }
 
-// GradeSource: "ai_confirmed", "profesor" o "" (sin nota).
+
 func (r *Review) GradeSource() string {
 	switch {
 	case r.Grade == nil:
@@ -48,12 +47,11 @@ func (r *Review) GradeSource() string {
 	}
 }
 
-// StudentReview es lo único que ve el estudiante: nunca la propuesta de la IA.
 type StudentReview struct {
-	Feedback   string     `json:"feedback"`
-	Grade      *float64   `json:"grade,omitempty"`
+	Feedback string `json:"feedback"`
+	Grade *float64 `json:"grade,omitempty"`
 	ReturnedAt *time.Time `json:"returned_at"`
-	AIAssisted bool       `json:"ai_assisted"` // transparencia: hubo apoyo de IA
+	AIAssisted bool `json:"ai_assisted"` // transparencia: hubo apoyo de IA
 }
 
 // ownedOfficial comprueba que la entrega existe, es oficial y es de una clase del profesor.

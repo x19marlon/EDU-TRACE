@@ -16,9 +16,9 @@ const maxFeedbackCodeSize = 50 * 1024 // 50 KB
 
 // FeedbackHandler handles POST /api/feedback requests using Server-Sent Events.
 type FeedbackHandler struct {
-	ollama    *ai.OllamaClient
+	ollama *ai.OllamaClient
 	modelName string
-	store     *auth.Store
+	store *auth.Store
 }
 
 // NewFeedbackHandler creates a handler backed by the given Ollama client.
@@ -32,7 +32,7 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 4*maxFeedbackCodeSize)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{
-			Error:   "invalid request body",
+			Error: "invalid request body",
 			Details: err.Error(),
 		})
 		return

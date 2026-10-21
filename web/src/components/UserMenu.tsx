@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { Avatar } from "@/components/ui";
 import { Role } from "@/lib/api";
-import { saveRole } from "@/lib/role";
+import { ROLE_LABELS, saveRole } from "@/lib/role";
 
 export default function UserMenu() {
   const { user, logout } = useAuth();
@@ -77,7 +77,7 @@ export default function UserMenu() {
           </div>
           <div className="border-t border-lavender-100 my-1" />
           <p className="px-3 pt-1.5 pb-1 text-[11px] font-bold uppercase tracking-wider text-ink-faint">Rol</p>
-          {(["student", "teacher"] as const).map((r) => (
+          {(["student", "teacher", "monitor"] as const).map((r) => (
             <button
               key={r}
               role="menuitemradio"
@@ -88,7 +88,7 @@ export default function UserMenu() {
               }`}
             >
               <span>
-                {r === "teacher" ? "Profesor" : "Estudiante"}
+                {ROLE_LABELS[r]}
                 {user.role !== r && <span className="ml-1 text-xs font-normal text-ink-faint">(entrar con esa cuenta)</span>}
               </span>
               {user.role === r && <span aria-hidden>✓</span>}

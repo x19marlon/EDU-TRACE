@@ -3,7 +3,6 @@ package auth
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -14,29 +13,29 @@ import (
 
 // AssignmentFile es un archivo adjunto a un taller.
 type AssignmentFile struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Size        int64  `json:"size"`
+	ID string `json:"id"`
+	Name string `json:"name"`
+	Size int64 `json:"size"`
 	ContentType string `json:"content_type"`
 }
 
 // Assignment es un taller que el profesor deja en una clase.
 type Assignment struct {
-	ID        string           `json:"id"`
-	GroupID   string           `json:"group_id"`
-	Title     string           `json:"title"`
-	Statement string           `json:"statement"`
-	Rubric    string           `json:"rubric,omitempty"`
-	DueAt     *time.Time       `json:"due_at,omitempty"`
-	CreatedAt time.Time        `json:"created_at"`
-	Files     []AssignmentFile `json:"files"`
+	ID string `json:"id"`
+	GroupID string `json:"group_id"`
+	Title string `json:"title"`
+	Statement string `json:"statement"`
+	Rubric string `json:"rubric,omitempty"`
+	DueAt *time.Time `json:"due_at,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	Files []AssignmentFile `json:"files"`
 }
 
 // FileUpload es un archivo recibido para guardar en un taller.
 type FileUpload struct {
-	Name        string
+	Name string
 	ContentType string
-	Body        io.Reader
+	Body io.Reader
 }
 
 func (s *Store) assignmentDir(id string) string {
@@ -86,24 +85,11 @@ func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric st
 		os.RemoveAll(dir)
 		return nil, err
 	}
-	for _, f := range files {
-		fid, err := randomHex(12)
-		if err != nil {
-			return fail(err)
-		}
-		out, err := os.OpenFile(filepath.Join(dir, fid), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-		if err != nil {
-			return fail(err)
-		}
-		n, err := io.Copy(out, f.Body)
-		if cerr := out.Close(); err == nil {
-			err = cerr
-		}
-		if err != nil {
-			return fail(fmt.Errorf("guardar %q: %w", f.Name, err))
-		}
-		a.Files = append(a.Files, AssignmentFile{ID: fid, Name: safeFileName(f.Name), Size: n, ContentType: f.ContentType})
+	written, err := writeUploads(dir, files)
+	if err != nil {
+		return fail(err)
 	}
+	a.Files = written
 
 	// El taller y sus archivos se registran juntos o no se registra nada.
 	tx, err := s.db.Begin()
@@ -172,6 +158,10 @@ func (s *Store) GroupAssignments(teacherID, groupID string) ([]Assignment, error
 	if _, err := s.ownedGroup(s.db, teacherID, groupID); err != nil {
 		return nil, err
 	}
+	return s.groupAssignments(groupID)
+}
+
+func (s *Store) groupAssignments(groupID string) ([]Assignment, error) {
 	rows, err := s.db.Query(`SELECT `+assignmentCols+` FROM assignments a
 		WHERE a.group_id = ? ORDER BY a.created_at DESC`, groupID)
 	if err != nil {
@@ -196,7 +186,7 @@ func (s *Store) GroupAssignments(teacherID, groupID string) ([]Assignment, error
 // StudentAssignment es un taller visto por el estudiante.
 type StudentAssignment struct {
 	Assignment
-	GroupName  string `json:"group_name"`
+	GroupName string `json:"group_name"`
 	CourseName string `json:"course_name"`
 }
 
@@ -255,8 +245,10 @@ func (s *Store) visibleAssignment(u *User, assignmentID string) (title, statemen
 		WHERE a.id = ? AND (
 			(? = 'teacher' AND c.teacher_id = ?) OR
 			(? = 'student' AND EXISTS (SELECT 1 FROM group_students gs
-				WHERE gs.group_id = a.group_id AND gs.student_id = ?))
-		)`, assignmentID, u.Role, u.ID, u.Role, u.ID).Scan(&title, &statement)
+				WHERE gs.group_id = a.group_id AND gs.student_id = ?)) OR
+			(? = 'monitor' AND EXISTS (SELECT 1 FROM group_monitors gm
+				WHERE gm.group_id = a.group_id AND gm.monitor_id = ?))
+		)`, assignmentID, u.Role, u.ID, u.Role, u.ID, u.Role, u.ID).Scan(&title, &statement)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = ErrNotFound
 	}

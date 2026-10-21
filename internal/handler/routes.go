@@ -41,9 +41,30 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("GET /api/teacher/submissions/{id}", teacher(classes.Submission))
 	mux.Handle("POST /api/teacher/groups/{id}/assignments", teacher(classes.CreateAssignment))
 	mux.Handle("GET /api/teacher/groups/{id}/assignments", teacher(classes.GroupAssignments))
+	mux.Handle("PATCH /api/teacher/courses/{id}", teacher(classes.RenameCourse))
+	mux.Handle("DELETE /api/teacher/courses/{id}", teacher(classes.DeleteCourse))
+	mux.Handle("PATCH /api/teacher/groups/{id}", teacher(classes.RenameGroup))
+	mux.Handle("DELETE /api/teacher/groups/{id}", teacher(classes.DeleteGroup))
+	mux.Handle("POST /api/teacher/groups/{id}/join-code", teacher(classes.RegenerateJoinCode))
+	mux.Handle("DELETE /api/teacher/groups/{id}/students/{student}", teacher(classes.RemoveStudent))
+	mux.Handle("POST /api/teacher/groups/{id}/monitors", teacher(classes.AddMonitor))
+	mux.Handle("DELETE /api/teacher/groups/{id}/monitors/{monitor}", teacher(classes.RemoveMonitor))
+	mux.Handle("PUT /api/teacher/assignments/{id}", teacher(classes.UpdateAssignment))
+	mux.Handle("DELETE /api/teacher/assignments/{id}", teacher(classes.DeleteAssignment))
 	reviews := NewReviewsHandler(store, ollama)
 	mux.Handle("GET /api/teacher/submissions/{id}/review", teacher(reviews.Get))
 	mux.Handle("PUT /api/teacher/submissions/{id}/review", teacher(reviews.Save))
+
+	monitors := NewMonitorHandler(store)
+	monitor := func(f http.HandlerFunc) http.Handler { return auth.RequireRole(store, auth.RoleMonitor, f) }
+	mux.Handle("DELETE /api/teacher/monitor-feedback/{id}", teacher(monitors.DeleteFeedback))
+	mux.Handle("GET /api/monitor/groups", monitor(monitors.Groups))
+	mux.Handle("GET /api/monitor/groups/{id}", monitor(monitors.Group))
+	mux.Handle("GET /api/monitor/groups/{id}/submissions", monitor(monitors.Submissions))
+	mux.Handle("GET /api/monitor/groups/{id}/assignments", monitor(monitors.Assignments))
+	mux.Handle("GET /api/monitor/submissions/{id}", monitor(monitors.Submission))
+	mux.Handle("POST /api/monitor/submissions/{id}/feedback", monitor(monitors.AddFeedback))
+	mux.Handle("DELETE /api/monitor/feedback/{id}", monitor(monitors.DeleteFeedback))
 
 	//  adjuntos de talleres
 	mux.Handle("GET /api/assignments/{id}/files/{file}", auth.RequireAuth(store, http.HandlerFunc(classes.AssignmentFile)))
@@ -107,7 +128,7 @@ func corsMiddleware(next http.Handler, allowedOrigins string) http.Handler {
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Add("Vary", "Origin")
 		}
-		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 

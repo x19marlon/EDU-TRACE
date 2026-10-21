@@ -8,47 +8,47 @@ import (
 
 // Config holds all application configuration.
 type Config struct {
-	Host              string
-	Port              string
-	GppPath           string
-	Sandbox           string // "bwrap" (aislamiento real) o "none" (solo desarrollo)
-	DataDir           string
-	SessionTTL        time.Duration
-	TeacherCode       string // código para registrar cuentas docentes; vacío = deshabilitado
-	CookieSecure      bool
-	CompileTimeout    time.Duration
-	RunTimeout        time.Duration
-	MaxOutputSize     int
-	OllamaBaseURL     string
-	OllamaModel       string
-	OllamaTimeout     int
+	Host string
+	Port string
+	GppPath string
+	Sandbox string // "bwrap" (aislamiento real) o "none" (solo desarrollo)
+	DataDir string
+	SessionTTL time.Duration
+	TeacherCode string // código para registrar cuentas docentes; vacío = deshabilitado
+	CookieSecure bool
+	CompileTimeout time.Duration
+	RunTimeout time.Duration
+	MaxOutputSize int
+	OllamaBaseURL string
+	OllamaModel string
+	OllamaTimeout int
 	OllamaContextSize int
-	OllamaThink       string // "auto" (según el modelo), "true" o "false": razonamiento antes de responder
-	OllamaKeepAlive   string // cuánto tiempo mantiene Ollama el modelo cargado en la GPU
-	AllowedOrigins    string
+	OllamaThink string // "auto" (según el modelo), "true" o "false": razonamiento antes de responder
+	OllamaKeepAlive string // cuánto tiempo mantiene Ollama el modelo cargado en la GPU
+	AllowedOrigins string
 }
 
 // Load reads configuration from environment variables with defaults.
 func Load() *Config {
 	return &Config{
-		Host:              envOrDefault("HOST", "127.0.0.1"),
-		Port:              envOrDefault("PORT", "8080"),
-		GppPath:           envOrDefault("GPP_PATH", "g++"),
-		Sandbox:           envOrDefault("SANDBOX", "bwrap"),
-		DataDir:           envOrDefault("DATA_DIR", "data"),
-		SessionTTL:        time.Duration(intOrDefault("SESSION_TTL_HOURS", 72)) * time.Hour,
-		TeacherCode:       os.Getenv("TEACHER_CODE"),
-		CookieSecure:      os.Getenv("COOKIE_SECURE") == "true",
-		CompileTimeout:    durationOrDefault("COMPILE_TIMEOUT_SECS", 10*time.Second),
-		RunTimeout:        durationOrDefault("RUN_TIMEOUT_SECS", 5*time.Second),
-		MaxOutputSize:     intOrDefault("MAX_OUTPUT_SIZE", 10240),
-		OllamaBaseURL:     envOrDefault("OLLAMA_BASE_URL", "http://localhost:11434"),
-		OllamaModel:       envOrDefault("OLLAMA_MODEL", "llama3.2:latest"),
-		OllamaTimeout:     intOrDefault("OLLAMA_TIMEOUT", 180),
+		Host: envOrDefault("HOST", "127.0.0.1"),
+		Port: envOrDefault("PORT", "8080"),
+		GppPath: envOrDefault("GPP_PATH", "g++"),
+		Sandbox: envOrDefault("SANDBOX", "bwrap"),
+		DataDir: envOrDefault("DATA_DIR", "data"),
+		SessionTTL: time.Duration(intOrDefault("SESSION_TTL_HOURS", 72)) * time.Hour,
+		TeacherCode: os.Getenv("TEACHER_CODE"),
+		CookieSecure: os.Getenv("COOKIE_SECURE") == "true",
+		CompileTimeout: durationOrDefault("COMPILE_TIMEOUT_SECS", 10*time.Second),
+		RunTimeout: durationOrDefault("RUN_TIMEOUT_SECS", 5*time.Second),
+		MaxOutputSize: intOrDefault("MAX_OUTPUT_SIZE", 10240),
+		OllamaBaseURL: envOrDefault("OLLAMA_BASE_URL", "http://localhost:11434"),
+		OllamaModel: envOrDefault("OLLAMA_MODEL", "llama3.2:latest"),
+		OllamaTimeout: intOrDefault("OLLAMA_TIMEOUT", 180),
 		OllamaContextSize: intOrDefault("OLLAMA_CONTEXT_SIZE", 8192),
-		OllamaThink:       envOrDefault("OLLAMA_THINK", "auto"),
-		OllamaKeepAlive:   envOrDefault("OLLAMA_KEEP_ALIVE", "30m"),
-		AllowedOrigins:    envOrDefault("ALLOWED_ORIGINS", "http://localhost:3000"),
+		OllamaThink: envOrDefault("OLLAMA_THINK", "auto"),
+		OllamaKeepAlive: envOrDefault("OLLAMA_KEEP_ALIVE", "30m"),
+		AllowedOrigins: envOrDefault("ALLOWED_ORIGINS", "http://localhost:3000"),
 	}
 }
 

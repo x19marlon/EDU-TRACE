@@ -1,8 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSubmission, Submission, SubmissionMeta } from "@/lib/api";
+import {
+  deleteMonitorFeedback,
+  deleteMonitorFeedbackAsTeacher,
+  getMonitorSubmission,
+  getSubmission,
+  MonitorFeedback,
+  Submission,
+  SubmissionMeta,
+} from "@/lib/api";
 import { Spinner } from "@/components/ui";
+import { useAuth } from "@/components/AuthProvider";
+import { MonitorFeedbackForm, MonitorNotes } from "@/components/MonitorFeedback";
 import { formatDateTime, formatFeedback } from "@/lib/format";
 import ReviewPanel from "@/components/ReviewPanel" 
 
@@ -51,14 +61,12 @@ export function CodeView({ code }: { code: string }) {
 }
 
 /** Una retroalimentación de la IA guardada con el envío. */
-function SavedFeedback({ label, text, box, rule }: { label: string; text: string; box: string; rule: string }) {
+function SavedFeedback({ label, text, box, rule, note }: { label: string; text: string; box: string; rule: string; note: string }) {
   return (
     <div className={`rounded-2xl p-4 ${box}`}>
       <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ink-soft">{label}</p>
       <div className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: formatFeedback(text) }} />
-      <p className={`mt-3 border-t pt-2 text-xs text-ink-faint ${rule}`}>
-        Generada por IA. Úsala como apoyo: la valoración y la retroalimentación final son tuyas.
-      </p>
+      <p className={`mt-3 border-t pt-2 text-xs text-ink-faint ${rule}`}>{note}</p>
     </div>
   );
 }
@@ -68,22 +76,42 @@ export function SubmissionDetail({
   studentName,
   assignmentTitle,
   onReviewSaved,
+  mode = "teacher",
+  onNotesChanged,
 }: {
   id: string;
   studentName: string;
   assignmentTitle?: string;
   onReviewSaved?: () => void;
+  mode?: "teacher" | "monitor";
+  onNotesChanged?: () => void;
 }) {
+  const { user } = useAuth();
   const [sub, setSub] = useState<Submission | null>(null);
+  const [notes, setNotes] = useState<MonitorFeedback[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setSub(null);
     setError(null);
-    getSubmission(id)
-      .then(setSub)
+    (mode === "monitor" ? getMonitorSubmission(id) : getSubmission(id))
+      .then((s) => {
+        setSub(s);
+        setNotes(s.monitor_feedback ?? []);
+      })
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar el envío"));
-  }, [id]);
+  }, [id, mode]);
+
+  const removeNote = async (note: MonitorFeedback) => {
+    await (mode === "monitor" ? deleteMonitorFeedback(note.id) : deleteMonitorFeedbackAsTeacher(note.id));
+    setNotes((list) => list.filter((n) => n.id !== note.id));
+    onNotesChanged?.();
+  };
+
+  const aiNote =
+    mode === "monitor"
+      ? "Generada por IA. Es la orientación automática que vio el estudiante."
+      : "Generada por IA. Úsala como apoyo: la valoración y la retroalimentación final son tuyas.";
 
   if (error) return <p className="rounded-2xl bg-peach-50 p-4 text-sm text-peach-700">{error}</p>;
   if (!sub)
@@ -132,10 +160,10 @@ export function SubmissionDetail({
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-ink-soft">Retroalimentación de la IA que vio el estudiante</h4>
           {sub.ai_feedback && (
-            <SavedFeedback label="Formal" text={sub.ai_feedback} box="bg-mint-50" rule="border-mint-200" />
+            <SavedFeedback label="Formal" text={sub.ai_feedback} box="bg-mint-50" rule="border-mint-200" note={aiNote} />
           )}
           {sub.ai_feedback_informal && (
-            <SavedFeedback label="Informal" text={sub.ai_feedback_informal} box="bg-peach-50" rule="border-peach-200" />
+            <SavedFeedback label="Informal" text={sub.ai_feedback_informal} box="bg-peach-50" rule="border-peach-200" note={aiNote} />
           )}
           {!sub.ai_feedback && !sub.ai_feedback_informal && (
             <p className="text-sm text-ink-soft">El estudiante envió este código sin pedir retroalimentación a la IA.</p>
@@ -143,8 +171,29 @@ export function SubmissionDetail({
         </div>
       )}
 
+      {sub.kind !== "attempt" && mode === "teacher" && notes.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-ink-soft">Retroalimentación de monitores</h4>
+          <MonitorNotes notes={notes} onDelete={removeNote} />
+        </div>
+      )}
+
+      {sub.kind !== "attempt" && mode === "monitor" && (
+        <div className="space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-ink-soft">Retroalimentación de monitores</h4>
+          <MonitorNotes notes={notes} canDelete={(n) => n.monitor_id === user?.id} onDelete={removeNote} />
+          <MonitorFeedbackForm
+            submissionId={sub.id}
+            onAdded={(n) => {
+              setNotes((list) => [...list, n]);
+              onNotesChanged?.();
+            }}
+          />
+        </div>
+      )}
+
       {/* Revisión del profesor: solo para entregas oficiales */}
-      {sub.kind !== "attempt" && <ReviewPanel submissionId={sub.id} onSaved={onReviewSaved} />}
+      {sub.kind !== "attempt" && mode === "teacher" && <ReviewPanel submissionId={sub.id} onSaved={onReviewSaved} />}
     </div>
   );
 }
