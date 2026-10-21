@@ -97,6 +97,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser. You wil
 - **Attempts vs. official submissions:** when a student compiles with a class selected, the compilation is stored as an *attempt* (identical consecutive attempts are skipped; students are told on screen). Only **Enviar** creates the *official submission*. For each student the teacher sees attempts and official submissions separately, data-based stats (attempts, % that compiled, most frequent compiler errors) and can ask the AI for an analysis of the process ("en qué puede mejorar") addressed to the teacher, who makes the final decision. The student's name is not sent to the model.
 - Each user can run one compilation and one feedback request at a time; logins are rate-limited per IP.
 - Student code is compiled and run inside **bubblewrap**: no network, no access to the host's files (read-only `/usr`, private `/tmp`), and memory/CPU/file-size limits via `prlimit`.
+- **Test data:** `scripts/seed_test_data.sh` loads a teacher, two courses with one class each and five students. Credentials and steps are in [docs/TEST_DATA.md](docs/TEST_DATA.md).
 
 ---
 
