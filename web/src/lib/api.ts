@@ -373,3 +373,29 @@ async function readSSE(response: Response, onToken: (token: string) => void): Pr
   if (streamError) throw new Error(streamError);
   return meta;
 }
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatContext {
+  assignment_id?: string;
+  code?: string;
+  stdin?: string;
+  messages: ChatMessage[];
+}
+
+export async function streamChat(
+  context: ChatContext,
+  onToken: (token: string) => void
+): Promise<FeedbackMeta> {
+  const response = await apiFetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(context),
+  });
+
+  if (!response.ok) await throwForStatus(response);
+  return readSSE(response, onToken);
+}
