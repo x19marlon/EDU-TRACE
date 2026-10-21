@@ -22,29 +22,30 @@ type Role string
 const (
 	RoleStudent Role = "student"
 	RoleTeacher Role = "teacher"
+	RoleMonitor Role = "monitor"
 )
 
 var (
-	ErrEmailTaken         = errors.New("ya existe una cuenta con ese email")
+	ErrEmailTaken = errors.New("ya existe una cuenta con ese email")
 	ErrInvalidCredentials = errors.New("email o contraseña incorrectos")
 )
 
 // Activity acumula el uso de la plataforma por usuario (visible para docentes).
 type Activity struct {
-	Compiles     int       `json:"compiles"`
-	Feedbacks    int       `json:"feedbacks"`
+	Compiles int `json:"compiles"`
+	Feedbacks int `json:"feedbacks"`
 	LastActiveAt time.Time `json:"last_active_at,omitempty"`
 }
 
 // User es una cuenta registrada.
 type User struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Email        string    `json:"email"`
-	Role         Role      `json:"role"`
-	PasswordHash string    `json:"password_hash"`
-	CreatedAt    time.Time `json:"created_at"`
-	Activity     Activity  `json:"activity"`
+	ID string `json:"id"`
+	Name string `json:"name"`
+	Email string `json:"email"`
+	Role Role `json:"role"`
+	PasswordHash string `json:"password_hash"`
+	CreatedAt time.Time `json:"created_at"`
+	Activity Activity `json:"activity"`
 }
 
 //go:embed schema.sql
@@ -53,7 +54,7 @@ var schemaSQL string
 // Store guarda los datos en SQLite (dir/edutrace.db). Los adjuntos de los talleres
 // siguen en disco, en dir/assignments/.
 type Store struct {
-	db  *sql.DB
+	db *sql.DB
 	dir string
 	ttl time.Duration
 }
@@ -79,6 +80,10 @@ func OpenStore(dir string, ttl time.Duration) (*Store, error) {
 		return nil, fmt.Errorf("crear esquema: %w", err)
 	}
 	s := &Store{db: db, dir: dir, ttl: ttl}
+	if err := s.upgradeSchema(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("actualizar esquema: %w", err)
+	}
 	if err := s.importLegacyJSON(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("migrar edutrace.json: %w", err)
@@ -198,12 +203,12 @@ func (s *Store) CreateUser(name, email, password string, role Role) (*User, erro
 		return nil, err
 	}
 	u := &User{
-		ID:           id,
-		Name:         strings.TrimSpace(name),
-		Email:        email,
-		Role:         role,
+		ID: id,
+		Name: strings.TrimSpace(name),
+		Email: email,
+		Role: role,
 		PasswordHash: hash,
-		CreatedAt:    time.Now().UTC(),
+		CreatedAt: time.Now().UTC(),
 	}
 	_, err = s.db.Exec(`INSERT INTO users (id, name, email, role, password_hash, created_at)
 		VALUES (?, ?, ?, ?, ?, ?)`, u.ID, u.Name, u.Email, u.Role, u.PasswordHash, fmtTime(u.CreatedAt))

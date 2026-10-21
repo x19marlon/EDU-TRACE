@@ -10,16 +10,16 @@ import (
 
 // ProcessEntry es un intento de compilación o una entrega oficial de un estudiante.
 type ProcessEntry struct {
-	When            time.Time
-	Official        bool
+	When time.Time
+	Official bool
 	AssignmentTitle string
-	Success         bool
-	RunError        string
-	ExitCode        int
-	CompilerOutput  string
-	Stdin           string
-	ProgramOutput   string
-	Code            string
+	Success bool
+	RunError string
+	ExitCode int
+	CompilerOutput string
+	Stdin string
+	ProgramOutput string
+	Code string
 }
 
 // systemPromptAnalysis va dirigido al profesor, no al estudiante: resume el proceso
@@ -50,9 +50,9 @@ CRITERIOS DEL CURSO:
 
 // Límites del mensaje de análisis.
 const (
-	analysisErrorChars  = 500
+	analysisErrorChars = 500
 	analysisOutputChars = 300
-	analysisCodeChars   = 4000
+	analysisCodeChars = 4000
 )
 
 func entryStatus(e ProcessEntry) string {

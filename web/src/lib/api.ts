@@ -14,7 +14,7 @@ export interface FeedbackMeta {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-export type Role = "student" | "teacher";
+export type Role = "student" | "teacher" | "monitor";
 
 export interface Activity {
   compiles: number;
@@ -55,6 +55,12 @@ export interface GroupStudent {
   last_attempt_at?: string;
 }
 
+export interface GroupMonitor {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface GroupDetail {
   id: string;
   name: string;
@@ -62,6 +68,25 @@ export interface GroupDetail {
   course_id: string;
   course_name: string;
   students: GroupStudent[];
+  monitors: GroupMonitor[];
+}
+
+export interface MonitorGroup {
+  id: string;
+  name: string;
+  course_name: string;
+  teacher_name: string;
+  student_count: number;
+  submission_count: number;
+}
+
+export interface MonitorFeedback {
+  id: string;
+  submission_id: string;
+  monitor_id: string;
+  monitor_name: string;
+  body: string;
+  created_at: string;
 }
 
 export type SubmissionKind = "official" | "attempt";
@@ -85,6 +110,7 @@ export interface SubmissionMeta {
   lines: number;
   has_ai_feedback: boolean;
   review_state?: ReviewState;
+  monitor_feedback_count?: number;
 }
 
 export interface Submission extends SubmissionMeta {
@@ -94,6 +120,7 @@ export interface Submission extends SubmissionMeta {
   program_output: string;
   ai_feedback: string;
   ai_feedback_informal: string;
+  monitor_feedback?: MonitorFeedback[];
 }
 
 export interface AssignmentFile {
@@ -149,6 +176,7 @@ export interface StudentSubmission extends SubmissionMeta {
   group_name: string;
   course_name: string;
   review?: StudentReview;
+  monitor_feedback?: MonitorFeedback[];
 }
 
 export class UnauthorizedError extends Error {}
@@ -205,6 +233,61 @@ async function getJSON<T>(path: string): Promise<T> {
   if (!response.ok) await throwForStatus(response);
   return response.json();
 }
+
+async function sendJSON<T>(method: "PATCH" | "PUT", path: string, body: unknown): Promise<T> {
+  const response = await apiFetch(path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) await throwForStatus(response);
+  return response.json();
+}
+
+async function deleteReq(path: string): Promise<void> {
+  const response = await apiFetch(path, { method: "DELETE" });
+  if (!response.ok) await throwForStatus(response);
+}
+
+const enc = encodeURIComponent;
+
+export const renameCourse = (courseId: string, name: string) =>
+  sendJSON<{ id: string; name: string }>("PATCH", `/api/teacher/courses/${enc(courseId)}`, { name });
+export const deleteCourse = (courseId: string) => deleteReq(`/api/teacher/courses/${enc(courseId)}`);
+export const renameGroup = (groupId: string, name: string) =>
+  sendJSON<{ id: string; name: string }>("PATCH", `/api/teacher/groups/${enc(groupId)}`, { name });
+export const deleteGroup = (groupId: string) => deleteReq(`/api/teacher/groups/${enc(groupId)}`);
+export const regenerateJoinCode = (groupId: string) =>
+  postJSON<{ join_code: string }>(`/api/teacher/groups/${enc(groupId)}/join-code`, {});
+export const removeStudent = (groupId: string, studentId: string) =>
+  deleteReq(`/api/teacher/groups/${enc(groupId)}/students/${enc(studentId)}`);
+export const addMonitor = (groupId: string, email: string) =>
+  postJSON<GroupMonitor>(`/api/teacher/groups/${enc(groupId)}/monitors`, { email });
+export const removeMonitor = (groupId: string, monitorId: string) =>
+  deleteReq(`/api/teacher/groups/${enc(groupId)}/monitors/${enc(monitorId)}`);
+export const deleteAssignment = (assignmentId: string) => deleteReq(`/api/teacher/assignments/${enc(assignmentId)}`);
+export const deleteMonitorFeedbackAsTeacher = (feedbackId: string) =>
+  deleteReq(`/api/teacher/monitor-feedback/${enc(feedbackId)}`);
+
+export async function updateAssignment(assignmentId: string, form: FormData): Promise<Assignment> {
+  const response = await apiFetch(`/api/teacher/assignments/${enc(assignmentId)}`, { method: "PUT", body: form });
+  if (!response.ok) await throwForStatus(response);
+  return response.json();
+}
+
+export const listMonitorGroups = () => getJSON<MonitorGroup[]>("/api/monitor/groups");
+export const getMonitorGroup = (groupId: string) => getJSON<GroupDetail>(`/api/monitor/groups/${enc(groupId)}`);
+export const listMonitorSubmissions = (groupId: string, studentId?: string) => {
+  const q = new URLSearchParams({ kind: "official" });
+  if (studentId) q.set("student", studentId);
+  return getJSON<SubmissionMeta[]>(`/api/monitor/groups/${enc(groupId)}/submissions?${q}`);
+};
+export const listMonitorAssignments = (groupId: string) =>
+  getJSON<Assignment[]>(`/api/monitor/groups/${enc(groupId)}/assignments`);
+export const getMonitorSubmission = (id: string) => getJSON<Submission>(`/api/monitor/submissions/${enc(id)}`);
+export const addMonitorFeedback = (submissionId: string, body: string) =>
+  postJSON<MonitorFeedback>(`/api/monitor/submissions/${enc(submissionId)}/feedback`, { body });
+export const deleteMonitorFeedback = (feedbackId: string) => deleteReq(`/api/monitor/feedback/${enc(feedbackId)}`);
 
 // Docente
 export const listCourses = () => getJSON<CourseSummary[]>("/api/teacher/courses");

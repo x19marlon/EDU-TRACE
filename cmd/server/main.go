@@ -51,11 +51,11 @@ func main() {
 	router := handler.NewRouter(cfg, comp, ollama, store)
 
 	srv := &http.Server{
-		Addr:         net.JoinHostPort(cfg.Host, cfg.Port),
-		Handler:      router,
-		ReadTimeout:  15 * time.Second,
+		Addr: net.JoinHostPort(cfg.Host, cfg.Port),
+		Handler: router,
+		ReadTimeout: 15 * time.Second,
 		WriteTimeout: 200 * time.Second, // Long for Ollama responses
-		IdleTimeout:  60 * time.Second,
+		IdleTimeout: 60 * time.Second,
 	}
 
 	// Graceful shutdown.

@@ -13,15 +13,15 @@ import (
 )
 
 type ClassesHandler struct {
-	store      *auth.Store
-	compiler   *compiler.Compiler
+	store *auth.Store
+	compiler *compiler.Compiler
 	joinLimits *auth.LoginLimiter
 }
 
 func NewClassesHandler(store *auth.Store, comp *compiler.Compiler) *ClassesHandler {
 	return &ClassesHandler{
-		store:      store,
-		compiler:   comp,
+		store: store,
+		compiler: comp,
 		joinLimits: auth.NewLoginLimiter(10, 15*time.Minute),
 	}
 }
@@ -105,23 +105,7 @@ func (h *ClassesHandler) GroupSubmissions(w http.ResponseWriter, r *http.Request
 		writeStoreErr(w, err, "cargar los envíos")
 		return
 	}
-	ids := make([]string, len(subs))
-	for i, m := range subs {
-		ids[i] = m.ID
-	}
-	states := h.store.ReviewStates(ids)
-	type item struct {
-		auth.SubmissionMeta
-		ReviewState *auth.ReviewState `json:"review_state,omitempty"`
-	}
-	out := make([]item, len(subs))
-	for i, m := range subs {
-		out[i] = item{SubmissionMeta: m}
-		if st, ok := states[m.ID]; ok {
-			out[i].ReviewState = &st
-		}
-	}
-	writeJSON(w, http.StatusOK, out)
+	writeJSON(w, http.StatusOK, submissionItems(h.store, subs, true))
 }
 
 func (h *ClassesHandler) Submission(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +114,7 @@ func (h *ClassesHandler) Submission(w http.ResponseWriter, r *http.Request) {
 		writeStoreErr(w, err, "cargar el envío")
 		return
 	}
-	writeJSON(w, http.StatusOK, sub)
+	writeJSON(w, http.StatusOK, submissionView{Submission: sub, MonitorFeedback: h.store.MonitorFeedbackFor(sub.ID)})
 }
 
 func (h *ClassesHandler) MyGroups(w http.ResponseWriter, r *http.Request) {
@@ -170,11 +154,11 @@ func (h *ClassesHandler) MySubmissions(w http.ResponseWriter, r *http.Request) {
 
 func (h *ClassesHandler) Submit(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		GroupID            string `json:"group_id"`
-		AssignmentID       string `json:"assignment_id"`
-		Code               string `json:"code"`
-		Stdin              string `json:"stdin"`
-		AIFeedback         string `json:"ai_feedback"`
+		GroupID string `json:"group_id"`
+		AssignmentID string `json:"assignment_id"`
+		Code string `json:"code"`
+		Stdin string `json:"stdin"`
+		AIFeedback string `json:"ai_feedback"`
 		AIFeedbackInformal string `json:"ai_feedback_informal"`
 	}
 
@@ -209,20 +193,20 @@ func (h *ClassesHandler) Submit(w http.ResponseWriter, r *http.Request) {
 	h.store.RecordCompile(user.ID)
 	sub := &auth.Submission{
 		SubmissionMeta: auth.SubmissionMeta{
-			GroupID:      req.GroupID,
+			GroupID: req.GroupID,
 			AssignmentID: req.AssignmentID,
-			StudentID:    user.ID,
-			Success:      result.Success,
-			RunError:     result.Error,
-			ExitCode:     result.ExitCode,
+			StudentID: user.ID,
+			Success: result.Success,
+			RunError: result.Error,
+			ExitCode: result.ExitCode,
 			ErrorSummary: compiler.FirstError(result.CompilerOutput),
 		},
-		Code:           req.Code,
-		Stdin:          req.Stdin,
+		Code: req.Code,
+		Stdin: req.Stdin,
 		CompilerOutput: result.CompilerOutput,
-		ProgramOutput:  result.ProgramOutput,
-		AIFeedback:     req.AIFeedback,
-		AIFeedbackInf:  req.AIFeedbackInformal,
+		ProgramOutput: result.ProgramOutput,
+		AIFeedback: req.AIFeedback,
+		AIFeedbackInf: req.AIFeedbackInformal,
 	}
 	if err := h.store.AddSubmission(sub); err != nil {
 		writeStoreErr(w, err, "guardar el envío")

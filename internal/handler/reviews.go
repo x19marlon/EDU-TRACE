@@ -14,7 +14,7 @@ import (
 const maxReviewFeedbackLen = 20000
 
 type ReviewsHandler struct {
-	store  *auth.Store
+	store *auth.Store
 	ollama *ai.OllamaClient // nil si Ollama no está disponible
 }
 
@@ -72,13 +72,13 @@ func (h *ReviewsHandler) Draft(w http.ResponseWriter, r *http.Request) {
 	}
 
 	in := ai.ReviewInput{
-		Code:           sub.Code,
-		Stdin:          sub.Stdin,
-		Success:        sub.Success,
+		Code: sub.Code,
+		Stdin: sub.Stdin,
+		Success: sub.Success,
 		CompilerOutput: sub.CompilerOutput,
-		ProgramOutput:  sub.ProgramOutput,
-		RunError:       sub.RunError,
-		ExitCode:       sub.ExitCode,
+		ProgramOutput: sub.ProgramOutput,
+		RunError: sub.RunError,
+		ExitCode: sub.ExitCode,
 	}
 	if sub.AssignmentID != "" {
 		if statement, rubric, err := h.store.AssignmentForGrading(teacher.ID, sub.AssignmentID); err == nil {
@@ -108,9 +108,9 @@ func (h *ReviewsHandler) Draft(w http.ResponseWriter, r *http.Request) {
 
 func (h *ReviewsHandler) Save(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Feedback string   `json:"feedback"`
-		Grade    *float64 `json:"grade"`
-		Return   bool     `json:"return"`
+		Feedback string `json:"feedback"`
+		Grade *float64 `json:"grade"`
+		Return bool `json:"return"`
 	}
 	if !decodeJSONLimit(w, r, &req, 256*1024) {
 		return

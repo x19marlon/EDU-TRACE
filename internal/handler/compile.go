@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	maxCodeSize  = 50 * 1024 // 50 KB
+	maxCodeSize = 50 * 1024 // 50 KB
 	maxStdinSize = 64 * 1024 // 64 KB
 )
 
 // CompileHandler handles POST /api/compile requests.
 type CompileHandler struct {
 	compiler *compiler.Compiler
-	store    *auth.Store
+	store *auth.Store
 }
 
 // NewCompileHandler creates a handler backed by the given compiler.
@@ -33,7 +33,7 @@ func (h *CompileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 2*(maxCodeSize+maxStdinSize))
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{
-			Error:   "invalid request body",
+			Error: "invalid request body",
 			Details: err.Error(),
 		})
 		return
@@ -89,19 +89,19 @@ func (h *CompileHandler) saveAttempt(user *auth.User, req model.CompileRequest, 
 	}
 	err := h.store.AddSubmission(&auth.Submission{
 		SubmissionMeta: auth.SubmissionMeta{
-			Kind:         auth.KindAttempt,
-			GroupID:      req.GroupID,
+			Kind: auth.KindAttempt,
+			GroupID: req.GroupID,
 			AssignmentID: req.AssignmentID,
-			StudentID:    user.ID,
-			Success:      result.Success,
-			RunError:     result.Error,
-			ExitCode:     result.ExitCode,
+			StudentID: user.ID,
+			Success: result.Success,
+			RunError: result.Error,
+			ExitCode: result.ExitCode,
 			ErrorSummary: compiler.FirstError(result.CompilerOutput),
 		},
-		Code:           req.Code,
-		Stdin:          req.Stdin,
+		Code: req.Code,
+		Stdin: req.Stdin,
 		CompilerOutput: result.CompilerOutput,
-		ProgramOutput:  result.ProgramOutput,
+		ProgramOutput: result.ProgramOutput,
 	})
 	if err != nil && !errors.Is(err, auth.ErrDuplicateAttempt) {
 		slog.Error("save attempt failed", "user_id", user.ID, "error", err)

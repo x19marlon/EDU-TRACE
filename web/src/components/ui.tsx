@@ -146,3 +146,85 @@ export function InlineCreate({
     </form>
   );
 }
+
+export function RenameForm({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial: string;
+  onSave: (name: string) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await onSave(name.trim());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="flex-1 space-y-1.5">
+      <div className="flex flex-wrap gap-2">
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Escape" && onCancel()}
+          maxLength={80}
+          className="min-w-0 flex-1 rounded-full border border-lavender-200 bg-white px-4 py-1.5 text-sm font-semibold
+            focus:border-lavender-300 focus:outline-none focus:ring-4 focus:ring-lavender-100"
+        />
+        <button
+          type="submit"
+          disabled={busy || name.trim().length < 2}
+          className="rounded-full bg-lavender-600 px-4 py-1.5 text-sm font-bold text-white transition hover:bg-lavender-700 disabled:opacity-40"
+        >
+          {busy ? "Guardando..." : "Guardar"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-full px-3 py-1.5 text-sm font-bold text-ink-soft transition hover:bg-lavender-50"
+        >
+          Cancelar
+        </button>
+      </div>
+      {error && <p className="px-2 text-xs font-semibold text-peach-700">{error}</p>}
+    </form>
+  );
+}
+
+export function SmallButton({
+  children,
+  onClick,
+  tone = "neutral",
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  tone?: "neutral" | "danger";
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-full px-3 py-1 text-xs font-bold transition disabled:opacity-40 ${
+        tone === "danger" ? "text-peach-700 hover:bg-peach-50" : "text-lavender-700 hover:bg-lavender-50"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}

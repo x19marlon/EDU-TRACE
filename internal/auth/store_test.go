@@ -276,8 +276,8 @@ func TestImportLegacyJSON(t *testing.T) {
 			hashToken("vigente"): {UserID: "s1", ExpiresAt: now.Add(time.Hour)},
 			hashToken("vencida"): {UserID: "s1", ExpiresAt: now.Add(-time.Hour)},
 		},
-		Courses:     map[string]*Course{"c1": {ID: "c1", TeacherID: "t1", Name: "Prog I", CreatedAt: now}},
-		Groups:      map[string]*Group{"g1": {ID: "g1", CourseID: "c1", Name: "G1", JoinCode: "ABC234", StudentIDs: []string{"s1"}, CreatedAt: now}},
+		Courses: map[string]*Course{"c1": {ID: "c1", TeacherID: "t1", Name: "Prog I", CreatedAt: now}},
+		Groups: map[string]*Group{"g1": {ID: "g1", CourseID: "c1", Name: "G1", JoinCode: "ABC234", StudentIDs: []string{"s1"}, CreatedAt: now}},
 		Assignments: map[string]*Assignment{"a1": {ID: "a1", GroupID: "g1", Title: "T", Statement: "E", CreatedAt: now, Files: []AssignmentFile{{ID: "f1", Name: "x.txt", Size: 1}}}},
 		Submissions: map[string]*SubmissionMeta{
 			"sub1": {ID: "sub1", Kind: "", GroupID: "g1", AssignmentID: "a1", StudentID: "s1", CreatedAt: now, Success: true, Lines: 1},

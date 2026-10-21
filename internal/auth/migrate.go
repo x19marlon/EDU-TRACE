@@ -11,13 +11,13 @@ import (
 )
 
 type legacySession struct {
-	UserID    string    `json:"user_id"`
+	UserID string `json:"user_id"`
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
 type legacyData struct {
 	Users map[string]*User `json:"users"`
-	Sessions  map[string]*legacySession  `json:"sessions"` 
+	Sessions map[string]*legacySession `json:"sessions"` 
 	Courses map[string]*Course `json:"courses"`
 	Groups map[string]*Group `json:"groups"`
 	Submissions map[string]*SubmissionMeta `json:"submissions"` 

@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
-  role TEXT NOT NULL CHECK (role IN ('student', 'teacher')),
+  role TEXT NOT NULL CHECK (role IN ('student', 'teacher', 'monitor')),
   password_hash  TEXT NOT NULL,
   created_at TEXT NOT NULL,
   compiles INTEGER NOT NULL DEFAULT 0,
@@ -99,3 +99,20 @@ CREATE TABLE IF NOT EXISTS reviews (
   returned_at TEXT,
   updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS group_monitors (
+  group_id TEXT NOT NULL REFERENCES class_groups(id) ON DELETE CASCADE,
+  monitor_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  added_at TEXT NOT NULL,
+  PRIMARY KEY (group_id, monitor_id)
+);
+CREATE INDEX IF NOT EXISTS group_monitors_monitor ON group_monitors(monitor_id);
+
+CREATE TABLE IF NOT EXISTS monitor_feedback (
+  id TEXT PRIMARY KEY,
+  submission_id TEXT NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  monitor_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS monitor_feedback_submission ON monitor_feedback(submission_id, created_at);

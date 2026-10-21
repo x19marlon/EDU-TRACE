@@ -56,7 +56,7 @@ func RequireRole(store *Store, role Role, next http.Handler) http.Handler {
 // SingleFlight permite una sola operación en curso por usuario (p. ej. una
 // compilación o una retroalimentación a la vez), para que nadie acapare CPU/GPU.
 type SingleFlight struct {
-	mu     sync.Mutex
+	mu sync.Mutex
 	active map[string]bool
 }
 
@@ -88,10 +88,10 @@ func (sf *SingleFlight) Wrap(next http.Handler) http.Handler {
 
 // LoginLimiter bloquea temporalmente una IP tras demasiados intentos fallidos.
 type LoginLimiter struct {
-	mu       sync.Mutex
+	mu sync.Mutex
 	failures map[string][]time.Time
-	max      int
-	window   time.Duration
+	max int
+	window time.Duration
 }
 
 func NewLoginLimiter(max int, window time.Duration) *LoginLimiter {

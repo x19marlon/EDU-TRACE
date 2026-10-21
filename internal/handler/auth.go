@@ -19,24 +19,24 @@ import (
 
 // AuthHandler agrupa registro, login, logout y sesión actual.
 type AuthHandler struct {
-	store   *auth.Store
-	cfg     *config.Config
+	store *auth.Store
+	cfg *config.Config
 	limiter *auth.LoginLimiter
 }
 
 func NewAuthHandler(store *auth.Store, cfg *config.Config) *AuthHandler {
 	return &AuthHandler{
-		store:   store,
-		cfg:     cfg,
+		store: store,
+		cfg: cfg,
 		limiter: auth.NewLoginLimiter(10, 15*time.Minute),
 	}
 }
 
 type publicUser struct {
-	ID       string        `json:"id"`
-	Name     string        `json:"name"`
-	Email    string        `json:"email"`
-	Role     auth.Role     `json:"role"`
+	ID string `json:"id"`
+	Name string `json:"name"`
+	Email string `json:"email"`
+	Role auth.Role `json:"role"`
 	Activity auth.Activity `json:"activity"`
 }
 
@@ -45,17 +45,17 @@ func toPublic(u *auth.User) publicUser {
 }
 
 type registerRequest struct {
-	Name        string    `json:"name"`
-	Email       string    `json:"email"`
-	Password    string    `json:"password"`
-	Role        auth.Role `json:"role"`
-	TeacherCode string    `json:"teacher_code"`
+	Name string `json:"name"`
+	Email string `json:"email"`
+	Password string `json:"password"`
+	Role auth.Role `json:"role"`
+	TeacherCode string `json:"teacher_code"`
 }
 
 type loginRequest struct {
-	Email    string    `json:"email"`
-	Password string    `json:"password"`
-	Role     auth.Role `json:"role"`
+	Email string `json:"email"`
+	Password string `json:"password"`
+	Role auth.Role `json:"role"`
 }
 
 func clientIP(r *http.Request) string {
@@ -81,8 +81,11 @@ func decodeJSONLimit(w http.ResponseWriter, r *http.Request, v any, limit int64)
 }
 
 func roleLabel(r auth.Role) string {
-	if r == auth.RoleTeacher {
+	switch r {
+	case auth.RoleTeacher:
 		return "profesor"
+	case auth.RoleMonitor:
+		return "monitor"
 	}
 	return "estudiante"
 }
@@ -109,7 +112,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch req.Role {
-	case auth.RoleStudent:
+	case auth.RoleStudent, auth.RoleMonitor:
 	case auth.RoleTeacher:
 		// Las cuentas docentes requieren el código que define el servidor (TEACHER_CODE).
 		ip := clientIP(r)
@@ -180,12 +183,12 @@ func (h *AuthHandler) startSession(w http.ResponseWriter, u *auth.User) {
 		return
 	}
 	http.SetCookie(w, &http.Cookie{
-		Name:     auth.CookieName,
-		Value:    token,
-		Path:     "/",
-		Expires:  expires,
+		Name: auth.CookieName,
+		Value: token,
+		Path: "/",
+		Expires: expires,
 		HttpOnly: true,
-		Secure:   h.cfg.CookieSecure,
+		Secure: h.cfg.CookieSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
 	writeJSON(w, http.StatusOK, toPublic(u))
@@ -199,12 +202,12 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	http.SetCookie(w, &http.Cookie{
-		Name:     auth.CookieName,
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
+		Name: auth.CookieName,
+		Value: "",
+		Path: "/",
+		MaxAge: -1,
 		HttpOnly: true,
-		Secure:   h.cfg.CookieSecure,
+		Secure: h.cfg.CookieSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
 	w.WriteHeader(http.StatusNoContent)

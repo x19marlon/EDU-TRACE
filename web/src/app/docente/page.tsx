@@ -4,23 +4,59 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/AppShell";
-import { Avatar, Card, InlineCreate } from "@/components/ui";
+import { Avatar, Card, InlineCreate, RenameForm, SmallButton } from "@/components/ui";
 import { useAuth } from "@/components/AuthProvider";
-import { createCourse, createGroup, CourseSummary, listCourses } from "@/lib/api";
+import { createCourse, createGroup, CourseSummary, deleteCourse, listCourses, renameCourse } from "@/lib/api";
 
 function CourseCard({ course, onChanged }: { course: CourseSummary; onChanged: () => Promise<void> }) {
   const students = course.groups.reduce((n, g) => n + g.student_count, 0);
+  const [renaming, setRenaming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const remove = async () => {
+    const n = course.groups.length;
+    const detail = n > 0 ? ` Se borrarán sus ${n} ${n === 1 ? "clase" : "clases"} con todos sus talleres, entregas y revisiones.` : "";
+    if (!window.confirm(`¿Eliminar la materia «${course.name}»?${detail} No se puede deshacer.`)) return;
+    setError(null);
+    try {
+      await deleteCourse(course.id);
+      await onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo eliminar la materia");
+    }
+  };
+
   return (
     <Card
       className="rise-in"
       title={course.name}
       action={
-        <span className="text-xs font-semibold text-ink-faint">
-          {course.groups.length} {course.groups.length === 1 ? "clase" : "clases"} · {students}{" "}
-          {students === 1 ? "estudiante" : "estudiantes"}
+        <span className="flex flex-wrap items-center justify-end gap-1">
+          <span className="mr-1 text-xs font-semibold text-ink-faint">
+            {course.groups.length} {course.groups.length === 1 ? "clase" : "clases"} · {students}{" "}
+            {students === 1 ? "estudiante" : "estudiantes"}
+          </span>
+          <SmallButton onClick={() => setRenaming(true)}>Renombrar</SmallButton>
+          <SmallButton tone="danger" onClick={remove}>
+            Eliminar
+          </SmallButton>
         </span>
       }
     >
+      {renaming && (
+        <div className="mb-4 flex">
+          <RenameForm
+            initial={course.name}
+            onCancel={() => setRenaming(false)}
+            onSave={async (name) => {
+              await renameCourse(course.id, name);
+              setRenaming(false);
+              await onChanged();
+            }}
+          />
+        </div>
+      )}
+      {error && <p className="mb-3 rounded-2xl bg-peach-50 px-4 py-2 text-sm font-semibold text-peach-700">{error}</p>}
       {course.groups.length === 0 ? (
         <p className="mb-3 text-sm text-ink-soft">
           Esta materia aún no tiene clases. Crea una y comparte su código con tus estudiantes.
@@ -133,6 +169,7 @@ function CoursesDashboard() {
               <li>Dentro de cada clase, publica talleres con su enunciado y archivos de apoyo.</li>
               <li>Tus estudiantes trabajan el taller, piden retroalimentación formal o informal y te envían su código.</li>
               <li>Entra a la clase para ver cada envío, a qué taller responde y qué retroalimentación vio el estudiante.</li>
+              <li>Desde la clase administras todo: renombrarla, cambiar su código, quitar estudiantes, editar talleres y agregar monitores que retroalimentan sin calificar.</li>
             </ol>
           </Card>
         </div>

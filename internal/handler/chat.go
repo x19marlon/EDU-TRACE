@@ -12,9 +12,9 @@ import (
 
 // ChatHandler handles interactive tutoring chat requests with SSE streaming.
 type ChatHandler struct {
-	ollama    *ai.OllamaClient
+	ollama *ai.OllamaClient
 	modelName string
-	store     *auth.Store
+	store *auth.Store
 }
 
 // NewChatHandler creates a new ChatHandler.
@@ -27,7 +27,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 4*maxFeedbackCodeSize)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{
-			Error:   "cuerpo de solicitud inválido",
+			Error: "cuerpo de solicitud inválido",
 			Details: err.Error(),
 		})
 		return

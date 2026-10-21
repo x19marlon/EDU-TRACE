@@ -14,58 +14,58 @@ import (
 )
 
 var (
-	ErrNotFound    = errors.New("no encontrado")
+	ErrNotFound = errors.New("no encontrado")
 	ErrInvalidCode = errors.New("el código de clase no existe")
 	ErrNotEnrolled = errors.New("no estás inscrito en esa clase")
 )
 
 type Course struct {
-	ID        string    `json:"id"`
-	TeacherID string    `json:"teacher_id"`
-	Name      string    `json:"name"`
+	ID string `json:"id"`
+	TeacherID string `json:"teacher_id"`
+	Name string `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 type Group struct {
-	ID         string    `json:"id"`
-	CourseID   string    `json:"course_id"`
-	Name       string    `json:"name"`
-	JoinCode   string    `json:"join_code"`
-	StudentIDs []string  `json:"student_ids"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID string `json:"id"`
+	CourseID string `json:"course_id"`
+	Name string `json:"name"`
+	JoinCode string `json:"join_code"`
+	StudentIDs []string `json:"student_ids"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 const (
 	KindOfficial = "official"
-	KindAttempt  = "attempt"
+	KindAttempt = "attempt"
 )
 
 type SubmissionMeta struct {
-	ID            string    `json:"id"`
-	Kind          string    `json:"kind"`
-	GroupID       string    `json:"group_id"`
-	AssignmentID  string    `json:"assignment_id,omitempty"` // taller al que responde
-	StudentID     string    `json:"student_id"`
-	CreatedAt     time.Time `json:"created_at"`
-	Success       bool      `json:"success"`
-	RunError      string    `json:"run_error,omitempty"`
-	ExitCode      int       `json:"exit_code"`
-	Lines         int       `json:"lines"`
-	HasAIFeedback bool      `json:"has_ai_feedback"`
-	ErrorSummary  string    `json:"error_summary,omitempty"`
-	CodeHash      string    `json:"code_hash,omitempty"`
+	ID string `json:"id"`
+	Kind string `json:"kind"`
+	GroupID string `json:"group_id"`
+	AssignmentID string `json:"assignment_id,omitempty"` // taller al que responde
+	StudentID string `json:"student_id"`
+	CreatedAt time.Time `json:"created_at"`
+	Success bool `json:"success"`
+	RunError string `json:"run_error,omitempty"`
+	ExitCode int `json:"exit_code"`
+	Lines int `json:"lines"`
+	HasAIFeedback bool `json:"has_ai_feedback"`
+	ErrorSummary string `json:"error_summary,omitempty"`
+	CodeHash string `json:"code_hash,omitempty"`
 }
 
 func (m *SubmissionMeta) IsAttempt() bool { return m.Kind == KindAttempt }
 
 type Submission struct {
 	SubmissionMeta
-	Code           string `json:"code"`
-	Stdin          string `json:"stdin"`
+	Code string `json:"code"`
+	Stdin string `json:"stdin"`
 	CompilerOutput string `json:"compiler_output"`
-	ProgramOutput  string `json:"program_output"`
-	AIFeedback     string `json:"ai_feedback"`          // retroalimentación formal que vio el estudiante
-	AIFeedbackInf  string `json:"ai_feedback_informal"` // retroalimentación informal que vio el estudiante
+	ProgramOutput string `json:"program_output"`
+	AIFeedback string `json:"ai_feedback"` // retroalimentación formal que vio el estudiante
+	AIFeedbackInf string `json:"ai_feedback_informal"` // retroalimentación informal que vio el estudiante
 }
 
 const (
@@ -162,20 +162,20 @@ func (s *Store) CreateGroup(teacherID, courseID, name string) (*Group, error) {
 
 // GroupSummary resume una clase para el listado de materias del docente.
 type GroupSummary struct {
-	ID              string    `json:"id"`
-	Name            string    `json:"name"`
-	JoinCode        string    `json:"join_code"`
-	StudentCount    int       `json:"student_count"`
-	SubmissionCount int       `json:"submission_count"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID string `json:"id"`
+	Name string `json:"name"`
+	JoinCode string `json:"join_code"`
+	StudentCount int `json:"student_count"`
+	SubmissionCount int `json:"submission_count"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // CourseSummary es una materia con sus clases.
 type CourseSummary struct {
-	ID        string         `json:"id"`
-	Name      string         `json:"name"`
-	CreatedAt time.Time      `json:"created_at"`
-	Groups    []GroupSummary `json:"groups"`
+	ID string `json:"id"`
+	Name string `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	Groups []GroupSummary `json:"groups"`
 }
 
 // TeacherCourses lista las materias del docente con sus clases.
@@ -237,30 +237,31 @@ func (s *Store) teacherCourses(teacherID string) ([]CourseSummary, error) {
 
 // GroupStudent es un estudiante dentro de una clase.
 type GroupStudent struct {
-	ID               string     `json:"id"`
-	Name             string     `json:"name"`
-	Email            string     `json:"email"`
-	Activity         Activity   `json:"activity"`
-	SubmissionCount  int        `json:"submission_count"` // entregas oficiales
+	ID string `json:"id"`
+	Name string `json:"name"`
+	Email string `json:"email"`
+	Activity Activity `json:"activity"`
+	SubmissionCount int `json:"submission_count"` // entregas oficiales
 	LastSubmissionAt *time.Time `json:"last_submission_at,omitempty"`
-	AttemptCount     int        `json:"attempt_count"` // intentos de compilación
-	LastAttemptAt    *time.Time `json:"last_attempt_at,omitempty"`
+	AttemptCount int `json:"attempt_count"` // intentos de compilación
+	LastAttemptAt *time.Time `json:"last_attempt_at,omitempty"`
 }
 
 // GroupDetail es una clase con sus estudiantes, para el docente.
 type GroupDetail struct {
-	ID         string         `json:"id"`
-	Name       string         `json:"name"`
-	JoinCode   string         `json:"join_code"`
-	CourseID   string         `json:"course_id"`
-	CourseName string         `json:"course_name"`
-	Students   []GroupStudent `json:"students"`
+	ID string `json:"id"`
+	Name string `json:"name"`
+	JoinCode string `json:"join_code"`
+	CourseID string `json:"course_id"`
+	CourseName string `json:"course_name"`
+	Students []GroupStudent `json:"students"`
+	Monitors []GroupMonitor `json:"monitors"`
 }
 
 // ownedGroup devuelve la clase si pertenece a una materia del docente.
 // Si no, ErrNotFound: no se revela que la clase existe.
 func (s *Store) ownedGroup(q querier, teacherID, groupID string) (*GroupDetail, error) {
-	g := &GroupDetail{ID: groupID, Students: []GroupStudent{}}
+	g := &GroupDetail{ID: groupID, Students: []GroupStudent{}, Monitors: []GroupMonitor{}}
 	err := q.QueryRow(`SELECT g.name, g.join_code, c.id, c.name
 		FROM class_groups g JOIN courses c ON c.id = g.course_id
 		WHERE g.id = ? AND c.teacher_id = ?`, groupID, teacherID).Scan(&g.Name, &g.JoinCode, &g.CourseID, &g.CourseName)
@@ -279,7 +280,15 @@ func (s *Store) GroupForTeacher(teacherID, groupID string) (*GroupDetail, error)
 	if err != nil {
 		return nil, err
 	}
+	return g, s.fillGroup(g)
+}
 
+func (s *Store) fillGroup(g *GroupDetail) error {
+	monitors, err := s.groupMonitors(g.ID)
+	if err != nil {
+		return err
+	}
+	g.Monitors = monitors
 	rows, err := s.db.Query(`SELECT u.id, u.name, u.email, u.compiles, u.feedbacks, u.last_active_at,
 			COALESCE(SUM(s.kind = 'official'), 0), MAX(CASE WHEN s.kind = 'official' THEN s.created_at END),
 			COALESCE(SUM(s.kind = 'attempt'), 0),  MAX(CASE WHEN s.kind = 'attempt'  THEN s.created_at END)
@@ -287,9 +296,9 @@ func (s *Store) GroupForTeacher(teacherID, groupID string) (*GroupDetail, error)
 		JOIN users u ON u.id = gs.student_id
 		LEFT JOIN submissions s ON s.group_id = gs.group_id AND s.student_id = gs.student_id
 		WHERE gs.group_id = ?
-		GROUP BY u.id`, groupID)
+		GROUP BY u.id`, g.ID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -297,7 +306,7 @@ func (s *Store) GroupForTeacher(teacherID, groupID string) (*GroupDetail, error)
 		var lastActive, lastSub, lastAttempt sql.NullString
 		if err := rows.Scan(&st.ID, &st.Name, &st.Email, &st.Activity.Compiles, &st.Activity.Feedbacks, &lastActive,
 			&st.SubmissionCount, &lastSub, &st.AttemptCount, &lastAttempt); err != nil {
-			return nil, err
+			return err
 		}
 		if t := timePtr(lastActive); t != nil {
 			st.Activity.LastActiveAt = *t
@@ -306,13 +315,13 @@ func (s *Store) GroupForTeacher(teacherID, groupID string) (*GroupDetail, error)
 		g.Students = append(g.Students, st)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return err
 	}
 	// Se ordena en Go: lower() de SQLite no entiende tildes ("Ángela").
 	sort.Slice(g.Students, func(i, j int) bool {
 		return strings.ToLower(g.Students[i].Name) < strings.ToLower(g.Students[j].Name)
 	})
-	return g, nil
+	return nil
 }
 
 // kindFilter traduce "official" (por defecto), "attempt" o "all" a una condición SQL.
@@ -333,6 +342,10 @@ func (s *Store) GroupSubmissions(teacherID, groupID, studentID, kind string) ([]
 	if _, err := s.ownedGroup(s.db, teacherID, groupID); err != nil {
 		return nil, err
 	}
+	return s.groupSubmissions(groupID, studentID, kind)
+}
+
+func (s *Store) groupSubmissions(groupID, studentID, kind string) ([]SubmissionMeta, error) {
 	query := `SELECT ` + metaCols + ` FROM submissions s WHERE s.group_id = ?`
 	args := []any{groupID}
 	if studentID != "" {
@@ -374,9 +387,9 @@ func (s *Store) SubmissionForTeacher(teacherID, submissionID string) (*Submissio
 
 // StudentGroup es una clase vista por el estudiante.
 type StudentGroup struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	CourseName  string `json:"course_name"`
+	ID string `json:"id"`
+	Name string `json:"name"`
+	CourseName string `json:"course_name"`
 	TeacherName string `json:"teacher_name"`
 }
 
@@ -514,9 +527,10 @@ func (s *Store) AddSubmission(sub *Submission) error {
 // StudentSubmission es un envío propio visto por el estudiante.
 type StudentSubmission struct {
 	SubmissionMeta
-	GroupName  string         `json:"group_name"`
-	CourseName string         `json:"course_name"`
-	Review     *StudentReview `json:"review,omitempty"` // solo si el profesor ya la devolvió
+	GroupName string `json:"group_name"`
+	CourseName string `json:"course_name"`
+	Review *StudentReview `json:"review,omitempty"` // solo si el profesor ya la devolvió
+	MonitorFeedback []MonitorFeedback `json:"monitor_feedback,omitempty"`
 }
 
 // StudentSubmissions lista las últimas entregas oficiales del estudiante, con la
@@ -558,7 +572,22 @@ func (s *Store) studentSubmissions(studentID string, limit int) ([]StudentSubmis
 		}
 		out = append(out, ss)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	ids := make([]string, len(out))
+	for i := range out {
+		ids[i] = out[i].ID
+	}
+	notes, err := s.monitorFeedback(ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range out {
+		out[i].MonitorFeedback = notes[out[i].ID]
+	}
+	return out, nil
 }
 
 // StudentProcess reúne el proceso de un estudiante en una clase del docente para analizarlo:

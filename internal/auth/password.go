@@ -14,8 +14,8 @@ import (
 // Parámetros recomendados por OWASP para PBKDF2-HMAC-SHA256.
 const (
 	pbkdf2Iterations = 600_000
-	saltLen          = 16
-	keyLen           = 32
+	saltLen = 16
+	keyLen = 32
 )
 
 var b64 = base64.RawStdEncoding

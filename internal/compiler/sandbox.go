@@ -13,8 +13,8 @@ const boxDir = "/box"
 
 // Límites del programa del estudiante (se aplican con prlimit dentro del sandbox).
 const (
-	runMemoryBytes  = 256 << 20 // 256 MB de espacio de direcciones
-	runFileBytes    = 1 << 20   // no puede crear archivos de más de 1 MB
+	runMemoryBytes = 256 << 20 // 256 MB de espacio de direcciones
+	runFileBytes = 1 << 20 // no puede crear archivos de más de 1 MB
 	runMaxOpenFiles = 64
 	compileMemBytes = 1 << 30 // g++ necesita más memoria que el programa
 	compileFileSize = 64 << 20
