@@ -1,0 +1,152 @@
+{
+  "users": {
+    "06f03816477e1d019eafaf11": {
+      "id": "06f03816477e1d019eafaf11",
+      "name": "Ivan",
+      "email": "marlon@gmail.com",
+      "role": "teacher",
+      "password_hash": "pbkdf2-sha256$600000$txLxBqALEJ4+qLJIennDdQ$b93KHRd+mJSLmNY+OjkKblU8BzACRRQV/SDsWDSL17Q",
+      "created_at": "2026-09-30T19:52:49.723337481Z",
+      "activity": {
+        "compiles": 13,
+        "feedbacks": 5,
+        "last_active_at": "2026-09-30T21:43:25.129272274Z"
+      }
+    },
+    "2e05e77623056ac112735a50": {
+      "id": "2e05e77623056ac112735a50",
+      "name": "ivan lastra",
+      "email": "ivansantiagolastra1408@gmail.com",
+      "role": "student",
+      "password_hash": "pbkdf2-sha256$600000$yEM4qM/8iIp1DXAxKp0OiQ$KZuvDbqCDz3cpKUcqtMevA2oHaHasGcgtCMNCSk+N1s",
+      "created_at": "2026-09-30T19:16:56.549224817Z",
+      "activity": {
+        "compiles": 9,
+        "feedbacks": 5,
+        "last_active_at": "2026-10-21T02:59:34.951722214Z"
+      }
+    },
+    "65a0e94fba2c9ace879cb800": {
+      "id": "65a0e94fba2c9ace879cb800",
+      "name": "hola",
+      "email": "hola@javeriana.edu.co",
+      "role": "teacher",
+      "password_hash": "pbkdf2-sha256$600000$jHKxZwLvMicW0VP9TnaxGQ$a0ORT0kFdZGrQEDXefZgZpsATBk8ZxT1M2oWn6aKaV8",
+      "created_at": "2026-10-21T02:56:24.960286934Z",
+      "activity": {
+        "compiles": 0,
+        "feedbacks": 0,
+        "last_active_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    "a029a1324a546f3e9c27f4e2": {
+      "id": "a029a1324a546f3e9c27f4e2",
+      "name": "ivan",
+      "email": "ivan.lastra@javeriana.edu.co",
+      "role": "teacher",
+      "password_hash": "pbkdf2-sha256$600000$K9PaHq6anC3yWcJBX29iVw$sqqxS3kpUmqcxmdGMitQBcNJ6ShRfUwvExU+/R9+O64",
+      "created_at": "2026-10-07T20:30:47.225316523Z",
+      "activity": {
+        "compiles": 2,
+        "feedbacks": 3,
+        "last_active_at": "2026-10-07T20:55:21.054237347Z"
+      }
+    }
+  },
+  "sessions": {},
+  "courses": {
+    "0d09bafe21104605c20fd5c0": {
+      "id": "0d09bafe21104605c20fd5c0",
+      "teacher_id": "65a0e94fba2c9ace879cb800",
+      "name": "Intro a la progra",
+      "created_at": "2026-10-21T02:56:59.083228884Z"
+    },
+    "0ee8aca19806a2c1a67600ea": {
+      "id": "0ee8aca19806a2c1a67600ea",
+      "teacher_id": "06f03816477e1d019eafaf11",
+      "name": "Introduccion a la programacion",
+      "created_at": "2026-09-30T19:58:01.234484353Z"
+    },
+    "a7a4d197e879280f3e1a91d1": {
+      "id": "a7a4d197e879280f3e1a91d1",
+      "teacher_id": "a029a1324a546f3e9c27f4e2",
+      "name": "Introduccion a la programacion",
+      "created_at": "2026-10-07T20:31:02.904834647Z"
+    }
+  },
+  "groups": {
+    "2a6a1843343f9debe785ddee": {
+      "id": "2a6a1843343f9debe785ddee",
+      "course_id": "0d09bafe21104605c20fd5c0",
+      "name": "Grupo 1130",
+      "join_code": "RPSXU2",
+      "student_ids": [
+        "2e05e77623056ac112735a50"
+      ],
+      "created_at": "2026-10-21T02:57:03.757421018Z"
+    },
+    "91e96e7224869b59aee8ec73": {
+      "id": "91e96e7224869b59aee8ec73",
+      "course_id": "a7a4d197e879280f3e1a91d1",
+      "name": "Grupo 1178",
+      "join_code": "V8SGZT",
+      "student_ids": [
+        "2e05e77623056ac112735a50"
+      ],
+      "created_at": "2026-10-07T20:31:11.722305328Z"
+    },
+    "e7671ec0b8b76bdadb9cbbae": {
+      "id": "e7671ec0b8b76bdadb9cbbae",
+      "course_id": "0ee8aca19806a2c1a67600ea",
+      "name": "Clase 1123",
+      "join_code": "8UEHPN",
+      "student_ids": [],
+      "created_at": "2026-09-30T19:58:07.273547368Z"
+    }
+  },
+  "submissions": {
+    "5ae2966319cfc0627d8fd56c": {
+      "id": "5ae2966319cfc0627d8fd56c",
+      "kind": "",
+      "group_id": "91e96e7224869b59aee8ec73",
+      "assignment_id": "06839b3adf15ccd6c2d2fc7f",
+      "student_id": "2e05e77623056ac112735a50",
+      "created_at": "2026-10-07T21:10:34.614876317Z",
+      "success": true,
+      "exit_code": 0,
+      "lines": 11,
+      "has_ai_feedback": true
+    },
+    "70e5d257b1004031dec62554": {
+      "id": "70e5d257b1004031dec62554",
+      "kind": "attempt",
+      "group_id": "2a6a1843343f9debe785ddee",
+      "student_id": "2e05e77623056ac112735a50",
+      "created_at": "2026-10-21T02:59:35.614661693Z",
+      "success": true,
+      "exit_code": 0,
+      "lines": 7,
+      "has_ai_feedback": false,
+      "code_hash": "f0d17380a110b165e484ea289056cdb6d59d0723f005e8ff810ec835da9c6719"
+    }
+  },
+  "assignments": {
+    "06839b3adf15ccd6c2d2fc7f": {
+      "id": "06839b3adf15ccd6c2d2fc7f",
+      "group_id": "91e96e7224869b59aee8ec73",
+      "title": "Taller Ciclos",
+      "statement": "hacer un programa que haga un ciclo",
+      "due_at": "2026-10-10T10:34:00Z",
+      "created_at": "2026-10-07T20:33:32.591789299Z",
+      "files": [
+        {
+          "id": "72b08ba297e7533ae1e203ab",
+          "name": "ReservadeBoletosV2 (1).pdf",
+          "size": 930221,
+          "content_type": "application/pdf"
+        }
+      ]
+    }
+  },
+  "reviews": {}
+}

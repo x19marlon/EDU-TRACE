@@ -25,8 +25,6 @@ const (
 	assignmentStatementMin = 1
 )
 
-// CreateAssignment maneja POST /api/teacher/groups/{id}/assignments (multipart/form-data):
-// title, statement, due_at (RFC 3339, opcional) y files (varios).
 func (h *ClassesHandler) CreateAssignment(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxAssignmentUpload+1<<20)
 	if err := r.ParseMultipartForm(multipartMemoryLimit); err != nil {
@@ -96,7 +94,6 @@ func (h *ClassesHandler) CreateAssignment(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusCreated, a)
 }
 
-// GroupAssignments maneja GET /api/teacher/groups/{id}/assignments.
 func (h *ClassesHandler) GroupAssignments(w http.ResponseWriter, r *http.Request) {
 	list, err := h.store.GroupAssignments(auth.UserFrom(r.Context()).ID, r.PathValue("id"))
 	if err != nil {
@@ -106,14 +103,10 @@ func (h *ClassesHandler) GroupAssignments(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, list)
 }
 
-// MyAssignments maneja GET /api/student/assignments.
 func (h *ClassesHandler) MyAssignments(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, h.store.StudentAssignments(auth.UserFrom(r.Context()).ID))
 }
 
-// AssignmentFile maneja GET /api/assignments/{id}/files/{file}: descarga un adjunto
-// (profesor dueño o estudiante inscrito). Siempre como descarga, nunca se muestra
-// en el navegador, para que un archivo subido no pueda ejecutar código en la página.
 func (h *ClassesHandler) AssignmentFile(w http.ResponseWriter, r *http.Request) {
 	path, meta, err := h.store.AssignmentFilePath(auth.UserFrom(r.Context()), r.PathValue("id"), r.PathValue("file"))
 	if err != nil {
@@ -131,7 +124,6 @@ func (h *ClassesHandler) AssignmentFile(w http.ResponseWriter, r *http.Request) 
 		writeStoreErr(w, err, "descargar el archivo")
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
