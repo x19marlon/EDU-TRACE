@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChatMessage, streamChat } from "@/lib/api";
 import { Spinner } from "@/components/ui";
+import { formatFeedback } from "@/lib/format";
 
 interface ChatPanelProps {
   code: string;
@@ -123,14 +124,25 @@ export default function ChatPanel({ code, stdin, assignmentId }: ChatPanelProps)
                 className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
                     isUser
-                      ? "bg-lavender-600 text-white rounded-br-none"
-                      : "bg-lavender-50 text-ink rounded-bl-none border border-lavender-100"
+                      ? "bg-lavender-600 text-white rounded-br-none whitespace-pre-wrap"
+                      : "bg-lavender-50 text-ink rounded-bl-none border border-lavender-100 leading-relaxed"
                   }`}
                 >
-                  {msg.content ? (
+                  {isUser ? (
                     msg.content
+                  ) : msg.content ? (
+                    <div
+                      className="chat-markdown"
+                      dangerouslySetInnerHTML={{
+                        __html:
+                          formatFeedback(msg.content) +
+                          (isLoading && idx === messages.length - 1
+                            ? '<span class="inline-block w-1.5 h-3 ml-1 bg-lavender-500 animate-pulse align-middle"></span>'
+                            : ""),
+                      }}
+                    />
                   ) : (
                     <span className="flex items-center gap-1.5 text-lavender-500 py-1">
                       <Spinner className="h-3.5 w-3.5 border-current" />
