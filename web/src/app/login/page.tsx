@@ -208,6 +208,12 @@ export default function LoginPage() {
                 />
               )}
 
+              {mode === "register" && (
+                <div className="rounded-xl border border-lavender-100 bg-lavender-50/50 p-3 text-[11px] text-ink-soft leading-relaxed">
+                  <span className="font-semibold text-ink">Protección de Datos (Ley 1581 de 2012 y Circ. 002/2024 SIC):</span> Al registrarte autorizas el tratamiento de tus datos personales exclusivamente con fines académicos en el marco de la asignatura. Tus datos no se transfieren a terceros y la retroalimentación automática es siempre supervisada y aprobada por tu profesor.
+                </div>
+              )}
+
               {error && (
                 <p role="alert" className="rounded-2xl bg-peach-50 px-4 py-2.5 text-sm font-semibold text-peach-700">
                   {error}
