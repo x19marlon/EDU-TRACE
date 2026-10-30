@@ -11,6 +11,7 @@ import TeacherAssignments from "@/components/TeacherAssignments";
 import StudentProcess from "@/components/StudentProcess";
 import RaeScatter from "@/components/RaeScatter";
 import ClassOversight from "@/components/ClassOversight";
+import ClassErrors, { ExportButtons } from "@/components/ClassErrors";
 import { ReviewPill, StatusPill, SubmissionDetail } from "@/components/SubmissionView";
 import { LatePill } from "@/components/Deadline";
 import {
@@ -194,6 +195,7 @@ function GroupView() {
             <SmallButton tone="danger" onClick={removeGroup}>
               Eliminar clase
             </SmallButton>
+            <ExportButtons groupId={group.id} />
           </div>
           {adminError && <p className="mt-2 rounded-2xl bg-peach-50 px-4 py-2 text-sm font-semibold text-peach-700">{adminError}</p>}
         </div>
@@ -233,6 +235,8 @@ function GroupView() {
         onModeChange={(ai_mode) => setGroup({ ...group, ai_mode })}
         refreshKey={matrixKey}
       />
+
+      <ClassErrors groupId={group.id} refreshKey={matrixKey} />
 
       <RaeScatter
         groupId={group.id}

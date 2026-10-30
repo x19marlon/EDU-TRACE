@@ -1,4 +1,5 @@
-import { FeedbackMeta, FeedbackMode } from "@/lib/api";
+import { FeedbackMeta, FeedbackMode, RatingKind } from "@/lib/api";
+import ComprehensionCheck from "@/components/ComprehensionCheck";
 import { Spinner } from "@/components/ui";
 import { formatFeedback } from "@/lib/format";
 
@@ -11,6 +12,7 @@ interface FeedbackPanelProps {
   onRequestFeedback: () => void;
   canRequestFeedback: boolean;
   disabledReason?: string;
+  rating?: { kind: RatingKind; assignmentId?: string };
 }
 
 /** Textos y colores de cada modalidad de retroalimentación. */
@@ -51,6 +53,7 @@ export default function FeedbackPanel({
   onRequestFeedback,
   canRequestFeedback,
   disabledReason,
+  rating,
 }: FeedbackPanelProps) {
   const hasContent = feedbackText.length > 0;
   const info = MODE_INFO[mode];
@@ -109,6 +112,11 @@ export default function FeedbackPanel({
                 Generado por IA{meta?.time_ms ? ` en ${(meta.time_ms / 1000).toFixed(1)} s` : ""}. Es una
                 orientación y puede equivocarse, tu docente tiene la última palabra.
               </p>
+            )}
+            {!isLoading && !error && rating && (
+              <div className="mt-3">
+                <ComprehensionCheck key={`${mode}-${meta?.time_ms ?? 0}`} kind={rating.kind} assignmentId={rating.assignmentId} />
+              </div>
             )}
           </div>
         )}

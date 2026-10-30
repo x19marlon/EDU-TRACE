@@ -100,6 +100,22 @@ Solo cuentan las revisiones devueltas (el Taller 3 de Ana está en borrador). Si
 python3 scripts/seed_rae_levels.py
 ```
 
+## Preguntas, comprensión y exportación
+
+- **Como Ana**, en «Mi historial» abre una entrega devuelta. Debajo de la retroalimentación responde «¿Entendiste esta retroalimentación?» y hace una pregunta.
+- **Como profesora**, la pregunta aparece en «Preguntas de tus estudiantes» del tablero y como píldora en la entrega; la responde debajo del código. La comprensión aparece resumida, sin nombres, en «Indicadores de la clase» (RNF-09).
+- En la clase, la profesora tiene «Errores frecuentes» (por clase o por materia) y los botones «Exportar notas (CSV)» y «Exportar revisiones (CSV)». Ver `docs/INTEGRACION.md`.
+
+## Ancho de banda (RNF-12)
+
+Con el frontend compilado (`npm run build && npm run start`):
+
+```bash
+WEB=http://localhost:3000 API=http://127.0.0.1:8080 python3 scripts/medir_ancho_banda.py
+```
+
+Muestra el peso de la primera carga de cada página y de las respuestas de la API, y el tiempo a 256 kbps, 1 Mbps y 3 Mbps. Para otros anchos de banda: `ANCHOS_KBPS=128,512`.
+
 ## Prueba de carga (RNF-10)
 
 Con los datos cargados y Ollama encendido:

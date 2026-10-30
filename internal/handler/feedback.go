@@ -68,14 +68,14 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// El enunciado del taller solo se usa si el usuario tiene acceso a ese taller.
-	var statement string
+	var statement, rubric string
 	if req.AssignmentID != "" {
-		st, err := h.store.AssignmentStatement(user, req.AssignmentID)
+		st, rb, err := h.store.AssignmentContext(user, req.AssignmentID)
 		if err != nil {
 			writeJSON(w, http.StatusNotFound, model.ErrorResponse{Error: "taller no encontrado"})
 			return
 		}
-		statement = st
+		statement, rubric = st, rb
 	}
 
 	h.store.RecordFeedback(user.ID)
@@ -87,10 +87,10 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"compiled", req.Success,
 	)
 
-	var sectionsOK bool
+	var checks ai.Checks
 	stats := streamSSE(w, h.modelName, func(onToken, onReplace func(string)) error {
-		ok, err := h.ollama.StreamFeedback(r.Context(), req, statement, onToken, onReplace)
-		sectionsOK = ok
+		c, err := h.ollama.StreamFeedback(r.Context(), req, statement, rubric, onToken, onReplace)
+		checks = c
 		return err
 	})
 	kind := auth.AIKindFormal
@@ -99,7 +99,7 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	rec := stats.record(kind, h.store.AssignmentGroup(req.AssignmentID), user.Role)
 	if stats.err == nil {
-		rec.SectionsOK = &sectionsOK
+		rec.SectionsOK, rec.QualityOK = &checks.SectionsOK, &checks.QualityOK
 	}
 	h.store.RecordAIRequest(rec)
 }

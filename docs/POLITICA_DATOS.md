@@ -12,6 +12,8 @@ Qué datos trata EduTrace, adónde van y quién los ve. La versión para estudia
 | Retroalimentación, nota y niveles por RAE | `reviews`, `review_raes` | El profesor; el estudiante cuando se aprueba |
 | Marcas y comentarios de monitores | `code_annotations`, `monitor_feedback` | El profesor; el estudiante cuando el monitor las envía |
 | Bitácora de intervenciones | `audit_log` | El profesor de la clase |
+| Preguntas sobre la retroalimentación y sus respuestas | `review_questions` | El estudiante, el profesor de la clase y sus monitores |
+| «¿Entendiste esta retroalimentación?» y su comentario | `feedback_ratings` | El estudiante; el profesor solo ve el resumen y los comentarios, sin nombres |
 | Tiempos de la IA | `ai_requests`, sin usuario | El profesor, en forma agregada por clase |
 
 ## Qué sale del sistema
@@ -43,7 +45,7 @@ Si se cambia `OLLAMA_BASE_URL` a un servicio fuera de la institución, esta pol�
 |---|---|
 | Conocer y obtener copia | «Mi cuenta» → «Descargar mis datos» (`GET /api/auth/export`) |
 | Rectificar | «Mi cuenta» → «Mis datos» (`PATCH /api/auth/profile`) |
-| Revocar y suprimir | «Mi cuenta» → «Eliminar mi cuenta» (`POST /api/auth/delete`). Borra en cascada entregas, revisiones, marcas, trabajos de la cola y entradas de la bitácora sobre sus entregas. Un profesor debe eliminar antes sus materias. |
+| Revocar y suprimir | «Mi cuenta» → «Eliminar mi cuenta» (`POST /api/auth/delete`). Borra en cascada entregas, revisiones, marcas, preguntas, valoraciones, trabajos de la cola y entradas de la bitácora sobre sus entregas. Si la cuenta era de un monitor o un profesor, su nombre en la bitácora y en las respuestas se reemplaza por «Cuenta eliminada». Un profesor debe eliminar antes sus materias. |
 | Prueba de la autorización | La fecha y la versión aceptada aparecen en «Mi cuenta» y en la descarga |
 
 ## Conservación

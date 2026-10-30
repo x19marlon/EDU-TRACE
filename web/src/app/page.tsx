@@ -81,6 +81,54 @@ const EMPTY_FEEDBACK: FeedbackState = { text: "", meta: null, loading: false, er
 
 const MODE_LABEL: Record<FeedbackMode, string> = { formal: "Formal", informal: "Informal" };
 
+const OFFLINE_NOTE = "No hay conexión con el servidor. Tu código sigue guardado en este navegador; vuelve a intentarlo cuando regrese la conexión.";
+
+function networkMessage(err: unknown, fallback: string): string {
+  if (err instanceof TypeError) return OFFLINE_NOTE;
+  return err instanceof Error ? err.message : fallback;
+}
+
+function useOnline(): boolean {
+  const [online, setOnline] = useState(true);
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+  return online;
+}
+
+function useDraft(userId: string | undefined, code: string, stdin: string, restore: (code: string, stdin: string) => void) {
+  const restored = useRef(false);
+  const key = userId ? `edutrace:borrador:${userId}` : null;
+  useEffect(() => {
+    if (!key || restored.current) return;
+    restored.current = true;
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(key) ?? "null");
+      if (saved && typeof saved.code === "string") restore(saved.code, typeof saved.stdin === "string" ? saved.stdin : "");
+    } catch {
+      /* sin almacenamiento local: se sigue sin borrador */
+    }
+  }, [key, restore]);
+  useEffect(() => {
+    if (!key || !restored.current) return;
+    const id = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(key, JSON.stringify({ code, stdin }));
+      } catch {
+        /* almacenamiento lleno o bloqueado */
+      }
+    }, 800);
+    return () => window.clearTimeout(id);
+  }, [key, code, stdin]);
+}
+
 const SUPERVISED_NOTE =
   "En tu clase la retroalimentación de la IA la revisa y aprueba tu profesor antes de que la veas. Envía tu código y la recibirás en «Mis entregas».";
 
@@ -94,6 +142,12 @@ function CompilerPage() {
   const [compiledRun, setCompiledRun] = useState<{ code: string; stdin: string } | null>(null);
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileError, setCompileError] = useState<string | null>(null);
+  const online = useOnline();
+  const restoreDraft = useCallback((savedCode: string, savedStdin: string) => {
+    setCode(savedCode);
+    setStdin(savedStdin);
+  }, []);
+  useDraft(user?.id, code, stdin, restoreDraft);
 
   // Una retroalimentación por modalidad; las dos están siempre disponibles.
   const [feedback, setFeedback] = useState<Record<FeedbackMode, FeedbackState>>({
@@ -167,9 +221,7 @@ function CompilerPage() {
     } catch (err) {
       // Sesión expirada: RequireAuth redirige al login.
       if (err instanceof UnauthorizedError) setUser(null);
-      setCompileError(
-        err instanceof Error ? err.message : "Error de conexión con el servidor"
-      );
+      setCompileError(networkMessage(err, "Error de conexión con el servidor"));
     } finally {
       setIsCompiling(false);
     }
@@ -213,7 +265,7 @@ function CompilerPage() {
       setStats((s) => ({ ...s, feedbacks: s.feedbacks + 1 }));
     } catch (err) {
       if (err instanceof UnauthorizedError) setUser(null);
-      updateFeedback(mode, { error: err instanceof Error ? err.message : "Error de conexión con Ollama" });
+      updateFeedback(mode, { error: networkMessage(err, "Error de conexión con Ollama") });
     } finally {
       updateFeedback(mode, { loading: false });
     }
@@ -259,7 +311,7 @@ function CompilerPage() {
       });
     } catch (err) {
       if (err instanceof UnauthorizedError) setUser(null);
-      setSendStatus({ ok: false, text: err instanceof Error ? err.message : "No se pudo enviar" });
+      setSendStatus({ ok: false, text: networkMessage(err, "No se pudo enviar") });
     } finally {
       setSending(false);
     }
@@ -295,6 +347,12 @@ function CompilerPage() {
             <StatChip value={stats.feedbacks} label="retroalimentaciones" tone="peach" />
           </div>
         </div>
+        {!online && (
+          <p role="status" className="mt-4 rounded-2xl bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
+            Estás sin conexión. Puedes seguir escribiendo: tu código se guarda en este navegador y podrás compilarlo y enviarlo cuando vuelva la
+            conexión.
+          </p>
+        )}
         {isStudent && (
           <div className="mt-4">
             <StudentClasses
@@ -471,6 +529,11 @@ function CompilerPage() {
                 onRequestFeedback={() => handleFeedback(activeTab)}
                 canRequestFeedback={!anyFeedbackLoading && !!code.trim() && aiAllowed}
                 disabledReason={aiAllowed ? undefined : SUPERVISED_NOTE}
+                rating={
+                  isStudent
+                    ? { kind: activeTab === "formal" ? "retro_formal" : "retro_informal", assignmentId: assignmentId ?? undefined }
+                    : undefined
+                }
               />
             )}
           </Card>

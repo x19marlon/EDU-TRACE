@@ -181,6 +181,57 @@ export interface SubmissionMeta {
   review_state?: ReviewState;
   monitor_feedback_count?: number;
   ai_job?: JobStatus;
+  open_questions?: number;
+}
+
+export interface Question {
+  id: string;
+  submission_id: string;
+  body: string;
+  created_at: string;
+  answer?: string;
+  answered_by?: string;
+  answered_role?: Role;
+  answered_at?: string;
+}
+
+export interface OpenQuestion extends Question {
+  group_id: string;
+  group_name: string;
+  student_name: string;
+  assignment_title?: string;
+}
+
+export type Understood = "si" | "parcial" | "no";
+export type RatingKind = "retro_formal" | "retro_informal" | "revision";
+
+export interface FrequentError {
+  message: string;
+  explanation?: string;
+  count: number;
+  students: number;
+  last_at: string;
+  assignments: string[];
+}
+
+export interface HardTest {
+  assignment: string;
+  test: string;
+  hidden: boolean;
+  students: number;
+  not_passing: number;
+  failures: number;
+  runs: number;
+}
+
+export interface ErrorReport {
+  scope: "clase" | "materia";
+  groups: number;
+  analyzed: number;
+  students_with_errors: number;
+  compile: FrequentError[];
+  runtime: FrequentError[];
+  tests: HardTest[];
 }
 
 export interface Submission extends SubmissionMeta {
@@ -193,6 +244,7 @@ export interface Submission extends SubmissionMeta {
   monitor_feedback?: MonitorFeedback[];
   annotations?: Annotation[];
   tests?: TestResult[];
+  questions?: Question[];
 }
 
 export type AnnotationKind = "highlight" | "strike" | "good" | "note" | "drawing";
@@ -298,6 +350,7 @@ export interface StudentReview {
   raes?: { code: string; description: string; level: RAELevel }[];
   origin?: FeedbackOrigin;
   teacher_name?: string;
+  understood?: Understood;
 }
 export interface StudentSubmission extends SubmissionMeta {
   group_name: string;
@@ -306,6 +359,7 @@ export interface StudentSubmission extends SubmissionMeta {
   monitor_annotations?: number;
   review?: StudentReview;
   monitor_feedback?: MonitorFeedback[];
+  questions?: Question[];
 }
 
 export class UnauthorizedError extends Error {}
@@ -451,6 +505,37 @@ export const discardReviewDraft = (submissionId: string, elapsedMs: number) =>
   postJSON<Review>(`/api/teacher/submissions/${enc(submissionId)}/review/discard`, { elapsed_ms: elapsedMs });
 export const getSubmissionAudit = (submissionId: string) =>
   getJSON<AuditEntry[]>(`/api/teacher/submissions/${enc(submissionId)}/audit`);
+export const getFrequentErrors = (groupId: string, wholeCourse: boolean) =>
+  getJSON<ErrorReport>(`/api/teacher/groups/${enc(groupId)}/errors${wholeCourse ? "?alcance=materia" : ""}`);
+export const listOpenQuestions = () => getJSON<OpenQuestion[]>("/api/teacher/questions");
+export const answerQuestion = (role: "teacher" | "monitor", questionId: string, answer: string) =>
+  postJSON<Question>(`/api/${role}/questions/${enc(questionId)}/answer`, { answer });
+export const askQuestion = (submissionId: string, body: string) =>
+  postJSON<Question>(`/api/student/submissions/${enc(submissionId)}/questions`, { body });
+
+export async function rateFeedback(data: {
+  kind: RatingKind;
+  understood: Understood;
+  comment?: string;
+  submission_id?: string;
+  assignment_id?: string;
+}): Promise<void> {
+  const response = await apiFetch("/api/student/ratings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) await throwForStatus(response);
+}
+
+export async function downloadGroupCSV(groupId: string, kind: "notas" | "revisiones"): Promise<{ blob: Blob; filename: string }> {
+  const response = await apiFetch(`/api/teacher/groups/${enc(groupId)}/export/${kind}.csv`);
+  if (!response.ok) await throwForStatus(response);
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+  return { blob: await response.blob(), filename: match ? decodeURIComponent(match[1]) : `${kind}.csv` };
+}
+
 export const rerunTests = (submissionId: string) =>
   postJSON<TestResult[]>(`/api/teacher/submissions/${enc(submissionId)}/tests`, {});
 
@@ -512,9 +597,22 @@ export interface GroupMetrics {
     total: Stat;
     sections_checked: number;
     sections_ok: number;
+    quality_checked: number;
+    quality_ok: number;
     chats: number;
   };
   decisions: { ia: number; ia_editada: number; docente: number; descartadas: number };
+  comprehension: {
+    revisiones: RatingCount;
+    inmediata: RatingCount;
+    comentarios: { at: string; kind: RatingKind; understood: Understood; comment: string }[];
+  };
+}
+
+export interface RatingCount {
+  si: number;
+  parcial: number;
+  no: number;
 }
 
 export interface AIStatus {

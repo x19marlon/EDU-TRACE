@@ -117,7 +117,7 @@ func (h *ClassesHandler) Submission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := auth.UserFrom(r.Context())
-	writeJSON(w, http.StatusOK, submissionView{Submission: sub, MonitorFeedback: h.store.MonitorFeedbackFor(sub.ID), Annotations: h.store.AnnotationsFor(user, sub.ID)})
+	writeJSON(w, http.StatusOK, submissionView{Submission: sub, MonitorFeedback: h.store.MonitorFeedbackFor(sub.ID), Annotations: h.store.AnnotationsFor(user, sub.ID), Questions: h.store.QuestionsFor(sub.ID)})
 }
 
 func (h *ClassesHandler) MyGroups(w http.ResponseWriter, r *http.Request) {
@@ -259,5 +259,5 @@ func (h *ClassesHandler) MySubmission(w http.ResponseWriter, r *http.Request) {
 		writeStoreErr(w, err, "cargar la entrega")
 		return
 	}
-	writeJSON(w, http.StatusOK, submissionView{Submission: sub, Annotations: h.store.AnnotationsFor(user, sub.ID)})
+	writeJSON(w, http.StatusOK, submissionView{Submission: sub, Annotations: h.store.AnnotationsFor(user, sub.ID), Questions: h.store.QuestionsFor(sub.ID)})
 }

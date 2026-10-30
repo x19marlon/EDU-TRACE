@@ -2,6 +2,8 @@
 
 import { FeedbackOrigin, StudentSubmission } from "@/lib/api";
 import { MonitorNotes } from "@/components/MonitorFeedback";
+import ComprehensionCheck from "@/components/ComprehensionCheck";
+import { StudentQuestions } from "@/components/FeedbackQuestions";
 import { formatDateTime, formatFeedback, LEVEL_STYLE, performanceBand } from "@/lib/format";
 
 export function ReviewStatusPill({ item }: { item: StudentSubmission }) {
@@ -80,11 +82,17 @@ export function SubmissionFeedback({ item }: { item: StudentSubmission }) {
           <p className="mt-2 text-xs text-ink-faint">
             {ORIGIN_NOTE[origin]} {teacher} el {formatDateTime(review.returned_at)}.
             {review.ai_assisted && " La calificación la definió tu profesor, no la IA."} Si tienes dudas sobre esta retroalimentación,
-            pregúntale a {teacher} en clase o a tu monitor.
+            pregúntale a {teacher} aquí abajo o a tu monitor.
           </p>
+          <div className="mt-2">
+            <ComprehensionCheck kind="revision" submissionId={item.id} initial={review.understood} />
+          </div>
         </div>
       ) : (
         <p className="text-sm text-ink-soft">Tu profesor aún no ha revisado esta entrega.</p>
+      )}
+      {(review || item.has_ai_feedback || (item.questions?.length ?? 0) > 0) && (
+        <StudentQuestions submissionId={item.id} initial={item.questions ?? []} />
       )}
       {(item.monitor_feedback?.length ?? 0) > 0 && (
         <div className="space-y-2">

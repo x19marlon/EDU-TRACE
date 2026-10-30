@@ -100,3 +100,12 @@ func (h *ClassesHandler) RerunTests(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, result.Tests)
 }
+
+func (h *ClassesHandler) FrequentErrors(w http.ResponseWriter, r *http.Request) {
+	report, err := h.store.FrequentErrors(auth.UserFrom(r.Context()).ID, r.PathValue("id"), r.URL.Query().Get("alcance") == "materia")
+	if err != nil {
+		writeStoreErr(w, err, "calcular los errores frecuentes")
+		return
+	}
+	writeJSON(w, http.StatusOK, report)
+}

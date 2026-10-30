@@ -26,6 +26,7 @@ type submissionItem struct {
 	ReviewState *auth.ReviewState `json:"review_state,omitempty"`
 	MonitorFeedbackCount int `json:"monitor_feedback_count,omitempty"`
 	AIJob string `json:"ai_job,omitempty"`
+	OpenQuestions int `json:"open_questions,omitempty"`
 }
 
 func submissionItems(store *auth.Store, subs []auth.SubmissionMeta, withReview bool) []submissionItem {
@@ -37,10 +38,10 @@ func submissionItems(store *auth.Store, subs []auth.SubmissionMeta, withReview b
 	if withReview {
 		states, jobs = store.ReviewStates(ids), store.JobStates(ids)
 	}
-	counts := store.MonitorFeedbackCounts(ids)
+	counts, questions := store.MonitorFeedbackCounts(ids), store.OpenQuestionCounts(ids)
 	out := make([]submissionItem, len(subs))
 	for i, m := range subs {
-		out[i] = submissionItem{SubmissionMeta: m, MonitorFeedbackCount: counts[m.ID], AIJob: jobs[m.ID]}
+		out[i] = submissionItem{SubmissionMeta: m, MonitorFeedbackCount: counts[m.ID], AIJob: jobs[m.ID], OpenQuestions: questions[m.ID]}
 		if st, ok := states[m.ID]; ok {
 			out[i].ReviewState = &st
 		}
@@ -52,6 +53,7 @@ type submissionView struct {
 	*auth.Submission
 	MonitorFeedback []auth.MonitorFeedback `json:"monitor_feedback,omitempty"`
 	Annotations []auth.Annotation `json:"annotations"`
+	Questions []auth.Question `json:"questions"`
 }
 
 func (h *MonitorHandler) Groups(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +95,7 @@ func (h *MonitorHandler) Submission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := auth.UserFrom(r.Context())
-	writeJSON(w, http.StatusOK, submissionView{Submission: sub, MonitorFeedback: h.store.MonitorFeedbackFor(sub.ID), Annotations: h.store.AnnotationsFor(user, sub.ID)})
+	writeJSON(w, http.StatusOK, submissionView{Submission: sub, MonitorFeedback: h.store.MonitorFeedbackFor(sub.ID), Annotations: h.store.AnnotationsFor(user, sub.ID), Questions: h.store.QuestionsFor(sub.ID)})
 }
 
 func (h *MonitorHandler) AddFeedback(w http.ResponseWriter, r *http.Request) {

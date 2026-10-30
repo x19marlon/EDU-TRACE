@@ -257,8 +257,8 @@ func (s *Store) studentAssignments(studentID string) ([]StudentAssignment, error
 
 // visibleAssignment devuelve título y enunciado si el usuario puede ver el taller:
 // el profesor dueño de la materia o un estudiante inscrito en la clase.
-func (s *Store) visibleAssignment(u *User, assignmentID string) (title, statement string, err error) {
-	err = s.db.QueryRow(`SELECT a.title, a.statement FROM assignments a
+func (s *Store) visibleAssignment(u *User, assignmentID string) (title, statement, rubric string, err error) {
+	err = s.db.QueryRow(`SELECT a.title, a.statement, a.rubric FROM assignments a
 		JOIN class_groups g ON g.id = a.group_id
 		JOIN courses c ON c.id = g.course_id
 		WHERE a.id = ? AND (
@@ -267,7 +267,7 @@ func (s *Store) visibleAssignment(u *User, assignmentID string) (title, statemen
 				WHERE gs.group_id = a.group_id AND gs.student_id = ?)) OR
 			(? = 'monitor' AND EXISTS (SELECT 1 FROM group_monitors gm
 				WHERE gm.group_id = a.group_id AND gm.monitor_id = ?))
-		)`, assignmentID, u.Role, u.ID, u.Role, u.ID, u.Role, u.ID).Scan(&title, &statement)
+		)`, assignmentID, u.Role, u.ID, u.Role, u.ID, u.Role, u.ID).Scan(&title, &statement, &rubric)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = ErrNotFound
 	}
@@ -276,11 +276,16 @@ func (s *Store) visibleAssignment(u *User, assignmentID string) (title, statemen
 
 // AssignmentStatement devuelve el enunciado si el usuario puede ver el taller.
 func (s *Store) AssignmentStatement(u *User, assignmentID string) (string, error) {
-	title, statement, err := s.visibleAssignment(u, assignmentID)
+	statement, _, err := s.AssignmentContext(u, assignmentID)
+	return statement, err
+}
+
+func (s *Store) AssignmentContext(u *User, assignmentID string) (statement, rubric string, err error) {
+	title, body, rubric, err := s.visibleAssignment(u, assignmentID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return title + "\n" + statement, nil
+	return title + "\n" + body, rubric, nil
 }
 
 // AssignmentForGrading devuelve el enunciado y los criterios de un taller de una clase del profesor.
@@ -308,7 +313,7 @@ func (s *Store) AssignmentInGroup(assignmentID, groupID string) bool {
 
 // AssignmentFilePath devuelve la ruta en disco y los datos de un adjunto si el usuario puede verlo.
 func (s *Store) AssignmentFilePath(u *User, assignmentID, fileID string) (string, AssignmentFile, error) {
-	if _, _, err := s.visibleAssignment(u, assignmentID); err != nil {
+	if _, _, _, err := s.visibleAssignment(u, assignmentID); err != nil {
 		return "", AssignmentFile{}, err
 	}
 	f := AssignmentFile{ID: fileID}

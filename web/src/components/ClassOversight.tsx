@@ -9,6 +9,7 @@ import {
   getGroupAudit,
   getGroupMetrics,
   GroupMetrics,
+  RatingCount,
   retryDrafts,
   setGroupAIMode,
   setThresholds,
@@ -179,6 +180,43 @@ function AIModeSwitch({ groupId, mode, onChange }: { groupId: string; mode: AIMo
         )}
       </div>
       {error && <p className="text-xs font-semibold text-peach-700">{error}</p>}
+    </div>
+  );
+}
+
+function share(c: RatingCount): string {
+  const total = c.si + c.parcial + c.no;
+  return total === 0 ? "sin respuestas" : `${Math.round((c.si / total) * 100)} % entendió (${c.si} sí · ${c.parcial} en parte · ${c.no} no)`;
+}
+
+function Comprehension({ data }: { data: GroupMetrics["comprehension"] }) {
+  const total = (["revisiones", "inmediata"] as const).reduce((n, k) => n + data[k].si + data[k].parcial + data[k].no, 0);
+  return (
+    <div className="rounded-2xl bg-lavender-50/60 p-3 text-xs">
+      <p className="font-bold text-ink-soft">
+        <span className="text-lavender-700">RNF-09</span> · ¿Los estudiantes entienden la retroalimentación?
+      </p>
+      {total === 0 ? (
+        <p className="mt-1 text-ink-soft">
+          Aún nadie respondió. Cada retroalimentación le pregunta al estudiante si la entendió; aquí verás el resumen sin nombres.
+        </p>
+      ) : (
+        <>
+          <p className="mt-1 text-ink-soft">
+            Revisiones devueltas: {share(data.revisiones)} · IA inmediata: {share(data.inmediata)}
+          </p>
+          {data.comentarios.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {data.comentarios.map((c, i) => (
+                <li key={i} className="rounded-xl bg-white px-2.5 py-1.5">
+                  <span className="font-bold">{c.understood === "no" ? "No entendió" : c.understood === "parcial" ? "En parte" : "Entendió"}:</span>{" "}
+                  {c.comment} <span className="text-ink-faint">· {formatDateTime(c.at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -378,7 +416,7 @@ export default function ClassOversight({
               </div>
               <div className="rounded-2xl bg-lavender-50/60 p-3 text-xs">
                 <p className="font-bold text-ink-soft">
-                  <span className="text-lavender-700">RF-02/03</span> · IA inmediata
+                  <span className="text-lavender-700">RF-02/03 y RF-05/07</span> · IA inmediata
                 </p>
                 <p className="mt-1 text-ink-soft">
                   {metrics.instant.requests === 0
@@ -389,11 +427,16 @@ export default function ClassOversight({
                         metrics.instant.sections_checked
                           ? Math.round((metrics.instant.sections_ok / metrics.instant.sections_checked) * 100)
                           : 100
-                      } % trajo las 3 secciones sin completar`}
+                      } % trajo las 3 secciones y ${
+                        metrics.instant.quality_checked
+                          ? Math.round((metrics.instant.quality_ok / metrics.instant.quality_checked) * 100)
+                          : 100
+                      } % la observación de calidad sin completar (lo que faltó se agregó solo)`}
                   {metrics.instant.chats > 0 && ` · ${metrics.instant.chats} mensajes de chat`}
                 </p>
               </div>
             </div>
+            <Comprehension data={metrics.comprehension} />
           </div>
         )}
       </Card>

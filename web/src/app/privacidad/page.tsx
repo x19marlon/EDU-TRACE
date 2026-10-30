@@ -51,7 +51,7 @@ export default function PrivacyPage() {
           <ul className="list-disc space-y-1 pl-5">
             <li>De tu cuenta: nombre, email, rol y la fecha en que autorizaste el tratamiento. La contraseña y el código de recuperación se guardan cifrados con un hash; nadie puede leerlos.</li>
             <li>De tu trabajo: el código que compilas y envías, la entrada y la salida de tus programas, los mensajes del compilador y el resultado de los casos de prueba.</li>
-            <li>De tu proceso: la retroalimentación que recibes, la revisión y la nota de tu profesor, los comentarios y marcas de los monitores y el registro de quién revisó y aprobó cada retroalimentación.</li>
+            <li>De tu proceso: la retroalimentación que recibes, la revisión y la nota de tu profesor, los comentarios y marcas de los monitores, tus preguntas sobre la retroalimentación con sus respuestas, si dijiste haberla entendido y el registro de quién revisó y aprobó cada retroalimentación. Tu profesor ve las respuestas a «¿Entendiste esta retroalimentación?» resumidas y sin tu nombre.</li>
             <li>De uso: cuántas veces compilas o pides retroalimentación, tu última actividad y cuánto tarda la IA en responder. Estos tiempos se guardan sin tu nombre.</li>
           </ul>
         </Section>

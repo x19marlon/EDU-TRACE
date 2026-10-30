@@ -60,7 +60,7 @@ ANTES DE RESPONDER, verifica en silencio:
 - Si hay entrada y salida, calcula a mano qué debería imprimir el programa y compáralo con la salida real.
 
 Responde ÚNICAMENTE con un JSON con estos campos:
-- "retroalimentacion": retroalimentación formativa dirigida directamente al estudiante, en segunda persona ("tu programa", "revisa la línea 6"); nunca escribas "el estudiante" en este campo. En español, con las secciones "## ¿Hacia dónde voy?", "## ¿Cómo voy?" y "## ¿Qué sigue?", cada título en su propia línea y separado del texto por un salto de línea. Si hay casos de prueba del profesor, en "¿Cómo voy?" di cuántos pasa. En "¿Hacia dónde voy?" nombra el Resultado de Aprendizaje Esperado que desarrolla el taller con su número y nombre corto, por ejemplo "RAE 4: implementar en C++" (RAE aquí nunca es la Real Academia Española). Da pistas, nunca la línea corregida ni el programa resuelto. Máximo 250 palabras.
+- "retroalimentacion": retroalimentación formativa dirigida directamente al estudiante, en segunda persona ("tu programa", "revisa la línea 6"); nunca escribas "el estudiante" en este campo. En español, con las secciones "## ¿Hacia dónde voy?", "## ¿Cómo voy?" y "## ¿Qué sigue?", cada título en su propia línea y separado del texto por un salto de línea. Si hay casos de prueba del profesor, en "¿Cómo voy?" di cuántos pasa. Cierra "¿Cómo voy?" con "**Calidad del código**": una frase de legibilidad, una de mantenibilidad y una de documentación. En "¿Hacia dónde voy?" nombra el Resultado de Aprendizaje Esperado que desarrolla el taller con su número y nombre corto, por ejemplo "RAE 4: implementar en C++" (RAE aquí nunca es la Real Academia Española). Da pistas, nunca la línea corregida ni el programa resuelto. Máximo 250 palabras.
 - "nota": calificación tentativa de 0.0 a 5.0, con un decimal, según los criterios de evaluación del taller (o, si no hay, la rúbrica del RAE 4 del curso), el enunciado, el resultado real de la ejecución y los casos de prueba del profesor, si los hay. Primero ubica la entrega en un nivel de la escala de desempeño (Insatisfactorio [0–2), Bajo el estándar [2–3), Competente [3–3.75), Ejemplar [3.75–4.25), Ejemplar de alto nivel [4.25–5]) y da una nota dentro de ese rango.
 - "justificacion": para el profesor, de 2 a 4 frases que expliquen la nota criterio por criterio, nombrando el nivel de desempeño y el RAE.
 - "confianza": "alta", "media" o "baja". Usa "baja" si el enunciado es ambiguo, faltan criterios o no puedes comprobar si la salida es correcta y explica el porque.
@@ -114,6 +114,8 @@ func (o *OllamaClient) SuggestReview(ctx context.Context, in ReviewInput) (*Revi
 		}
 	}
 	writeTests(&b, in.Tests)
+	quality := AnalyzeQuality(in.Code)
+	writeStyle(&b, quality.Problems())
 	messages := []chatMessage{
 		{Role: "system", Content: fmt.Sprintf(systemPromptReview, o.syllabus)},
 		{Role: "user", Content: b.String()},
@@ -155,8 +157,8 @@ func (o *OllamaClient) SuggestReview(ctx context.Context, in ReviewInput) (*Revi
 	passed, total := countPassed(in.Tests)
 	outcome := Outcome{Statement: in.Statement != "", Compiled: true, Success: in.Success,
 		RunFailed: in.RunError != "" || in.ExitCode != 0, TestsPassed: passed, TestsTotal: total}
-	if fixed, ok := EnsureSections(sug.Feedback, FallbackSections(outcome)); !ok {
-		slog.Info("secciones de Hattie y Timperley completadas en la propuesta", "faltaban", MissingSections(sug.Feedback))
+	if fixed, checks := Finalize(sug.Feedback, outcome, quality); !checks.SectionsOK || !checks.QualityOK {
+		slog.Info("propuesta completada", "faltaban_secciones", MissingSections(sug.Feedback), "calidad_completa", checks.QualityOK)
 		sug.Feedback = fixed
 		sug.SectionsFixed = true
 	}

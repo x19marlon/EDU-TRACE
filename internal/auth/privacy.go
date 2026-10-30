@@ -44,6 +44,14 @@ func (s *Store) DeleteAccount(userID, password string) error {
 	if courses > 0 {
 		return ErrOwnsCourses
 	}
+	for _, stmt := range []string{
+		`UPDATE audit_log SET actor_name = 'Cuenta eliminada' WHERE actor_id = ?`,
+		`UPDATE review_questions SET answered_by_name = 'Cuenta eliminada' WHERE answered_by = ?`,
+	} {
+		if _, err := tx.Exec(stmt, userID); err != nil {
+			return err
+		}
+	}
 	if err := affected(tx.Exec(`DELETE FROM users WHERE id = ?`, userID)); err != nil {
 		return err
 	}
@@ -65,6 +73,14 @@ type ExportSubmission struct {
 	Review *StudentReview `json:"revision_del_profesor,omitempty"`
 	MonitorFeedback []MonitorFeedback `json:"retroalimentacion_de_monitores,omitempty"`
 	Annotations []Annotation `json:"marcas_enviadas,omitempty"`
+	Questions []Question `json:"preguntas,omitempty"`
+}
+
+type ExportRating struct {
+	At time.Time `json:"fecha"`
+	Kind string `json:"retroalimentacion"`
+	Understood string `json:"entendio"`
+	Comment string `json:"comentario,omitempty"`
 }
 
 type ExportClass struct {
@@ -79,6 +95,7 @@ type DataExport struct {
 	Profile ExportProfile `json:"perfil"`
 	Classes []ExportClass `json:"clases"`
 	Submissions []ExportSubmission `json:"entregas_e_intentos,omitempty"`
+	Ratings []ExportRating `json:"valoraciones,omitempty"`
 	MonitorFeedback []MonitorFeedback `json:"retroalimentacion_escrita,omitempty"`
 }
 
@@ -121,6 +138,9 @@ func (s *Store) ExportData(u *User) (*DataExport, error) {
 
 	if u.Role == RoleStudent {
 		if out.Submissions, err = s.exportSubmissions(u); err != nil {
+			return nil, err
+		}
+		if out.Ratings, err = s.exportRatings(u.ID); err != nil {
 			return nil, err
 		}
 	}
@@ -179,11 +199,30 @@ func (s *Store) exportSubmissions(u *User) ([]ExportSubmission, error) {
 			return nil, err
 		}
 		if r, ok := byID[list[i].ID]; ok {
-			list[i].Review, list[i].MonitorFeedback = r.Review, r.MonitorFeedback
+			list[i].Review, list[i].MonitorFeedback, list[i].Questions = r.Review, r.MonitorFeedback, r.Questions
 		}
 		if list[i].Kind == KindOfficial {
 			list[i].Annotations = s.AnnotationsFor(u, list[i].ID)
 		}
 	}
 	return list, nil
+}
+
+func (s *Store) exportRatings(studentID string) ([]ExportRating, error) {
+	rows, err := s.db.Query(`SELECT at, kind, understood, comment FROM feedback_ratings WHERE student_id = ? ORDER BY at`, studentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ExportRating
+	for rows.Next() {
+		var r ExportRating
+		var at string
+		if err := rows.Scan(&at, &r.Kind, &r.Understood, &r.Comment); err != nil {
+			return nil, err
+		}
+		r.At = parseTime(at)
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }

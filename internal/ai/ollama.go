@@ -214,6 +214,7 @@ Una o dos frases sobre la meta: qué pide el enunciado (o, si no hay enunciado, 
 - Los problemas reales más importantes (máximo tres), del más grave al menos grave, cada uno con su línea y el POR QUÉ.
 - Si no compiló: explica con palabras sencillas qué significa el mensaje del compilador y en qué línea mirar, para que aprenda a leer ese tipo de mensajes.
 - Si compiló pero la ejecución falló (tiempo agotado, código de salida distinto de 0 o salida incorrecta): ayúdale a formular una hipótesis sobre la causa.
+- Termina con "**Calidad del código**": una observación breve de legibilidad (sangría y nombres), otra de mantenibilidad (código repetido, variables globales) y otra de documentación (comentarios).
 
 ## ¿Qué sigue?
 Dos o tres pistas o preguntas guía que lo lleven a encontrar la corrección por sí mismo. Si el código ya está bien, propón un reto pequeño relacionado con el mismo tema.
@@ -237,7 +238,7 @@ Responde SIEMPRE con estas tres secciones, en este orden y con estos títulos ex
 Una frase sencilla sobre lo que pide el ejercicio y qué Resultado de Aprendizaje Esperado (RAE) del curso practica, por ejemplo "RAE 4: implementar en C++".
 
 ## ¿Cómo voy?
-Una o dos cosas concretas que ya funcionan y de dos a cuatro recomendaciones sobre los elementos del código, empezando por cualquier error real: nombres de variables, tipos de datos, condicionales y ciclos, funciones, constantes, indentación, comentarios, mensajes de salida o código repetido. En cada una indica la línea y por qué mejora el programa. Puedes mostrar un ejemplo corto (una o dos líneas) de una buena práctica general, por ejemplo cómo se ve un nombre de variable descriptivo, pero nunca la corrección del ejercicio.
+Una o dos cosas concretas que ya funcionan y de dos a cuatro recomendaciones sobre los elementos del código, empezando por cualquier error real: nombres de variables, tipos de datos, condicionales y ciclos, funciones, constantes, indentación, comentarios, mensajes de salida o código repetido. En cada una indica la línea y por qué mejora el programa. Puedes mostrar un ejemplo corto (una o dos líneas) de una buena práctica general, por ejemplo cómo se ve un nombre de variable descriptivo, pero nunca la corrección del ejercicio. Termina con "**Calidad del código**": legibilidad, mantenibilidad y documentación, una frase de cada una.
 
 ## ¿Qué sigue?
 El siguiente paso concreto y un tip para depurar o seguir practicando (por ejemplo, imprimir el valor de una variable dentro del ciclo para ver qué pasa).
@@ -249,6 +250,7 @@ const (
 	maxToolOutputChars = 3000 // salida del compilador / del programa
 	maxStdinChars = 1000
 	maxStatementChars = 3000 // enunciado del taller
+	maxStudentRubricChars = 500
 	reservedTokens = 1100 // espacio para la respuesta
 	thinkTokens = 6000 // espacio extra para el razonamiento (modelos que razonan)
 	maxThinkContext = 16384 // contexto máximo al que se amplía automáticamente si el modelo razona
@@ -292,7 +294,7 @@ func writeBlock(b *strings.Builder, title, lang, content string) {
 
 // BuildMessages constructs the chat messages for a feedback request.
 // statement es el enunciado del taller (vacío si el estudiante no eligió uno).
-func (o *OllamaClient) BuildMessages(req model.FeedbackRequest, statement string) []chatMessage {
+func (o *OllamaClient) BuildMessages(req model.FeedbackRequest, statement, rubric string, style []string) []chatMessage {
 	prompt, ask := systemPromptFormal, "Dame retroalimentación formativa sobre mi código.\n\n"
 	if req.Mode == ModeInformal {
 		prompt, ask = systemPromptInformal, "Dame consejos prácticos sobre mi código.\n\n"
@@ -303,10 +305,14 @@ func (o *OllamaClient) BuildMessages(req model.FeedbackRequest, statement string
 	if statement = strings.TrimSpace(statement); statement != "" {
 		writeBlock(&b, "Enunciado del taller (escrito por mi profesor):", "", truncate(statement, maxStatementChars))
 	}
+	if rubric = strings.TrimSpace(rubric); rubric != "" {
+		writeBlock(&b, "Criterios de evaluación de mi profesor (orientan la retroalimentación; no me pongas nota):", "", truncate(rubric, maxStudentRubricChars))
+	}
 	writeBlock(&b, "Mi código (con números de línea):", "cpp", numberLines(req.Code))
 	if req.Compiled {
 		writeTests(&b, req.Tests)
 	}
+	writeStyle(&b, style)
 
 	switch {
 	case !req.Compiled:
@@ -355,8 +361,15 @@ func estimateTokens(messages []chatMessage) int {
 
 // StreamFeedback sends student code to Ollama and streams the response token by token.
 // The onToken callback is called for each chunk of text as it arrives.
-func (o *OllamaClient) StreamFeedback(ctx context.Context, fb model.FeedbackRequest, statement string, onToken func(token string), onReplace func(text string)) (bool, error) {
-	messages := o.BuildMessages(fb, statement)
+func (o *OllamaClient) StreamFeedback(ctx context.Context, fb model.FeedbackRequest, statement, rubric string, onToken func(token string), onReplace func(text string)) (Checks, error) {
+	quality := AnalyzeQuality(fb.Code)
+	messages := o.BuildMessages(fb, statement, rubric, quality.Problems())
+	if !o.fits(messages) {
+		messages = o.BuildMessages(fb, statement, "", quality.Problems())
+	}
+	if !o.fits(messages) {
+		messages = o.BuildMessages(fb, statement, "", nil)
+	}
 	slog.Info("sending streaming feedback request to Ollama",
 		"model", o.cfg.OllamaModel,
 		"mode", fb.Mode,
@@ -372,14 +385,14 @@ func (o *OllamaClient) StreamFeedback(ctx context.Context, fb model.FeedbackRequ
 		slog.Info("filtro anti-solución: código omitido", "fragmentos", n, "mode", fb.Mode)
 	}
 	if err != nil {
-		return false, err
+		return Checks{}, err
 	}
-	fixed, ok := EnsureSections(tracker.Text(), FallbackSections(OutcomeOf(fb, statement)))
-	if !ok {
-		slog.Info("secciones de Hattie y Timperley completadas", "mode", fb.Mode, "faltaban", MissingSections(tracker.Text()))
+	fixed, checks := Finalize(tracker.Text(), OutcomeOf(fb, statement), quality)
+	if !checks.SectionsOK || !checks.QualityOK {
+		slog.Info("retroalimentación completada", "mode", fb.Mode, "faltaban_secciones", MissingSections(tracker.Text()), "calidad_completa", checks.QualityOK)
 		onReplace(fixed)
 	}
-	return ok, nil
+	return checks, nil
 }
 
 // outputTokens es lo que se reserva para la salida del modelo: la respuesta y, si el
@@ -398,6 +411,10 @@ func (o *OllamaClient) contextLimit() int {
 		return maxThinkContext
 	}
 	return o.cfg.OllamaContextSize
+}
+
+func (o *OllamaClient) fits(messages []chatMessage) bool {
+	return estimateTokens(messages)+o.outputTokens() <= o.contextLimit()
 }
 
 func (o *OllamaClient) newChatRequest(messages []chatMessage, stream bool, temperature float64) (chatRequest, error) {

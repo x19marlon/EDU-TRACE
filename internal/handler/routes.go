@@ -69,6 +69,11 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("POST /api/teacher/groups/{id}/ai-queue/retry", teacher(classes.RetryDrafts))
 	mux.Handle("PUT /api/teacher/courses/{id}/thresholds", teacher(classes.SetThresholds))
 	mux.Handle("GET /api/teacher/ai-status", teacher(drafts.Status))
+	mux.Handle("GET /api/teacher/groups/{id}/errors", teacher(classes.FrequentErrors))
+	mux.Handle("GET /api/teacher/groups/{id}/export/notas.csv", teacher(classes.ExportGrades))
+	mux.Handle("GET /api/teacher/groups/{id}/export/revisiones.csv", teacher(classes.ExportReviews))
+	mux.Handle("GET /api/teacher/questions", teacher(classes.OpenQuestions))
+	mux.Handle("POST /api/teacher/questions/{id}/answer", teacher(classes.AnswerQuestion))
 	mux.Handle("POST /api/teacher/submissions/{id}/tests", auth.RequireRole(store, auth.RoleTeacher, compileFlight.Wrap(http.HandlerFunc(classes.RerunTests))))
 	reviews := NewReviewsHandler(store, ollama)
 	mux.Handle("GET /api/teacher/submissions/{id}/review", teacher(reviews.Get))
@@ -93,6 +98,7 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("POST /api/monitor/submissions/{id}/annotations", monitor(annotations.Create))
 	mux.Handle("DELETE /api/monitor/annotations/{id}", monitor(annotations.Delete))
 	mux.Handle("POST /api/monitor/submissions/{id}/annotations/send", monitor(annotations.Send))
+	mux.Handle("POST /api/monitor/questions/{id}/answer", monitor(classes.AnswerQuestion))
 
 	//  adjuntos de talleres
 	mux.Handle("GET /api/assignments/{id}/files/{file}", auth.RequireAuth(store, http.HandlerFunc(classes.AssignmentFile)))
@@ -105,6 +111,8 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("GET /api/student/history", student(http.HandlerFunc(classes.MyHistory)))
 	mux.Handle("GET /api/student/assignments", student(http.HandlerFunc(classes.MyAssignments)))
 	mux.Handle("POST /api/student/submissions", student(compileFlight.Wrap(http.HandlerFunc(classes.Submit))))
+	mux.Handle("POST /api/student/submissions/{id}/questions", student(http.HandlerFunc(classes.AskQuestion)))
+	mux.Handle("POST /api/student/ratings", student(http.HandlerFunc(classes.RateFeedback)))
 
 	// Endpoint de compilacion
 	mux.Handle("POST /api/compile", auth.RequireAuth(store, compileFlight.Wrap(NewCompileHandler(comp, store))))
@@ -133,6 +141,7 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 
 	// Middleware
 	var handler http.Handler = mux
+	handler = compressMiddleware(handler)
 	handler = corsMiddleware(handler, cfg.AllowedOrigins)
 	handler = loggingMiddleware(handler)
 
@@ -160,6 +169,7 @@ func corsMiddleware(next http.Handler, allowedOrigins string) http.Handler {
 		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Expose-Headers", "Content-Disposition")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 
 		if r.Method == http.MethodOptions {

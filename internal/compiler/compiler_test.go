@@ -3,6 +3,7 @@ package compiler
 import (
 	"context"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -72,5 +73,31 @@ int main() {
 	broken := c.CompileAndTest(context.Background(), "int main() { return x; }", "", tests[:2])
 	if broken.Success || len(broken.Tests) != 2 || broken.Tests[0].Passed || broken.Tests[0].Error == "" {
 		t.Fatalf("si no compila, los casos deben fallar: %+v", broken.Tests)
+	}
+}
+
+func TestNormalizeAndExplainErrors(t *testing.T) {
+	cases := []struct{ in, norm, explains string }{
+		{"‘suma’ was not declared in this scope", "'…' was not declared in this scope", "no está declarada"},
+		{"'cout' was not declared in this scope", "'cout' was not declared in this scope", "#include <iostream>"},
+		{"expected ‘;’ before ‘return’", "expected ';' before 'return'", "punto y coma"},
+		{"no match for ‘operator>>’ (operand types are ‘std::ostream’ and ‘int’)", "no match for 'operator>>' (operand types are '…' and 'int')", "cin >> x"},
+		{"expected ‘,’ or ‘;’ before ‘for’", "expected ',' or ';' before 'for'", "punto y coma"},
+		{"algo raro", "algo raro", ""},
+	}
+	for _, c := range cases {
+		got := NormalizeError(c.in)
+		if got != c.norm {
+			t.Errorf("NormalizeError(%q) = %q", c.in, got)
+		}
+		if exp := ExplainError(got); (c.explains == "") != (exp == "") || !strings.Contains(exp, c.explains) {
+			t.Errorf("ExplainError(%q) = %q", got, exp)
+		}
+	}
+	if msg, _ := DescribeRuntime("", 136); msg != "División entera por cero" {
+		t.Errorf("136: %q", msg)
+	}
+	if msg, _ := DescribeRuntime("se agotó el tiempo de ejecución", -1); !strings.Contains(msg, "tiempo") {
+		t.Errorf("tiempo: %q", msg)
 	}
 }

@@ -270,7 +270,7 @@ func main() {
 			}
 			var b strings.Builder
 			start := time.Now()
-			_, err := client.StreamFeedback(ctx, req, c.statement, func(t string) { b.WriteString(t) }, func(text string) {
+			_, err := client.StreamFeedback(ctx, req, c.statement, "", func(t string) { b.WriteString(t) }, func(text string) {
 				b.Reset()
 				b.WriteString(text)
 			})

@@ -589,6 +589,7 @@ type StudentSubmission struct {
 	MonitorAnnotations int `json:"monitor_annotations,omitempty"`
 	Review *StudentReview `json:"review,omitempty"` // solo si el profesor ya la devolvió
 	MonitorFeedback []MonitorFeedback `json:"monitor_feedback,omitempty"`
+	Questions []Question `json:"questions,omitempty"`
 }
 
 // StudentSubmissions lista las últimas entregas oficiales del estudiante, con la
@@ -606,7 +607,8 @@ func (s *Store) studentSubmissions(studentID, kind string, limit int) ([]Student
 	rows, err := s.db.Query(`SELECT `+metaCols+`, g.name, c.name, COALESCE(a.title, ''),
 			(SELECT COUNT(*) FROM code_annotations n JOIN users nu ON nu.id = n.author_id
 				WHERE n.submission_id = s.id AND nu.role = 'monitor' AND n.sent_at IS NOT NULL),
-			r.feedback, r.grade, r.returned_at, r.ai_at, COALESCE(r.feedback_origin, ''), COALESCE(rt.name, '')
+			r.feedback, r.grade, r.returned_at, r.ai_at, COALESCE(r.feedback_origin, ''), COALESCE(rt.name, ''),
+			COALESCE((SELECT fr.understood FROM feedback_ratings fr WHERE fr.submission_id = s.id AND fr.student_id = s.student_id), '')
 		FROM submissions s
 		JOIN class_groups g ON g.id = s.group_id
 		JOIN courses c ON c.id = g.course_id
@@ -624,15 +626,15 @@ func (s *Store) studentSubmissions(studentID, kind string, limit int) ([]Student
 		var ss StudentSubmission
 		var feedback, returnedAt, aiAt sql.NullString
 		var grade sql.NullFloat64
-		var origin, teacherName string
-		m, err := scanMeta(rows, &ss.GroupName, &ss.CourseName, &ss.AssignmentTitle, &ss.MonitorAnnotations, &feedback, &grade, &returnedAt, &aiAt, &origin, &teacherName)
+		var origin, teacherName, understood string
+		m, err := scanMeta(rows, &ss.GroupName, &ss.CourseName, &ss.AssignmentTitle, &ss.MonitorAnnotations, &feedback, &grade, &returnedAt, &aiAt, &origin, &teacherName, &understood)
 		if err != nil {
 			return nil, err
 		}
 		ss.SubmissionMeta = m
 		if feedback.Valid {
 			ss.Review = &StudentReview{Feedback: feedback.String, Grade: floatPtr(grade),
-				ReturnedAt: timePtr(returnedAt), AIAssisted: aiAt.Valid, Origin: origin, TeacherName: teacherName}
+				ReturnedAt: timePtr(returnedAt), AIAssisted: aiAt.Valid, Origin: origin, TeacherName: teacherName, Understood: understood}
 		}
 		out = append(out, ss)
 	}
@@ -652,8 +654,13 @@ func (s *Store) studentSubmissions(studentID, kind string, limit int) ([]Student
 	if err != nil {
 		return nil, err
 	}
+	questions, err := s.questionsFor(ids)
+	if err != nil {
+		return nil, err
+	}
 	for i := range out {
 		out[i].MonitorFeedback = notes[out[i].ID]
+		out[i].Questions = questions[out[i].ID]
 		if out[i].Review != nil {
 			out[i].Review.RAEs = levels[out[i].ID]
 		}

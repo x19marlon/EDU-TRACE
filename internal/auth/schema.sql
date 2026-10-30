@@ -220,6 +220,33 @@ CREATE TABLE IF NOT EXISTS ai_requests (
   total_ms INTEGER NOT NULL,
   ok INTEGER NOT NULL,
   sections_ok INTEGER,
-  error TEXT NOT NULL DEFAULT ''
+  error TEXT NOT NULL DEFAULT '',
+  quality_ok INTEGER
 );
 CREATE INDEX IF NOT EXISTS ai_requests_group ON ai_requests(group_id, at);
+
+CREATE TABLE IF NOT EXISTS review_questions (
+  id TEXT PRIMARY KEY,
+  submission_id TEXT NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  answer TEXT NOT NULL DEFAULT '',
+  answered_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+  answered_by_name TEXT NOT NULL DEFAULT '',
+  answered_role TEXT NOT NULL DEFAULT '',
+  answered_at TEXT
+);
+CREATE INDEX IF NOT EXISTS review_questions_submission ON review_questions(submission_id, created_at);
+
+CREATE TABLE IF NOT EXISTS feedback_ratings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('retro_formal', 'retro_informal', 'revision')),
+  group_id TEXT REFERENCES class_groups(id) ON DELETE CASCADE,
+  submission_id TEXT REFERENCES submissions(id) ON DELETE CASCADE,
+  student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  understood TEXT NOT NULL CHECK (understood IN ('si', 'parcial', 'no')),
+  comment TEXT NOT NULL DEFAULT ''
+);
+CREATE UNIQUE INDEX IF NOT EXISTS feedback_ratings_submission ON feedback_ratings(submission_id, student_id) WHERE submission_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS feedback_ratings_group ON feedback_ratings(group_id);

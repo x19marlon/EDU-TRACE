@@ -18,6 +18,7 @@ type AIRequest struct {
 	TotalMs int64
 	OK bool
 	SectionsOK *bool
+	QualityOK *bool
 	Error string
 }
 
@@ -31,16 +32,19 @@ const (
 )
 
 func (s *Store) RecordAIRequest(r AIRequest) {
-	var first, sections any
+	var first, sections, quality any
 	if r.FirstMs > 0 {
 		first = r.FirstMs
 	}
 	if r.SectionsOK != nil {
 		sections = *r.SectionsOK
 	}
-	if _, err := s.db.Exec(`INSERT INTO ai_requests (at, kind, group_id, role, first_token_ms, total_ms, ok, sections_ok, error)
-		VALUES (?, ?, (SELECT id FROM class_groups WHERE id = ?), ?, ?, ?, ?, ?, ?)`,
-		fmtTime(time.Now()), r.Kind, r.GroupID, string(r.Role), first, r.TotalMs, r.OK, sections, r.Error); err != nil {
+	if r.QualityOK != nil {
+		quality = *r.QualityOK
+	}
+	if _, err := s.db.Exec(`INSERT INTO ai_requests (at, kind, group_id, role, first_token_ms, total_ms, ok, sections_ok, quality_ok, error)
+		VALUES (?, ?, (SELECT id FROM class_groups WHERE id = ?), ?, ?, ?, ?, ?, ?, ?)`,
+		fmtTime(time.Now()), r.Kind, r.GroupID, string(r.Role), first, r.TotalMs, r.OK, sections, quality, r.Error); err != nil {
 		slog.Error("registrar petición a la IA", "error", err)
 	}
 }
@@ -133,6 +137,8 @@ type InstantMetric struct {
 	Total Stat `json:"total"`
 	SectionsChecked int `json:"sections_checked"`
 	SectionsOK int `json:"sections_ok"`
+	QualityChecked int `json:"quality_checked"`
+	QualityOK int `json:"quality_ok"`
 	Chats int `json:"chats"`
 }
 
@@ -157,6 +163,7 @@ type GroupMetrics struct {
 	Batches []BatchMetric `json:"batches"`
 	Instant InstantMetric `json:"instant"`
 	Decisions Decisions `json:"decisions"`
+	Comprehension Comprehension `json:"comprehension"`
 }
 
 func (s *Store) GroupMetrics(teacherID, groupID string) (*GroupMetrics, error) {
@@ -181,6 +188,9 @@ func (s *Store) GroupMetrics(teacherID, groupID string) (*GroupMetrics, error) {
 	}
 	if err := s.instantMetrics(m, groupID); err != nil {
 		return nil, fmt.Errorf("métricas de la IA inmediata: %w", err)
+	}
+	if m.Comprehension, err = s.comprehension(groupID); err != nil {
+		return nil, fmt.Errorf("comprensión: %w", err)
 	}
 	return m, nil
 }
@@ -312,7 +322,7 @@ func (s *Store) queueMetrics(m *GroupMetrics, groupID string, now time.Time) err
 }
 
 func (s *Store) instantMetrics(m *GroupMetrics, groupID string) error {
-	rows, err := s.db.Query(`SELECT kind, first_token_ms, total_ms, ok, sections_ok FROM ai_requests
+	rows, err := s.db.Query(`SELECT kind, first_token_ms, total_ms, ok, sections_ok, quality_ok FROM ai_requests
 		WHERE group_id = ? AND kind IN (?, ?, ?)`, groupID, AIKindFormal, AIKindInformal, AIKindChat)
 	if err != nil {
 		return err
@@ -324,8 +334,8 @@ func (s *Store) instantMetrics(m *GroupMetrics, groupID string) error {
 		var first sql.NullInt64
 		var total int64
 		var ok bool
-		var sections sql.NullBool
-		if err := rows.Scan(&kind, &first, &total, &ok, &sections); err != nil {
+		var sections, quality sql.NullBool
+		if err := rows.Scan(&kind, &first, &total, &ok, &sections, &quality); err != nil {
 			return err
 		}
 		if kind == AIKindChat {
@@ -345,6 +355,12 @@ func (s *Store) instantMetrics(m *GroupMetrics, groupID string) error {
 			m.Instant.SectionsChecked++
 			if sections.Bool {
 				m.Instant.SectionsOK++
+			}
+		}
+		if quality.Valid {
+			m.Instant.QualityChecked++
+			if quality.Bool {
+				m.Instant.QualityOK++
 			}
 		}
 	}

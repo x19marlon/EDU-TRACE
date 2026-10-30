@@ -7,7 +7,47 @@ import AppShell from "@/components/AppShell";
 import { Avatar, Card, InlineCreate, RenameForm, SmallButton } from "@/components/ui";
 import RaeEditor from "@/components/RaeEditor";
 import { useAuth } from "@/components/AuthProvider";
-import { AIStatus, createCourse, createGroup, CourseSummary, deleteCourse, getAIStatus, listCourses, renameCourse } from "@/lib/api";
+import {
+  AIStatus,
+  createCourse,
+  createGroup,
+  CourseSummary,
+  deleteCourse,
+  getAIStatus,
+  listCourses,
+  listOpenQuestions,
+  OpenQuestion,
+  renameCourse,
+} from "@/lib/api";
+import { relativeTime } from "@/lib/format";
+
+function QuestionsInbox() {
+  const [questions, setQuestions] = useState<OpenQuestion[]>([]);
+  useEffect(() => {
+    listOpenQuestions()
+      .then(setQuestions)
+      .catch(() => setQuestions([]));
+  }, []);
+  if (questions.length === 0) return null;
+  return (
+    <Card title={`Preguntas de tus estudiantes (${questions.length})`} className="rise-in" surface="bg-amber-50">
+      <ul className="space-y-2">
+        {questions.slice(0, 8).map((q) => (
+          <li key={q.id}>
+            <Link href={`/docente/clases/${q.group_id}`} className="block rounded-2xl bg-white px-3 py-2 transition hover:bg-lavender-50">
+              <span className="block text-xs font-bold text-ink-soft">
+                {q.student_name} · {q.group_name}
+                {q.assignment_title ? ` · ${q.assignment_title}` : ""} · {relativeTime(q.created_at).toLowerCase()}
+              </span>
+              <span className="block truncate text-sm">{q.body}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-xs text-ink-faint">Respóndelas desde la entrega del estudiante, debajo del código.</p>
+    </Card>
+  );
+}
 
 function AIAlert() {
   const [status, setStatus] = useState<AIStatus | null>(null);
@@ -188,6 +228,7 @@ function CoursesDashboard() {
         </div>
 
         <div className="space-y-5">
+          <QuestionsInbox />
           <Card title="Nueva materia" className="rise-in" surface="bg-mint-50">
             <InlineCreate
               placeholder="Nombre (p. ej. Programación I)"

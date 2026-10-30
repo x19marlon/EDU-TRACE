@@ -80,6 +80,7 @@ type StudentReview struct {
 	RAEs []StudentRAE `json:"raes,omitempty"`
 	Origin string `json:"origin,omitempty"`
 	TeacherName string `json:"teacher_name,omitempty"`
+	Understood string `json:"understood,omitempty"`
 }
 
 // ownedOfficial comprueba que la entrega existe, es oficial y es de una clase del profesor.

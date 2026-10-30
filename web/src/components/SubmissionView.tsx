@@ -13,6 +13,7 @@ import {
   SubmissionMeta,
 } from "@/lib/api";
 import TestResults, { TestsPill } from "@/components/TestResults";
+import { StaffQuestions } from "@/components/FeedbackQuestions";
 import { Spinner } from "@/components/ui";
 import { useAuth } from "@/components/AuthProvider";
 import { MonitorFeedbackForm, MonitorNotes } from "@/components/MonitorFeedback";
@@ -47,6 +48,11 @@ export function ReviewPill({ meta }: { meta: SubmissionMeta }) {
   const r = meta.review_state;
   const extras = (
     <>
+      {(meta.open_questions ?? 0) > 0 && (
+        <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">
+          {meta.open_questions === 1 ? "1 pregunta" : `${meta.open_questions} preguntas`}
+        </span>
+      )}
       <TestsPill meta={meta} />
       {r?.status !== "returned" && <AIJobPill status={meta.ai_job} />}
     </>
@@ -272,6 +278,15 @@ export function SubmissionDetail({
             }}
           />
         </div>
+      )}
+
+      {sub.kind !== "attempt" && (
+        <StaffQuestions
+          key={sub.id}
+          role={mode}
+          initial={sub.questions ?? []}
+          onChanged={mode === "teacher" ? onReviewSaved : onNotesChanged}
+        />
       )}
 
       {/* Revisión del profesor: solo para entregas oficiales */}
