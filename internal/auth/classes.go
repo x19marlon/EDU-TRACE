@@ -54,6 +54,9 @@ type SubmissionMeta struct {
 	HasAIFeedback bool `json:"has_ai_feedback"`
 	ErrorSummary string `json:"error_summary,omitempty"`
 	CodeHash string `json:"code_hash,omitempty"`
+	DueAt *time.Time `json:"due_at,omitempty"`
+	LateSeconds int64 `json:"late_seconds,omitempty"`
+	LatePenalty *float64 `json:"late_penalty,omitempty"`
 }
 
 func (m *SubmissionMeta) IsAttempt() bool { return m.Kind == KindAttempt }
@@ -70,19 +73,27 @@ type Submission struct {
 
 const (
 	metaCols = `s.id, s.kind, s.group_id, COALESCE(s.assignment_id, ''), s.student_id, s.created_at,
-		s.success, s.run_error, s.exit_code, s.lines, s.has_ai_feedback, s.error_summary, s.code_hash`
+		s.success, s.run_error, s.exit_code, s.lines, s.has_ai_feedback, s.error_summary, s.code_hash,
+		(SELECT da.due_at FROM assignments da WHERE da.id = s.assignment_id),
+		(SELECT da.late_penalty FROM assignments da WHERE da.id = s.assignment_id)`
 	contentCols = `s.code, s.stdin, s.compiler_output, s.program_output, s.ai_feedback, s.ai_feedback_informal`
 )
 
 func scanMeta(sc scanner, extra ...any) (SubmissionMeta, error) {
 	var m SubmissionMeta
 	var created string
+	var due sql.NullString
+	var penalty sql.NullFloat64
 	dest := append([]any{&m.ID, &m.Kind, &m.GroupID, &m.AssignmentID, &m.StudentID, &created,
-		&m.Success, &m.RunError, &m.ExitCode, &m.Lines, &m.HasAIFeedback, &m.ErrorSummary, &m.CodeHash}, extra...)
+		&m.Success, &m.RunError, &m.ExitCode, &m.Lines, &m.HasAIFeedback, &m.ErrorSummary, &m.CodeHash, &due, &penalty}, extra...)
 	if err := sc.Scan(dest...); err != nil {
 		return m, err
 	}
 	m.CreatedAt = parseTime(created)
+	if m.DueAt = timePtr(due); m.DueAt != nil && m.CreatedAt.After(*m.DueAt) {
+		m.LateSeconds = int64(m.CreatedAt.Sub(*m.DueAt) / time.Second)
+		m.LatePenalty = floatPtr(penalty)
+	}
 	return m, nil
 }
 
@@ -509,6 +520,11 @@ func (s *Store) AddSubmission(sub *Submission) error {
 	}
 	if !ok {
 		return ErrNotEnrolled
+	}
+	if !sub.IsAttempt() && sub.AssignmentID != "" {
+		if err := checkDeadline(tx, sub.AssignmentID, sub.GroupID, sub.CreatedAt); err != nil {
+			return err
+		}
 	}
 	if sub.IsAttempt() {
 		var last string

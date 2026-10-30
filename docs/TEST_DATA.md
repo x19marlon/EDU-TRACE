@@ -54,9 +54,11 @@ En *Intro a la Programación - Grupo A* hay tres talleres. Las notas van de 0.0 
 |---|---|---|---|
 | Ana Rodríguez | Taller 1: promedio de notas | `Promedio: 4.17` | **4.5**, devuelta |
 | Ana Rodríguez | Taller 2: suma con ciclos | `Suma: 10` (esperado 15) | **3.2**, devuelta |
-| Ana Rodríguez | Taller 3: el mayor de tres | `Mayor: 12` | En revisión (borrador con 4.0, no devuelta) |
+| Ana Rodríguez | Taller 3: el mayor de tres | `Mayor: 12` | En revisión (borrador con 4.0, no devuelta); **tardía** ~27 h |
 | Luis Martínez | Taller 2: suma con ciclos | `Suma: 15` | **5.0**, devuelta |
 | Carlos Pérez | Taller 1: promedio de notas | `Promedio: 4` (división entera) | **2.8**, devuelta |
+
+Fechas límite (relativas al momento de cargar los datos): el Taller 1 vence en 5 días; el Taller 2 vence en 20 horas y no acepta entregas tardías; el Taller 3 venció 27 horas antes y acepta tardías con una penalización sugerida de 0.5 por día iniciado (la entrega de Ana queda tardía, 2 días iniciados → −1.0 sugerido).
 
 Ana también tiene dos intentos de compilación en el Taller 2 (uno sin compilar por un `;` faltante), visibles en su proceso desde la vista del profesor.
 
@@ -65,15 +67,15 @@ Ana también tiene dos intentos de compilación en el Taller 2 (uno sin compilar
 
 ## RAE y niveles de logro
 
-*Introducción a la Programación 2026-1* tiene tres Resultados de Aprendizaje Esperados (RAE 1: algoritmos, RAE 2: implementación en C++, RAE 3: pruebas y depuración). Cada revisión marca el nivel de logro (bajo, medio o alto) de cada RAE; el diagrama de dispersión de la clase cruza la nota promedio (0 a 5) con ese nivel:
+*Introducción a la Programación 2026-1* usa los cuatro RAE oficiales del programa del curso 33698 (RAE 1: caracterizar el problema; RAE 2: diseñar con construcciones básicas; RAE 3: organizar los datos con colecciones; RAE 4: implementar en C++). Cada revisión marca el nivel de logro (bajo, medio o alto) de los RAE que el taller trabaja; el RAE 3 queda sin marcar porque estos talleres no usan colecciones. El diagrama de dispersión de la clase cruza la nota promedio (0 a 5) con ese nivel:
 
-| Alumno | Nota promedio | RAE 1 | RAE 2 | RAE 3 |
-|---|---|---|---|---|
-| Ana Rodríguez | 3.85 | medio | alto | medio |
-| Luis Martínez | 5.0 | alto | alto | alto |
-| Carlos Pérez | 2.8 | medio | bajo | bajo |
+| Alumno | Nota promedio | RAE 1 | RAE 2 | RAE 3 | RAE 4 |
+|---|---|---|---|---|---|
+| Ana Rodríguez | 3.85 | medio | alto | — | medio |
+| Luis Martínez | 5.0 | alto | alto | — | alto |
+| Carlos Pérez | 2.8 | medio | medio | — | bajo |
 
-Solo cuentan las revisiones devueltas (el Taller 3 de Ana está en borrador). Si la base ya tenía los datos de prueba de antes, carga solo los RAE y los niveles con:
+Solo cuentan las revisiones devueltas (el Taller 3 de Ana está en borrador). Si la base ya tenía los datos de prueba de antes, este script carga los RAE oficiales (o actualiza el texto de los que ya existen) y los niveles:
 
 ```bash
 python3 scripts/seed_rae_levels.py

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import Logo from "@/components/Logo";
-import { login, register, Role } from "@/lib/api";
+import { login, recoverAccount, register, Role, SessionUser } from "@/lib/api";
+import RecoveryCodeDialog from "@/components/RecoveryCodeDialog";
 import { homeFor, isRole, loadRole, ROLE_LABELS, saveRole } from "@/lib/role";
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = (["student", "teacher", "monitor"] as const).map((value) => ({
@@ -56,7 +57,10 @@ export default function LoginPage() {
   const { user, isLoading, setUser } = useAuth();
   const router = useRouter();
 
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "recover">("login");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [pending, setPending] = useState<{ user: SessionUser; code: string; title: string } | null>(null);
   const [role, setRole] = useState<Role>("student");
 
   const [name, setName] = useState("");
@@ -92,6 +96,15 @@ export default function LoginPage() {
     setSubmitting(true);
     setError(null);
     try {
+      if (mode === "recover") {
+        if (password !== confirm) {
+          setError("Las dos contraseñas no coinciden");
+          return;
+        }
+        const u = await recoverAccount(email, recoveryCode, password);
+        setPending({ user: u, code: u.recovery_code ?? "", title: "Listo: este es tu nuevo código de recuperación" });
+        return;
+      }
       const u =
         mode === "login"
           ? await login(email, password, role)
@@ -102,7 +115,8 @@ export default function LoginPage() {
               role,
               ...(role === "teacher" && { teacher_code: teacherCode }),
             });
-      setUser(u);
+      if (u.recovery_code) setPending({ user: u, code: u.recovery_code, title: "Guarda tu código de recuperación" });
+      else setUser(u);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error de conexión con el servidor");
     } finally {
@@ -156,13 +170,21 @@ export default function LoginPage() {
           </div>
 
           <div className="rise-in">
-            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ink-faint">Entrar como</p>
-            <RoleTabs role={role} onChange={chooseRole} />
-            <div className="mb-7" />
+            {mode !== "recover" && (
+              <>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ink-faint">Entrar como</p>
+                <RoleTabs role={role} onChange={chooseRole} />
+                <div className="mb-7" />
+              </>
+            )}
             <h2 className="text-2xl font-extrabold tracking-tight">
-              {mode === "login" ? "¡Hola de nuevo!" : "Crea tu cuenta"}
+              {mode === "login" ? "¡Hola de nuevo!" : mode === "register" ? "Crea tu cuenta" : "Recupera tu cuenta"}
             </h2>
-            <p className="mt-1 mb-6 text-sm text-ink-soft">{SUBTITLES[mode][role]}</p>
+            <p className="mt-1 mb-6 text-sm text-ink-soft">
+              {mode === "recover"
+                ? "Escribe tu email, el código de recuperación que guardaste y una contraseña nueva."
+                : SUBTITLES[mode][role]}
+            </p>
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
               {mode === "register" && (
@@ -187,17 +209,65 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className={inputClass}
               />
+              {mode === "recover" && (
+                <input
+                  type="text"
+                  required
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="Código de recuperación (XXXX-XXXX-XXXX)"
+                  value={recoveryCode}
+                  onChange={(e) => setRecoveryCode(e.target.value.toUpperCase())}
+                  className={`${inputClass} font-mono tracking-wider`}
+                />
+              )}
               <input
                 type="password"
                 required
-                minLength={mode === "register" ? 8 : undefined}
+                minLength={mode === "login" ? undefined : 8}
                 maxLength={128}
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
-                placeholder={mode === "register" ? "Contraseña (mín. 8 caracteres)" : "Contraseña"}
+                placeholder={
+                  mode === "register" ? "Contraseña (mín. 8 caracteres)" : mode === "recover" ? "Nueva contraseña (mín. 8 caracteres)" : "Contraseña"
+                }
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={inputClass}
               />
+              {mode === "recover" && (
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  maxLength={128}
+                  autoComplete="new-password"
+                  placeholder="Repite la nueva contraseña"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  className={inputClass}
+                />
+              )}
+              {mode === "login" && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("recover");
+                      setPassword("");
+                      setError(null);
+                    }}
+                    className="text-xs font-bold text-lavender-600 hover:text-lavender-700"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+              )}
+              {mode === "recover" && (
+                <p className="text-xs text-ink-faint">
+                  El código se te mostró al crear la cuenta (también puedes generar uno nuevo desde «Mi cuenta» cuando entres). Si nunca
+                  guardaste uno, pide ayuda al administrador de EduTrace.
+                </p>
+              )}
               {mode === "register" && role === "teacher" && (
                 <input
                   type="password"
@@ -228,12 +298,12 @@ export default function LoginPage() {
                 className="w-full rounded-full bg-lavender-600 py-3 font-bold text-white shadow-soft transition
                   hover:bg-lavender-700 hover:shadow-lift active:scale-[0.99] disabled:opacity-50"
               >
-                {submitting ? "Un momento..." : mode === "login" ? "Entrar" : "Registrarme"}
+                {submitting ? "Un momento..." : mode === "login" ? "Entrar" : mode === "register" ? "Registrarme" : "Cambiar contraseña y entrar"}
               </button>
             </form>
 
             <p className="text-center text-sm text-ink-soft mt-6">
-              {mode === "login" ? "¿No tienes cuenta? " : "¿Ya tienes cuenta? "}
+              {mode === "login" ? "¿No tienes cuenta? " : mode === "register" ? "¿Ya tienes cuenta? " : "¿La recordaste? "}
               <button
                 type="button"
                 onClick={() => {
@@ -248,6 +318,18 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+      {pending && (
+        <RecoveryCodeDialog
+          code={pending.code}
+          email={pending.user.email}
+          title={pending.title}
+          onDone={() => {
+            const u = pending.user;
+            setPending(null);
+            setUser(u);
+          }}
+        />
+      )}
     </div>
   );
 }

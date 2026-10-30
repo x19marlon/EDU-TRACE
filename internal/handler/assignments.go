@@ -5,10 +5,12 @@ import (
 	"github.com/marlon/edu-trace/internal/auth"
 	"github.com/marlon/edu-trace/internal/model"
 	"log/slog"
+	"math"
 	"mime"
 	"mime/multipart"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -31,6 +33,7 @@ type assignmentForm struct {
 	statement string
 	rubric string
 	dueAt *time.Time
+	policy auth.LatePolicy
 	files []*multipart.FileHeader
 }
 
@@ -72,6 +75,23 @@ func parseAssignmentForm(w http.ResponseWriter, r *http.Request) (*assignmentFor
 		}
 		t = t.UTC()
 		f.dueAt = &t
+	}
+	f.policy.AllowLate = r.FormValue("allow_late") != "false"
+	if v := strings.TrimSpace(r.FormValue("late_until")); v != "" {
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			return fail(http.StatusBadRequest, "fecha de cierre de entregas tardías inválida")
+		}
+		t = t.UTC()
+		f.policy.LateUntil = &t
+	}
+	if v := strings.TrimSpace(strings.Replace(r.FormValue("late_penalty"), ",", ".", 1)); v != "" {
+		p, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return fail(http.StatusBadRequest, "penalización por día inválida")
+		}
+		p = math.Round(p*10) / 10
+		f.policy.LatePenalty = &p
 	}
 	if len(f.files) > maxAssignmentFiles {
 		return fail(http.StatusBadRequest, "máximo 10 archivos por taller")
@@ -118,7 +138,11 @@ func (h *ClassesHandler) CreateAssignment(w http.ResponseWriter, r *http.Request
 	defer closeAll()
 
 	user := auth.UserFrom(r.Context())
-	a, err := h.store.CreateAssignment(user.ID, r.PathValue("id"), form.title, form.statement, form.rubric, form.dueAt, uploads)
+	a, err := h.store.CreateAssignment(user.ID, r.PathValue("id"), form.title, form.statement, form.rubric, form.dueAt, form.policy, uploads)
+	if errors.Is(err, auth.ErrInvalidDeadline) {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: err.Error()})
+		return
+	}
 	if err != nil {
 		writeStoreErr(w, err, "crear el taller")
 		return
@@ -141,8 +165,8 @@ func (h *ClassesHandler) UpdateAssignment(w http.ResponseWriter, r *http.Request
 
 	user := auth.UserFrom(r.Context())
 	a, err := h.store.UpdateAssignment(user.ID, r.PathValue("id"), form.title, form.statement, form.rubric, form.dueAt,
-		r.MultipartForm.Value["remove_files"], uploads)
-	if errors.Is(err, auth.ErrTooManyFiles) {
+		form.policy, r.MultipartForm.Value["remove_files"], uploads)
+	if errors.Is(err, auth.ErrTooManyFiles) || errors.Is(err, auth.ErrInvalidDeadline) {
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: err.Error()})
 		return
 	}

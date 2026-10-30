@@ -81,8 +81,14 @@ login_cookie() {
 }
 
 create_assignment() {
+  local extra=()
+  for kv in "${@:5}"; do extra+=(--form-string "$kv"); done
   curl -s -b "edutrace_session=$PROF_COOKIE" "$API/api/teacher/groups/$1/assignments" \
-    --form-string "title=$2" --form-string "statement=$3" --form-string "rubric=$4" | field id
+    --form-string "title=$2" --form-string "statement=$3" --form-string "rubric=$4" "${extra[@]}" | field id
+}
+
+iso_utc() {
+  date -u -d "$1" +%Y-%m-%dT%H:%M:%SZ
 }
 
 attempt() {
@@ -104,16 +110,19 @@ echo "=== 5. Publicando talleres en Intro a la Programación - Grupo A ==="
 T1=$(create_assignment "$GROUP1_ID" "Taller 1: promedio de notas" \
   "Lee tres notas (de 0.0 a 5.0) y muestra su promedio con dos decimales.
 Ejemplo: entrada 4.5 3.0 5.0 -> salida Promedio: 4.17" \
-  "Compila (1.0) · Lee bien la entrada (1.0) · Promedio correcto (2.0) · Legibilidad (1.0)")
+  "Compila (1.0) · Lee bien la entrada (1.0) · Promedio correcto (2.0) · Legibilidad (1.0)" \
+  "due_at=$(iso_utc '+5 days')" "allow_late=true")
 T2=$(create_assignment "$GROUP1_ID" "Taller 2: suma con ciclos" \
   "Lee un entero n y muestra la suma de 1 hasta n usando un ciclo.
 Ejemplo: entrada 5 -> salida Suma: 15" \
-  "Compila (1.0) · Usa un ciclo (1.0) · Resultado correcto (2.0) · Legibilidad (1.0)")
+  "Compila (1.0) · Usa un ciclo (1.0) · Resultado correcto (2.0) · Legibilidad (1.0)" \
+  "due_at=$(iso_utc '+20 hours')" "allow_late=false")
 T3=$(create_assignment "$GROUP1_ID" "Taller 3: el mayor de tres" \
   "Lee tres enteros y muestra el mayor usando condicionales.
 Ejemplo: entrada 7 12 3 -> salida Mayor: 12" \
-  "Compila (1.0) · Usa condicionales (1.0) · Resultado correcto (2.0) · Legibilidad (1.0)")
-echo "  ✓ 3 talleres publicados"
+  "Compila (1.0) · Usa condicionales (1.0) · Resultado correcto (2.0) · Legibilidad (1.0)" \
+  "due_at=$(iso_utc '-27 hours')" "allow_late=true" "late_penalty=0.5")
+echo "  ✓ 3 talleres: el 1 vence en 5 días, el 2 en 20 h (sin tardías) y el 3 venció hace 27 h (tardías con −0.5 por día)"
 
 ANA_COOKIE=$(login_cookie "ana.rodriguez@est.edu.co" "Alumno2026!")
 CARLOS_COOKIE=$(login_cookie "carlos.perez@est.edu.co" "Alumno2026!")
@@ -259,8 +268,8 @@ echo "      sofia.lopez@est.edu.co"
 echo "      diego.ramirez@est.edu.co"
 echo ""
 echo "  NOTAS (escala 0.0 a 5.0):"
-echo "    ana.rodriguez@est.edu.co: Taller 1 = 4.5, Taller 2 = 3.2, Taller 3 en revisión"
+echo "    ana.rodriguez@est.edu.co: Taller 1 = 4.5, Taller 2 = 3.2, Taller 3 en revisión (entregado tarde)"
 echo "    luis.martinez@est.edu.co: Taller 2 = 5.0"
 echo "    carlos.perez@est.edu.co:  Taller 1 = 2.8"
-echo "  RAE: 3 en Introducción a la Programación, con niveles en cada revisión"
+echo "  RAE: los 4 oficiales del curso 33698 en Introducción a la Programación, con niveles en cada revisión"
 echo ""

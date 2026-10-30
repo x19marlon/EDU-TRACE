@@ -16,6 +16,7 @@ import { MonitorFeedbackForm, MonitorNotes } from "@/components/MonitorFeedback"
 import { formatDateTime, formatFeedback } from "@/lib/format";
 import ReviewPanel from "@/components/ReviewPanel"
 import AnnotatedCode from "@/components/AnnotatedCode";
+import { LatePill } from "@/components/Deadline";
 
 /** Estado de compilación/ejecución de un envío o intento. */
 export function StatusPill({ meta }: { meta: SubmissionMeta }) {
@@ -129,6 +130,7 @@ export function SubmissionDetail({
         <span className="text-xs text-ink-soft">{formatDateTime(sub.created_at)}</span>
         <KindPill meta={sub} />
         <StatusPill meta={sub} />
+        <LatePill meta={sub} />
         <span className="rounded-full bg-lavender-50 px-2.5 py-0.5 text-[11px] font-bold text-lavender-700">
           {assignmentTitle ?? "Práctica libre"}
         </span>
@@ -201,7 +203,7 @@ export function SubmissionDetail({
       )}
 
       {/* Revisión del profesor: solo para entregas oficiales */}
-      {sub.kind !== "attempt" && mode === "teacher" && <ReviewPanel submissionId={sub.id} onSaved={onReviewSaved} />}
+      {sub.kind !== "attempt" && mode === "teacher" && <ReviewPanel submissionId={sub.id} onSaved={onReviewSaved} meta={sub} />}
     </div>
   );
 }

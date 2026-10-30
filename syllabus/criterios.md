@@ -1,107 +1,32 @@
-# Criterios de Retroalimentación — Introducción a la Programación (C++)
+# Introducción a la Programación (33698) · Pontificia Universidad Javeriana
 
-## Objetivo
+Curso para estudiantes sin experiencia previa: resolver problemas con el computador, pensar algorítmicamente e implementar las soluciones en C++. La retroalimentación al estudiante es formativa: no califica.
 
-Estos criterios guían la retroalimentación pedagógica que se ofrece a estudiantes
-de Introducción a la Programación. **No es una calificación**, es un apoyo para que el estudiante mejore su código con orientación constructiva y completamente objetiva.
+## Resultados de Aprendizaje Esperados (RAE: lo que el estudiante debe lograr en el curso)
+- RAE 1 · Caracterizar el problema: identifica los objetivos, los datos relevantes y su origen, el destino y formato de los resultados, y las condiciones y restricciones (Proyecto 1).
+- RAE 2 · Diseñar con construcciones básicas: expresa cómo usar condicionales y ciclos (Parcial 1) y funciones con parámetros y retorno (Parcial 2), con pensamiento computacional.
+- RAE 3 · Organizar los datos con colecciones: arreglos, matrices y estructuras (Parcial 3).
+- RAE 4 · Implementar en C++: usa condicionales, ciclos, funciones y colecciones para implementar el algoritmo diseñado y poder modificarlo (Talleres, Proyecto 2, Sustentación).
+Los talleres trabajan sobre todo el RAE 4 y, según el tema, el RAE 2 (control y funciones) o el RAE 3 (colecciones). Leer bien el enunciado es parte del RAE 1.
 
----
+## Escala de desempeño de la rúbrica
+Insatisfactorio [0–2) · Bajo el estándar [2–3) · Competente [3–3.75) · Ejemplar [3.75–4.25) · Ejemplar de alto nivel [4.25–5].
+En talleres (RAE 4): Insatisfactorio = no logra implementar; Bajo el estándar = implementa con errores; Competente = algoritmos básicos correctos; Ejemplar = correcto y con estilo adecuado; Alto nivel = eficiente, modular y documentado.
+Niveles de EduTrace por RAE: bajo = Insatisfactorio o Bajo el estándar; medio = Competente; alto = Ejemplar o Ejemplar de alto nivel.
 
-## 1. Estructura del programa
+## Temas en el orden del curso (semana)
+2 algoritmos y pseudocódigo, tipos, casting, variables, constantes, operadores, cin y cout, comentarios · 3 errores de sintaxis, lógicos y de ejecución, depuración · 4 condicionales (if, else, anidados, switch) y operadores lógicos · 5 ciclos (while, do-while, for), contadores, acumuladores, centinela · 6 ciclos anidados, mayor y menor · 7 funciones (prototipo, parámetros, retorno, paso por valor) · 8 arreglos, arreglos paralelos, arreglos como parámetros · 9 búsqueda y ordenamiento · 10–11 matrices y funciones con matrices · 12–13 estructuras (struct) y funciones · 14 archivos de texto (fstream).
+Fuera del curso: punteros, memoria dinámica, clases y POO, plantillas, STL avanzada, excepciones, lambdas.
 
-- ¿El programa tiene una estructura clara con `#include`, `using namespace std;` y `int main()`?
-- ¿Usa llaves `{}` de forma consistente?
-- ¿El `return 0;` está presente al final de `main()`?
+## Qué revisar en el código
+1. Estructura: #include, using namespace std, int main(), llaves y return 0.
+2. Variables: declaradas e inicializadas antes de usarse, tipo adecuado (int, double, char, string, bool), nombres descriptivos, const cuando aplique.
+3. Entrada y salida: cin y cout correctos, mensajes claros, lectura y formato según el enunciado.
+4. Control: condiciones y operadores correctos, switch cuando conviene, ciclos con salida clara y sin ciclos infinitos.
+5. Funciones: tareas separadas con parámetros y retorno, sin variables globales.
+6. Colecciones: índices dentro del rango y recorridos completos.
+7. Estilo: indentación consistente, comentarios útiles, sin código repetido.
+8. Robustez: valida la entrada, evita la división por cero y prueba casos borde.
 
-**Lo que se espera del estudiante:** Que comprenda la estructura básica de un programa en C++ y la aplique correctamente.
-
----
-
-## 2. Uso correcto de variables y tipos de datos
-
-- ¿Las variables están declaradas antes de usarse?
-- ¿Se usan los tipos apropiados (`int`, `float`, `double`, `char`, `string`, `bool`)?
-- ¿Los nombres de variables son descriptivos y siguen convenciones? (ej. `edad` en vez de `x`)
-- ¿Se inicializan las variables antes de usarlas?
-
-**Lo que se espera del estudiante:** Que sepa declarar, inicializar y usar variables con tipos adecuados.
-
----
-
-## 3. Entrada y salida de datos
-
-- ¿Se usa `cout` para mostrar información al usuario?
-- ¿Se usa `cin` para leer datos del usuario?
-- ¿Los mensajes de salida son claros y descriptivos?
-- ¿Se manejan correctamente los tipos al leer entrada?
-
-**Lo que se espera del estudiante:** Que pueda interactuar con el usuario mediante la consola.
-
----
-
-## 4. Estructuras de control
-
-### Condicionales
-- ¿Se usan `if`, `else if`, `else` de forma correcta?
-- ¿Las condiciones son lógicas y usan operadores relacionales y lógicos correctamente?
-- ¿Se usa `switch` cuando es apropiado?
-
-### Ciclos
-- ¿Se usan `for`, `while`, `do-while` adecuadamente?
-- ¿Los ciclos tienen una condición de salida clara?
-- ¿Se evitan ciclos infinitos no intencionales?
-
-**Lo que se espera del estudiante:** Que controle el flujo del programa con condicionales y ciclos.
-
----
-
-## 5. Funciones
-
-- ¿Se definen funciones para tareas repetitivas o lógicamente separables?
-- ¿Las funciones tienen tipos de retorno adecuados?
-- ¿Se usan parámetros en lugar de variables globales?
-- ¿Los nombres de funciones describen lo que hacen?
-
-**Lo que se espera del estudiante:** Que modularice su código usando funciones.
-
----
-
-## 6. Arreglos y cadenas
-
-- ¿Se declaran y usan arreglos correctamente?
-- ¿Se respetan los límites del arreglo (no hay acceso fuera de rango)?
-- ¿Se usan `string` de C++ en lugar de arreglos de `char` cuando es apropiado?
-
-**Lo que se espera del estudiante:** Que manipule colecciones de datos con arreglos.
-
----
-
-## 7. Buenas prácticas de programación
-
-- ¿El código tiene indentación consistente?
-- ¿Se usan comentarios para explicar la lógica?
-- ¿Se evita código duplicado?
-- ¿Se evitan variables globales innecesarias?
-- ¿Se usan constantes (`const`) cuando corresponde?
-
-**Lo que se espera del estudiante:** Que escriba código legible y mantenible.
-
----
-
-## 8. Manejo de errores básico
-
-- ¿Se valida la entrada del usuario?
-- ¿Se manejan divisiones por cero?
-- ¿Se verifican condiciones de borde?
-
-**Lo que se espera del estudiante:** Que anticipe posibles errores en la ejecución.
-
----
-
-## Tono de la retroalimentación
-
-- **Constructivo:** Señalar qué está bien y qué puede mejorar.
-- **Educativo:** Explicar el porqué, no solo el qué.
-- **Motivador:** Reconocer los aciertos del estudiante.
-- **Específico:** Hacer referencia a líneas o secciones concretas del código.
-- **NO calificador:** No asignar puntajes ni notas numéricas.
+## Tono
+Constructivo, educativo (explica el porqué), motivador, específico (cita líneas) y sin notas para el estudiante.

@@ -108,9 +108,7 @@ func (h *ReviewsHandler) Draft(w http.ResponseWriter, r *http.Request) {
 	}
 	levels := map[string]string{}
 	for i, r := range current.RAEs {
-		if l, ok := sug.Levels[fmt.Sprintf("rae_%d", i+1)]; ok {
-			levels[r.RAEID] = l
-		}
+		levels[r.RAEID] = sug.Levels[fmt.Sprintf("rae_%d", i+1)]
 	}
 	rev, err := h.store.SaveAIDraft(teacher.ID, id, sug.Feedback, grade, sug.Reason, sug.Confidence, levels)
 	if err != nil {

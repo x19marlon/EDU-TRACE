@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { Avatar } from "@/components/ui";
@@ -95,6 +96,17 @@ export default function UserMenu() {
             </button>
           ))}
           <div className="border-t border-lavender-100 my-1" />
+          <Link
+            href="/cuenta"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold text-ink-soft hover:bg-lavender-50 hover:text-ink"
+          >
+            Mi cuenta y contraseña
+            {!user.has_recovery && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Sin código</span>
+            )}
+          </Link>
           <button
             role="menuitem"
             onClick={handleLogout}

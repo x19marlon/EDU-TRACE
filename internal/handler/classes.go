@@ -210,6 +210,11 @@ func (h *ClassesHandler) Submit(w http.ResponseWriter, r *http.Request) {
 		AIFeedbackInf: req.AIFeedbackInformal,
 	}
 	if err := h.store.AddSubmission(sub); err != nil {
+		var closed *auth.DeadlineError
+		if errors.As(err, &closed) {
+			writeJSON(w, http.StatusConflict, map[string]any{"error": closed.Error(), "closed_at": closed.ClosedAt})
+			return
+		}
 		writeStoreErr(w, err, "guardar el envío")
 		return
 	}

@@ -3,7 +3,8 @@
 import { useRef, useState } from "react";
 import { Assignment, assignmentFileUrl, createAssignment, deleteAssignment, updateAssignment } from "@/lib/api";
 import { Card, SmallButton } from "@/components/ui";
-import { dueLabel, formatSize } from "@/lib/format";
+import { formatDeadline, formatSize } from "@/lib/format";
+import { DeadlineBadge } from "@/components/Deadline";
 
 const MAX_FILES = 10;
 const MAX_FILE_MB = 10;
@@ -34,6 +35,21 @@ function AssignmentForm({
   const [statement, setStatement] = useState(initial?.statement ?? "");
   const [rubric, setRubric] = useState(initial?.rubric ?? "");
   const [due, setDue] = useState(toLocalInput(initial?.due_at));
+  const [lateMode, setLateMode] = useState<"accept" | "until" | "closed">(
+    !initial || initial.allow_late ? (initial?.late_until ? "until" : "accept") : "closed"
+  );
+  const [lateUntil, setLateUntil] = useState(toLocalInput(initial?.late_until));
+  const [penalty, setPenalty] = useState(initial?.late_penalty !== undefined ? String(initial.late_penalty) : "");
+  const dueMs = due ? new Date(due).getTime() : null;
+  const lateUntilMs = lateMode === "until" && lateUntil ? new Date(lateUntil).getTime() : null;
+  const policyError =
+    lateMode === "until" && !lateUntil
+      ? "Indica hasta cuándo se reciben entregas tardías."
+      : dueMs !== null && lateUntilMs !== null && lateUntilMs <= dueMs
+        ? "El cierre de entregas tardías debe ser posterior a la fecha límite."
+        : penalty.trim() && !(Number(penalty.replace(",", ".")) >= 0 && Number(penalty.replace(",", ".")) <= 5)
+          ? "La penalización por día debe estar entre 0.0 y 5.0."
+          : null;
   const [files, setFiles] = useState<File[]>([]);
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const kept = (initial?.files ?? []).filter((f) => !removed.has(f.id));
@@ -63,7 +79,12 @@ function AssignmentForm({
       form.append("title", title.trim());
       form.append("statement", statement.trim());
       if (rubric.trim()) form.append("rubric", rubric.trim());
-      if (due) form.append("due_at", new Date(due).toISOString());
+      if (due) {
+        form.append("due_at", new Date(due).toISOString());
+        form.append("allow_late", lateMode === "closed" ? "false" : "true");
+        if (lateMode === "until" && lateUntil) form.append("late_until", new Date(lateUntil).toISOString());
+        if (lateMode !== "closed" && penalty.trim()) form.append("late_penalty", penalty.trim().replace(",", "."));
+      }
       files.forEach((f) => form.append("files", f, f.name));
       removed.forEach((id) => form.append("remove_files", id));
       const a = initial ? await updateAssignment(initial.id, form) : await createAssignment(groupId, form);
@@ -72,6 +93,9 @@ function AssignmentForm({
         setStatement("");
         setRubric("");
         setDue("");
+        setLateMode("accept");
+        setLateUntil("");
+        setPenalty("");
         setFiles([]);
       }
       onSaved(a);
@@ -118,8 +142,56 @@ function AssignmentForm({
               focus:border-lavender-300 focus:outline-none focus:ring-4 focus:ring-lavender-100"
           />
         </label>
-        <span className="text-xs text-ink-faint">(opcional)</span>
+        <span className="text-xs text-ink-faint">(opcional, en tu hora local)</span>
+        {dueMs !== null && dueMs < Date.now() && (
+          <span className="text-xs font-semibold text-peach-700">Esta fecha ya pasó.</span>
+        )}
       </div>
+
+      {due && (
+        <div className="space-y-3 rounded-2xl bg-lavender-50/60 p-3">
+          <label className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-soft">
+            Entregas tardías
+            <select
+              value={lateMode}
+              onChange={(e) => setLateMode(e.target.value as "accept" | "until" | "closed")}
+              className="rounded-full border border-lavender-100 bg-white px-3 py-1.5 text-sm text-ink focus:outline-none focus:ring-4 focus:ring-lavender-100"
+            >
+              <option value="accept">Se aceptan y quedan marcadas como tardías</option>
+              <option value="until">Se aceptan hasta una fecha de cierre</option>
+              <option value="closed">No se aceptan después de la fecha límite</option>
+            </select>
+          </label>
+          {lateMode === "until" && (
+            <label className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-soft">
+              Cierre definitivo
+              <input
+                type="datetime-local"
+                value={lateUntil}
+                min={due}
+                onChange={(e) => setLateUntil(e.target.value)}
+                className="rounded-full border border-lavender-100 bg-white px-3 py-1.5 text-sm text-ink focus:outline-none focus:ring-4 focus:ring-lavender-100"
+              />
+            </label>
+          )}
+          {lateMode !== "closed" && (
+            <label className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-soft">
+              Penalización sugerida por día de retraso
+              <input
+                value={penalty}
+                onChange={(e) => setPenalty(e.target.value)}
+                inputMode="decimal"
+                placeholder="p. ej. 0.5"
+                className="w-24 rounded-full border border-lavender-100 bg-white px-3 py-1.5 text-center text-sm text-ink focus:outline-none focus:ring-4 focus:ring-lavender-100"
+              />
+              <span className="text-xs font-normal text-ink-faint">
+                (opcional; cada día iniciado de retraso cuenta como uno. Al revisar verás la sugerencia y decides tú.)
+              </span>
+            </label>
+          )}
+          {policyError && <p className="text-xs font-semibold text-peach-700">{policyError}</p>}
+        </div>
+      )}
 
       <div>
         <input ref={fileInput} type="file" multiple className="hidden" onChange={(e) => addFiles(e.target.files)} />
@@ -180,7 +252,7 @@ function AssignmentForm({
       <div className="flex flex-wrap gap-2">
         <button
           type="submit"
-          disabled={busy || title.trim().length < 2 || !statement.trim()}
+          disabled={busy || title.trim().length < 2 || !statement.trim() || (!!due && !!policyError)}
           className="rounded-full bg-lavender-600 px-5 py-2.5 text-sm font-bold text-white shadow-soft transition
             hover:bg-lavender-700 disabled:opacity-40"
         >
@@ -288,7 +360,7 @@ export default function TeacherAssignments({
               <details className="group rounded-2xl bg-lavender-50/60 px-4 py-3 open:bg-lavender-50">
                 <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="min-w-0 flex-1 font-bold">{a.title}</span>
-                  {dueLabel(a.due_at) && <span className="text-xs font-semibold text-peach-700">{dueLabel(a.due_at)}</span>}
+                  <DeadlineBadge assignment={a} />
                   <span className="text-xs text-ink-soft">
                     {a.files.length} {a.files.length === 1 ? "archivo" : "archivos"} · {submissionCounts.get(a.id) ?? 0} entregas
                   </span>
@@ -297,6 +369,18 @@ export default function TeacherAssignments({
                   </svg>
                 </summary>
                 <div className="mt-3 space-y-3">
+                  {a.due_at && (
+                    <p className="text-xs text-ink-soft">
+                      Fecha límite: <span className="font-semibold text-ink">{formatDeadline(a.due_at)}</span>
+                      {" · "}
+                      {!a.allow_late
+                        ? "no se aceptan tardías"
+                        : a.late_until
+                          ? `tardías hasta el ${formatDeadline(a.late_until)}`
+                          : "se aceptan tardías"}
+                      {a.late_penalty !== undefined && a.allow_late && ` · penalización sugerida −${a.late_penalty.toFixed(1)} por día`}
+                    </p>
+                  )}
                   <div className="max-h-60 overflow-auto whitespace-pre-wrap rounded-2xl bg-white p-3 text-sm leading-relaxed">
                     {a.statement}
                   </div>

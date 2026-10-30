@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TEXT NOT NULL,
   compiles INTEGER NOT NULL DEFAULT 0,
   feedbacks INTEGER NOT NULL DEFAULT 0,
-  last_active_at TEXT
+  last_active_at TEXT,
+  recovery_hash TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -49,7 +50,10 @@ CREATE TABLE IF NOT EXISTS assignments (
   statement TEXT NOT NULL,
   rubric TEXT NOT NULL DEFAULT '',
   due_at TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  allow_late INTEGER NOT NULL DEFAULT 1,
+  late_until TEXT,
+  late_penalty REAL
 );
 
 CREATE TABLE IF NOT EXISTS assignment_files (   

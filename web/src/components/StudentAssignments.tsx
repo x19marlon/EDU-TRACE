@@ -1,7 +1,8 @@
 "use client";
 
 import { assignmentFileUrl, StudentAssignment } from "@/lib/api";
-import { dueLabel, formatSize } from "@/lib/format";
+import { formatSize } from "@/lib/format";
+import { DeadlineBadge } from "@/components/Deadline";
 
 /** Talleres de la clase elegida: el estudiante elige en cuál trabaja y lee su enunciado. */
 export default function StudentAssignments({
@@ -45,8 +46,10 @@ export default function StudentAssignments({
       {selected ? (
         <div className="mt-4 grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            {dueLabel(selected.due_at) && (
-              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-peach-700">{dueLabel(selected.due_at)}</p>
+            {selected.due_at && (
+              <div className="mb-3">
+                <DeadlineBadge assignment={selected} withDetail />
+              </div>
             )}
             <div className="max-h-56 overflow-auto whitespace-pre-wrap rounded-2xl bg-lavender-50/70 p-4 text-sm leading-relaxed">
               {selected.statement}

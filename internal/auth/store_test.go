@@ -211,10 +211,10 @@ func TestStoreFlow(t *testing.T) {
 
 	// Talleres
 	due := time.Now().Add(48 * time.Hour)
-	a, err := s.CreateAssignment(prof.ID, g.ID, "Taller 1", "Enunciado", "Compila (1.0)", &due,
+	a, err := s.CreateAssignment(prof.ID, g.ID, "Taller 1", "Enunciado", "Compila (1.0)", &due, LatePolicy{AllowLate: true},
 		[]FileUpload{{Name: "../datos.txt", ContentType: "text/plain", Body: strings.NewReader("1 2 3")}})
 	mustNoErr(t, err)
-	if _, err := s.CreateAssignment(otro.ID, g.ID, "X", "Y", "", nil, nil); !errors.Is(err, ErrNotFound) {
+	if _, err := s.CreateAssignment(otro.ID, g.ID, "X", "Y", "", nil, LatePolicy{AllowLate: true}, nil); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("otro profesor crea taller: %v", err)
 	}
 	list, err := s.GroupAssignments(prof.ID, g.ID)

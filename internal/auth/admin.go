@@ -253,7 +253,10 @@ func (s *Store) ownedAssignment(q querier, teacherID, assignmentID string) error
 	return nil
 }
 
-func (s *Store) UpdateAssignment(teacherID, assignmentID, title, statement, rubric string, dueAt *time.Time, removeFiles []string, files []FileUpload) (*Assignment, error) {
+func (s *Store) UpdateAssignment(teacherID, assignmentID, title, statement, rubric string, dueAt *time.Time, policy LatePolicy, removeFiles []string, files []FileUpload) (*Assignment, error) {
+	if err := policy.validate(dueAt); err != nil {
+		return nil, err
+	}
 	if err := s.ownedAssignment(s.db, teacherID, assignmentID); err != nil {
 		return nil, err
 	}
@@ -280,8 +283,10 @@ func (s *Store) UpdateAssignment(teacherID, assignmentID, title, statement, rubr
 	if err := s.ownedAssignment(tx, teacherID, assignmentID); err != nil {
 		return fail(err)
 	}
-	if _, err := tx.Exec(`UPDATE assignments SET title = ?, statement = ?, rubric = ?, due_at = ? WHERE id = ?`,
-		strings.TrimSpace(title), strings.TrimSpace(statement), strings.TrimSpace(rubric), fmtTimePtr(dueAt), assignmentID); err != nil {
+	if _, err := tx.Exec(`UPDATE assignments SET title = ?, statement = ?, rubric = ?, due_at = ?,
+			allow_late = ?, late_until = ?, late_penalty = ? WHERE id = ?`,
+		strings.TrimSpace(title), strings.TrimSpace(statement), strings.TrimSpace(rubric), fmtTimePtr(dueAt),
+		policy.AllowLate, fmtTimePtr(policy.LateUntil), floatArg(policy.LatePenalty), assignmentID); err != nil {
 		return fail(err)
 	}
 	var removed []string

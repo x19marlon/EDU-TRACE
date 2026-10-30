@@ -52,11 +52,93 @@ export function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** "Entrega: 20 oct 2026, 18:59" (o "Entrega vencida: ..."). */
-export function dueLabel(iso?: string): string | null {
-  if (!iso) return null;
-  const late = new Date(iso).getTime() < Date.now();
-  return `${late ? "Entrega vencida" : "Entrega"}: ${formatDateTime(iso)}`;
+export function formatDuration(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const days = `${d} ${d === 1 ? "día" : "días"}`;
+  if (d > 0) return h > 0 ? `${days} ${h} h` : days;
+  if (h > 0) return m > 0 ? `${h} h ${m} min` : `${h} h`;
+  if (m > 0) return `${m} min`;
+  return "menos de 1 min";
+}
+
+export function formatShortDuration(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (d > 0) return h > 0 ? `${d} d ${h} h` : `${d} d`;
+  if (h > 0) return m > 0 ? `${h} h ${m} min` : `${h} h`;
+  return m > 0 ? `${m} min` : "< 1 min";
+}
+
+export const startedDays = (lateSeconds: number) => Math.max(1, Math.ceil(lateSeconds / 86400));
+
+export function formatDeadline(iso: string): string {
+  return new Date(iso).toLocaleString("es", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export type DeadlineTone = "ok" | "soon" | "urgent" | "late" | "closed";
+
+export interface DeadlineState {
+  tone: DeadlineTone;
+  title: string;
+  detail: string;
+  canSubmit: boolean;
+}
+
+export function deadlineState(
+  a: { due_at?: string; allow_late: boolean; late_until?: string; late_penalty?: number },
+  now: number = Date.now()
+): DeadlineState | null {
+  if (!a.due_at) return null;
+  const due = new Date(a.due_at).getTime();
+  const penalty = a.late_penalty ? ` Penalización sugerida: −${a.late_penalty.toFixed(1)} por cada día de retraso iniciado.` : "";
+  if (now < due) {
+    const left = (due - now) / 1000;
+    const tone: DeadlineTone = left <= 24 * 3600 ? "urgent" : left <= 72 * 3600 ? "soon" : "ok";
+    const after = !a.allow_late
+      ? " Después no se reciben entregas."
+      : a.late_until
+        ? ` Después se reciben como tardías hasta el ${formatDeadline(a.late_until)}.${penalty}`
+        : ` Después se reciben como tardías.${penalty}`;
+    return { tone, title: `Vence en ${formatDuration(left)}`, detail: `Fecha límite: ${formatDeadline(a.due_at)}.${after}`, canSubmit: true };
+  }
+  const over = (now - due) / 1000;
+  if (!a.allow_late) {
+    return {
+      tone: "closed",
+      title: "Plazo cerrado",
+      detail: `La fecha límite fue el ${formatDeadline(a.due_at)} (hace ${formatDuration(over)}) y este taller no recibe entregas tardías.`,
+      canSubmit: false,
+    };
+  }
+  if (a.late_until && now >= new Date(a.late_until).getTime()) {
+    return {
+      tone: "closed",
+      title: "Plazo cerrado",
+      detail: `Las entregas tardías se recibieron hasta el ${formatDeadline(a.late_until)}.`,
+      canSubmit: false,
+    };
+  }
+  const until = a.late_until
+    ? ` Se reciben tardías hasta el ${formatDeadline(a.late_until)} (quedan ${formatDuration((new Date(a.late_until).getTime() - now) / 1000)}).`
+    : "";
+  return {
+    tone: "late",
+    title: `Venció hace ${formatDuration(over)}`,
+    detail: `La fecha límite fue el ${formatDeadline(a.due_at)}. Si entregas ahora quedará como tardía.${until}${penalty}`,
+    canSubmit: true,
+  };
 }
 
 export const LEVEL_STYLE: Record<"bajo" | "medio" | "alto", string> = {
@@ -64,3 +146,15 @@ export const LEVEL_STYLE: Record<"bajo" | "medio" | "alto", string> = {
   medio: "bg-amber-100 text-amber-800",
   alto: "bg-mint-100 text-mint-700",
 };
+
+export const PERFORMANCE_BANDS = [
+  { min: 4.25, label: "Ejemplar de alto nivel", range: "[4.25–5]", tone: "bg-mint-100 text-mint-700" },
+  { min: 3.75, label: "Ejemplar", range: "[3.75–4.25)", tone: "bg-mint-100 text-mint-700" },
+  { min: 3, label: "Competente", range: "[3–3.75)", tone: "bg-amber-100 text-amber-800" },
+  { min: 2, label: "Bajo el estándar", range: "[2–3)", tone: "bg-peach-100 text-peach-700" },
+  { min: 0, label: "Insatisfactorio", range: "[0–2)", tone: "bg-peach-100 text-peach-700" },
+];
+
+export function performanceBand(grade: number) {
+  return PERFORMANCE_BANDS.find((b) => grade >= b.min) ?? PERFORMANCE_BANDS[PERFORMANCE_BANDS.length - 1];
+}

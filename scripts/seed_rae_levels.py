@@ -11,9 +11,10 @@ COURSE = "Introducción a la Programación 2026-1"
 GROUP = "Grupo A - Mañana"
 
 RAES = [
-    ("RAE 1", "Diseña algoritmos que resuelven problemas sencillos con secuencia, condicionales y ciclos."),
-    ("RAE 2", "Implementa programas en C++ usando tipos de datos, entrada y salida adecuados."),
-    ("RAE 3", "Verifica sus programas con casos de prueba y depura los errores que encuentra."),
+    ("RAE 1", "Identificar información que permite caracterizar un problema informático de complejidad baja, mediante el uso de los principios básicos de Lógica e Ingeniería de Sistemas."),
+    ("RAE 2", "Conocer las construcciones básicas de programación para diseñar soluciones a problemas informáticos de complejidad baja, mediante algoritmos, utilizando el pensamiento computacional."),
+    ("RAE 3", "Conocer los procedimientos para diseñar la organización de los datos requeridos para solucionar el problema utilizando colecciones de datos."),
+    ("RAE 4", "Determinar las herramientas necesarias para implementar, en un lenguaje de programación, los algoritmos diseñados, permitiendo su modificación."),
 ]
 
 CARLOS_FEEDBACK = (
@@ -23,11 +24,11 @@ CARLOS_FEEDBACK = (
 )
 
 PLAN = [
-    ("Ana Rodríguez", "Taller 1: promedio de notas", True, None, {"RAE 1": "medio", "RAE 2": "alto", "RAE 3": "alto"}),
-    ("Ana Rodríguez", "Taller 2: suma con ciclos", True, None, {"RAE 1": "medio", "RAE 2": "alto", "RAE 3": "bajo"}),
-    ("Ana Rodríguez", "Taller 3: el mayor de tres", False, None, {"RAE 1": "alto", "RAE 2": "alto", "RAE 3": "medio"}),
-    ("Luis Martínez", "Taller 2: suma con ciclos", True, None, {"RAE 1": "alto", "RAE 2": "alto", "RAE 3": "alto"}),
-    ("Carlos Pérez", "Taller 1: promedio de notas", True, (2.8, CARLOS_FEEDBACK), {"RAE 1": "medio", "RAE 2": "bajo", "RAE 3": "bajo"}),
+    ("Ana Rodríguez", "Taller 1: promedio de notas", True, None, {"RAE 1": "medio", "RAE 2": "alto", "RAE 3": "", "RAE 4": "alto"}),
+    ("Ana Rodríguez", "Taller 2: suma con ciclos", True, None, {"RAE 1": "medio", "RAE 2": "medio", "RAE 3": "", "RAE 4": "bajo"}),
+    ("Ana Rodríguez", "Taller 3: el mayor de tres", False, None, {"RAE 1": "alto", "RAE 2": "alto", "RAE 3": "", "RAE 4": "alto"}),
+    ("Luis Martínez", "Taller 2: suma con ciclos", True, None, {"RAE 1": "alto", "RAE 2": "alto", "RAE 3": "", "RAE 4": "alto"}),
+    ("Carlos Pérez", "Taller 1: promedio de notas", True, (2.8, CARLOS_FEEDBACK), {"RAE 1": "medio", "RAE 2": "medio", "RAE 3": "", "RAE 4": "bajo"}),
 ]
 
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
@@ -60,11 +61,16 @@ def find(items, key, value, what):
 call("POST", "/api/auth/login", {"email": TEACHER[0], "password": TEACHER[1], "role": "teacher"})
 course = find(call("GET", "/api/teacher/courses"), "name", COURSE, "la materia")
 
-rae_ids = {r["code"]: r["id"] for r in course.get("raes", [])}
+existing = {r["code"]: r for r in course.get("raes", [])}
+rae_ids = {}
 for code, description in RAES:
-    if code not in rae_ids:
+    if code in existing:
+        rae_ids[code] = existing[code]["id"]
+        if existing[code]["description"] != description:
+            call("PATCH", f"/api/teacher/raes/{rae_ids[code]}", {"code": code, "description": description})
+    else:
         rae_ids[code] = call("POST", f"/api/teacher/courses/{course['id']}/raes", {"code": code, "description": description})["id"]
-print(f"  ✓ {len(RAES)} RAE en «{COURSE}»")
+print(f"  ✓ Los {len(RAES)} RAE oficiales de Introducción a la Programación (33698) en «{COURSE}»")
 
 group = find(course["groups"], "name", GROUP, "la clase")
 students = {s["name"]: s["id"] for s in call("GET", f"/api/teacher/groups/{group['id']}")["students"]}
@@ -88,6 +94,6 @@ for name, title, return_it, fallback, levels in PLAN:
         "return": return_it,
         "rae_levels": {rae_ids[code]: level for code, level in levels.items()},
     })
-    shown = ", ".join(f"{code} {level}" for code, level in levels.items())
+    shown = ", ".join(f"{code} {level}" for code, level in levels.items() if level)
     state = "devuelta" if return_it else "en revisión"
     print(f"  ✓ {name} · {title}: {grade} ({state}) · {shown}")

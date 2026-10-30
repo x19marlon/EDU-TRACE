@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GroupStudent, listGroupSubmissions, streamStudentAnalysis, SubmissionMeta } from "@/lib/api";
 import { Card, Spinner } from "@/components/ui";
 import { KindPill, ReviewPill, StatusPill, SubmissionDetail } from "@/components/SubmissionView";
+import { LatePill } from "@/components/Deadline";
 import { formatDateTime, formatFeedback } from "@/lib/format";
 
 type Filter = "all" | "official" | "attempt";
@@ -216,6 +217,7 @@ export default function StudentProcess({
                       )}
                       <span className="flex-1" />
                       <ReviewPill meta={m} />
+                      <LatePill meta={m} />
                       <StatusPill meta={m} />
                     </button>
                   </li>

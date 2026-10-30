@@ -19,7 +19,32 @@ const usersWithMonitorSQL = `CREATE TABLE users_new (
   last_active_at TEXT
 )`
 
+var addedColumns = []struct{ table, column, ddl string }{
+	{"users", "recovery_hash", `ALTER TABLE users ADD COLUMN recovery_hash TEXT NOT NULL DEFAULT ''`},
+	{"assignments", "allow_late", `ALTER TABLE assignments ADD COLUMN allow_late INTEGER NOT NULL DEFAULT 1`},
+	{"assignments", "late_until", `ALTER TABLE assignments ADD COLUMN late_until TEXT`},
+	{"assignments", "late_penalty", `ALTER TABLE assignments ADD COLUMN late_penalty REAL`},
+}
+
 func (s *Store) upgradeSchema() error {
+	if err := s.upgradeUsersRole(); err != nil {
+		return err
+	}
+	for _, c := range addedColumns {
+		var n int
+		if err := s.db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`, c.table, c.column).Scan(&n); err != nil {
+			return err
+		}
+		if n == 0 {
+			if _, err := s.db.Exec(c.ddl); err != nil {
+				return fmt.Errorf("columna %s.%s: %w", c.table, c.column, err)
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Store) upgradeUsersRole() error {
 	var ddl string
 	if err := s.db.QueryRow(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'`).Scan(&ddl); err != nil {
 		return err

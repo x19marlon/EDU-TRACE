@@ -11,6 +11,8 @@ import { Avatar, Card, Spinner } from "@/components/ui";
 import { useAuth } from "@/components/AuthProvider";
 import StudentClasses from "@/components/StudentClasses";
 import StudentAssignments from "@/components/StudentAssignments";
+import { useNow } from "@/components/Deadline";
+import { deadlineState } from "@/lib/format";
 import MySubmissions from "@/components/MySubmissions";
 
 import {
@@ -107,6 +109,7 @@ function CompilerPage() {
   const [groupId, setGroupId] = useState<string | null>(null);
   const [assignments, setAssignments] = useState<StudentAssignment[]>([]);
   const [assignmentId, setAssignmentId] = useState<string | null>(null);
+  const now = useNow();
   const [sending, setSending] = useState(false);
   const [sendStatus, setSendStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [sentCount, setSentCount] = useState(0);
@@ -247,6 +250,9 @@ function CompilerPage() {
 
   if (!user) return null;
   const firstName = user.name.split(" ")[0];
+  const selectedAssignment = groupAssignments.find((a) => a.id === assignmentId);
+  const deadline = selectedAssignment ? deadlineState(selectedAssignment, now) : null;
+  const closed = deadline !== null && !deadline.canSubmit;
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
@@ -350,8 +356,16 @@ function CompilerPage() {
               {isStudent && (
                 <button
                   onClick={handleSend}
-                  disabled={sending || !groupId || !code.trim()}
-                  title={groupId ? "Enviar este código a tu profesor" : "Únete a una clase para poder enviar"}
+                  disabled={sending || !groupId || !code.trim() || closed}
+                  title={
+                    closed
+                      ? "El plazo de este taller está cerrado"
+                      : groupId
+                        ? deadline?.tone === "late"
+                          ? "La fecha límite ya pasó: tu entrega quedará como tardía"
+                          : "Enviar este código a tu profesor"
+                        : "Únete a una clase para poder enviar"
+                  }
                   className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-lavender-700
                     ring-1 ring-lavender-200 transition hover:bg-lavender-50 disabled:opacity-50"
                 >
@@ -362,7 +376,7 @@ function CompilerPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
                     </svg>
                   )}
-                  {sending ? "Enviando..." : "Enviar"}
+                  {sending ? "Enviando..." : closed ? "Plazo cerrado" : deadline?.tone === "late" ? "Enviar (tardía)" : "Enviar"}
                 </button>
               )}
             </div>

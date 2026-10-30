@@ -7,6 +7,7 @@ import AppShell from "@/components/AppShell";
 import { Card, Spinner } from "@/components/ui";
 import { StatusPill } from "@/components/SubmissionView";
 import AnnotatedCode from "@/components/AnnotatedCode";
+import { LatePill } from "@/components/Deadline";
 import { AnnotationsPill, MonitorCountPill, ReviewStatusPill, SubmissionFeedback } from "@/components/StudentFeedback";
 import { getMyHistory, getMySubmission, StudentHistory, StudentSubmission, Submission } from "@/lib/api";
 import { formatDateTime, formatFeedback } from "@/lib/format";
@@ -273,6 +274,7 @@ function HistoryView() {
                         <span className="text-xs text-ink-faint">{s.lines} líneas</span>
                         <span className="flex-1" />
                         <StatusPill meta={s} />
+                        <LatePill meta={s} />
                         <AnnotationsPill item={s} />
                         <MonitorCountPill item={s} />
                         <ReviewStatusPill item={s} />

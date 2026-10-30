@@ -29,6 +29,9 @@ type Assignment struct {
 	DueAt *time.Time `json:"due_at,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	Files []AssignmentFile `json:"files"`
+	AllowLate bool `json:"allow_late"`
+	LateUntil *time.Time `json:"late_until,omitempty"`
+	LatePenalty *float64 `json:"late_penalty,omitempty"`
 }
 
 // FileUpload es un archivo recibido para guardar en un taller.
@@ -62,7 +65,10 @@ func safeFileName(name string) string {
 }
 
 // CreateAssignment crea un taller en una clase del profesor y guarda sus archivos.
-func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric string, dueAt *time.Time, files []FileUpload) (*Assignment, error) {
+func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric string, dueAt *time.Time, policy LatePolicy, files []FileUpload) (*Assignment, error) {
+	if err := policy.validate(dueAt); err != nil {
+		return nil, err
+	}
 	if _, err := s.ownedGroup(s.db, teacherID, groupID); err != nil {
 		return nil, err
 	}
@@ -74,6 +80,7 @@ func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric st
 		ID: id, GroupID: groupID,
 		Title: strings.TrimSpace(title), Statement: strings.TrimSpace(statement), Rubric: strings.TrimSpace(rubric),
 		DueAt: dueAt, CreatedAt: time.Now().UTC(), Files: []AssignmentFile{},
+		AllowLate: policy.AllowLate, LateUntil: policy.LateUntil, LatePenalty: policy.LatePenalty,
 	}
 
 	// Primero los archivos en disco; si algo falla después, se borra la carpeta.
@@ -97,8 +104,9 @@ func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric st
 		return fail(err)
 	}
 	defer tx.Rollback()
-	if _, err := tx.Exec(`INSERT INTO assignments (id, group_id, title, statement, rubric, due_at, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`, a.ID, a.GroupID, a.Title, a.Statement, a.Rubric, fmtTimePtr(a.DueAt), fmtTime(a.CreatedAt)); err != nil {
+	if _, err := tx.Exec(`INSERT INTO assignments (id, group_id, title, statement, rubric, due_at, created_at, allow_late, late_until, late_penalty)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, a.ID, a.GroupID, a.Title, a.Statement, a.Rubric, fmtTimePtr(a.DueAt), fmtTime(a.CreatedAt),
+		a.AllowLate, fmtTimePtr(a.LateUntil), floatArg(a.LatePenalty)); err != nil {
 		return fail(err)
 	}
 	for i, f := range a.Files {
@@ -114,17 +122,19 @@ func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric st
 }
 
 // Columnas de assignments (alias "a"), en el orden que espera scanAssignment.
-const assignmentCols = `a.id, a.group_id, a.title, a.statement, a.rubric, a.due_at, a.created_at`
+const assignmentCols = `a.id, a.group_id, a.title, a.statement, a.rubric, a.due_at, a.created_at, a.allow_late, a.late_until, a.late_penalty`
 
 func scanAssignment(sc scanner, extra ...any) (Assignment, error) {
 	var a Assignment
-	var due sql.NullString
+	var due, lateUntil sql.NullString
 	var created string
-	dest := append([]any{&a.ID, &a.GroupID, &a.Title, &a.Statement, &a.Rubric, &due, &created}, extra...)
+	var penalty sql.NullFloat64
+	dest := append([]any{&a.ID, &a.GroupID, &a.Title, &a.Statement, &a.Rubric, &due, &created, &a.AllowLate, &lateUntil, &penalty}, extra...)
 	if err := sc.Scan(dest...); err != nil {
 		return a, err
 	}
 	a.DueAt, a.CreatedAt, a.Files = timePtr(due), parseTime(created), []AssignmentFile{}
+	a.LateUntil, a.LatePenalty = timePtr(lateUntil), floatPtr(penalty)
 	return a, nil
 }
 

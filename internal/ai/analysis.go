@@ -35,7 +35,7 @@ Cuántos intentos y entregas hubo, si el código llegó a compilar y a ejecutar 
 Los errores o patrones que se repiten (errores de compilación, de lógica, de lectura de la entrada, ciclos que no terminan...), con ejemplos concretos tomados de los intentos.
 
 ## En qué puede mejorar
-De dos a cuatro aspectos concretos que el estudiante puede mejorar, relacionados con los criterios del curso.
+De dos a cuatro aspectos concretos que el estudiante puede mejorar, cada uno ligado al RAE del curso que se ve comprometido (por ejemplo, "RAE 1: no identifica las restricciones del enunciado" o "RAE 4: implementa con errores el acumulador").
 
 ## Sugerencia de acompañamiento
 Una o dos ideas breves para que el profesor oriente al estudiante, por ejemplo una pregunta para hacerle o un concepto para repasar en tutoría.

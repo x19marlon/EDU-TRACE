@@ -74,6 +74,11 @@ func TestRAELevelsAndMatrix(t *testing.T) {
 	if rev.RAEs[0].Level != "alto" || rev.RAEs[0].AILevel != "bajo" {
 		t.Fatalf("la IA pisó el nivel del profesor: %+v", rev.RAEs)
 	}
+	rev, err = s.SaveAIDraft(prof.ID, ana1, "otra", &g45, "razón", "alta", map[string]string{r1.ID: "", r2.ID: ""})
+	mustNoErr(t, err)
+	if rev.RAEs[0].AILevel != "" || rev.RAEs[0].Level != "alto" || rev.RAEs[1].AILevel != "" || rev.RAEs[1].Level != "alto" {
+		t.Fatalf("un RAE que ya no aplica debe quedar sin propuesta de la IA, sin tocar el nivel del profesor: %+v", rev.RAEs)
+	}
 	if _, err := s.SaveTeacherReview(prof.ID, ana1, "bien", &g45, false, map[string]string{r1.ID: "excelente"}); err == nil {
 		t.Fatal("aceptó un nivel inválido")
 	}

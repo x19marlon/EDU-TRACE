@@ -46,6 +46,7 @@ type User struct {
 	PasswordHash string `json:"password_hash"`
 	CreatedAt time.Time `json:"created_at"`
 	Activity Activity `json:"activity"`
+	RecoveryHash string `json:"-"`
 }
 
 //go:embed schema.sql
@@ -174,14 +175,14 @@ func hashToken(token string) string {
 
 // ---------- Usuarios y sesiones ----------
 
-const userCols = `u.id, u.name, u.email, u.role, u.password_hash, u.created_at, u.compiles, u.feedbacks, u.last_active_at`
+const userCols = `u.id, u.name, u.email, u.role, u.password_hash, u.created_at, u.compiles, u.feedbacks, u.last_active_at, u.recovery_hash`
 
 func scanUser(sc scanner) (*User, error) {
 	var u User
 	var created string
 	var lastActive sql.NullString
 	if err := sc.Scan(&u.ID, &u.Name, &u.Email, &u.Role, &u.PasswordHash, &created,
-		&u.Activity.Compiles, &u.Activity.Feedbacks, &lastActive); err != nil {
+		&u.Activity.Compiles, &u.Activity.Feedbacks, &lastActive, &u.RecoveryHash); err != nil {
 		return nil, err
 	}
 	u.CreatedAt = parseTime(created)

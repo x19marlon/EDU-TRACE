@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createRAE, deleteRAE, RAE, updateRAE } from "@/lib/api";
 import { SmallButton } from "@/components/ui";
+import { OFFICIAL_RAES } from "@/lib/rae";
 
 const inputClass =
   "rounded-full border border-lavender-100 bg-lavender-50/60 px-4 py-2 text-sm placeholder-ink-faint " +
@@ -87,6 +88,20 @@ export default function RaeEditor({
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const loadOfficial = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      for (const r of OFFICIAL_RAES) await createRAE(courseId, r.code, r.description);
+      await onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudieron cargar los RAE oficiales");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const remove = async (r: RAE) => {
     if (!window.confirm(`¿Eliminar «${r.code}»? Se borrarán los niveles que ya se marcaron para este RAE en las revisiones.`)) return;
@@ -113,6 +128,22 @@ export default function RaeEditor({
           Al revisar cada entrega marcas el nivel de logro de cada RAE (bajo, medio o alto). Con eso se arma el diagrama de
           rendimiento de cada clase de esta materia.
         </p>
+        {raes.length === 0 && (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={loadOfficial}
+            className="w-full rounded-2xl border border-dashed border-lavender-300 px-4 py-3 text-left text-sm transition hover:bg-lavender-50 disabled:opacity-50"
+          >
+            <span className="block font-bold text-lavender-700">
+              {loading ? "Cargando..." : "Cargar los 4 RAE oficiales de Introducción a la Programación (33698)"}
+            </span>
+            <span className="block text-xs text-ink-soft">
+              Los del programa del curso: caracterizar el problema, diseñar con construcciones básicas, organizar datos con colecciones e
+              implementar en C++. Luego puedes editarlos.
+            </span>
+          </button>
+        )}
         {raes.length > 0 && (
           <ul className="space-y-1.5">
             {raes.map((r) =>

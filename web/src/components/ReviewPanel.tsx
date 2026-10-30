@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { generateReviewDraft, getReview, RAELevel, Review, saveReview } from "@/lib/api";
+import { generateReviewDraft, getReview, RAELevel, Review, saveReview, SubmissionMeta } from "@/lib/api";
 import { Spinner } from "@/components/ui";
-import { formatDateTime, formatFeedback, LEVEL_STYLE } from "@/lib/format";
+import { formatDateTime, formatDeadline, formatDuration, formatFeedback, LEVEL_STYLE, performanceBand, startedDays } from "@/lib/format";
 
 const GRADE_MAX = 5;
 
@@ -22,7 +22,55 @@ function parseGrade(text: string): number | null | "invalid" {
 }
 
 
-export default function ReviewPanel({ submissionId, onSaved }: { submissionId: string; onSaved?: () => void }) {
+function LateNotice({
+  lateSeconds,
+  dueAt,
+  penalty,
+  onApply,
+}: {
+  lateSeconds: number;
+  dueAt?: string;
+  penalty?: number;
+  onApply: (total: number) => boolean;
+}) {
+  const [applied, setApplied] = useState(false);
+  const days = startedDays(lateSeconds);
+  const total = penalty ? Math.round(penalty * days * 10) / 10 : 0;
+  return (
+    <div className="space-y-1.5 rounded-2xl bg-peach-50 p-3 text-sm">
+      <p className="font-bold text-peach-700">
+        Entrega tardía: {formatDuration(lateSeconds)} después de la fecha límite ({days} {days === 1 ? "día iniciado" : "días iniciados"}).
+      </p>
+      {dueAt && <p className="text-xs text-ink-soft">La fecha límite era el {formatDeadline(dueAt)}.</p>}
+      {total > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-ink-soft">
+            Penalización sugerida por el taller: −{penalty!.toFixed(1)} × {days} = <span className="font-bold text-ink">−{total.toFixed(1)}</span>.
+            Tú decides si aplicarla.
+          </span>
+          <button
+            type="button"
+            disabled={applied}
+            onClick={() => setApplied(onApply(total))}
+            className="rounded-full bg-white px-3 py-1 text-xs font-bold text-peach-700 ring-1 ring-peach-200 transition hover:bg-peach-100 disabled:opacity-60"
+          >
+            {applied ? `Penalización aplicada (−${total.toFixed(1)})` : `Restar ${total.toFixed(1)} a la nota`}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ReviewPanel({
+  submissionId,
+  onSaved,
+  meta,
+}: {
+  submissionId: string;
+  onSaved?: () => void;
+  meta?: SubmissionMeta;
+}) {
   const [review, setReview] = useState<Review | null>(null);
   const [feedback, setFeedback] = useState("");
   const [grade, setGrade] = useState("");
@@ -116,6 +164,11 @@ export default function ReviewPanel({ submissionId, onSaved }: { submissionId: s
               {review.ai_grade === undefined ? "—" : review.ai_grade.toFixed(1)}
               <span className="text-base font-bold text-ink-faint"> / {GRADE_MAX.toFixed(1)}</span>
             </span>
+            {review.ai_grade !== undefined && (
+              <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${performanceBand(review.ai_grade).tone}`}>
+                {performanceBand(review.ai_grade).label} {performanceBand(review.ai_grade).range}
+              </span>
+            )}
             {review.ai_confidence && (
               <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${Style[review.ai_confidence]}`}>
                 Confianza {review.ai_confidence}
@@ -163,7 +216,34 @@ export default function ReviewPanel({ submissionId, onSaved }: { submissionId: s
               focus:border-lavender-300 focus:outline-none focus:ring-4 focus:ring-lavender-100"
           />
           <span className="text-xs font-normal text-ink-faint">(opcional)</span>
+          {(() => {
+            const g = parseGrade(grade);
+            if (g === null || g === "invalid") return null;
+            const band = performanceBand(g);
+            return (
+              <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${band.tone}`}>
+                {band.label} {band.range}
+              </span>
+            );
+          })()}
         </label>
+        {meta?.late_seconds ? (
+          <LateNotice
+            lateSeconds={meta.late_seconds}
+            dueAt={meta.due_at}
+            penalty={meta.late_penalty}
+            onApply={(total) => {
+              const g = parseGrade(grade);
+              if (g === null || g === "invalid") {
+                setError("Escribe primero una nota válida para restarle la penalización");
+                return false;
+              }
+              setError(null);
+              setGrade(Math.max(0, Math.round((g - total) * 10) / 10).toFixed(1));
+              return true;
+            }}
+          />
+        ) : null}
       </div>
 
       {(review.raes ?? []).length > 0 && (

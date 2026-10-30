@@ -28,6 +28,9 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.HandleFunc("POST /api/auth/login", authH.Login)
 	mux.HandleFunc("POST /api/auth/logout", authH.Logout)
 	mux.Handle("GET /api/auth/me", auth.RequireAuth(store, http.HandlerFunc(authH.Me)))
+	mux.HandleFunc("POST /api/auth/recover", authH.Recover)
+	mux.Handle("POST /api/auth/password", auth.RequireAuth(store, http.HandlerFunc(authH.ChangePassword)))
+	mux.Handle("POST /api/auth/recovery-code", auth.RequireAuth(store, http.HandlerFunc(authH.RecoveryCode)))
 
 	// docente y sus clases
 	classes := NewClassesHandler(store, comp)

@@ -16,7 +16,8 @@ import {
   listMonitorSubmissions,
   SubmissionMeta,
 } from "@/lib/api";
-import { dueLabel, formatDateTime, formatSize } from "@/lib/format";
+import { formatDateTime, formatSize } from "@/lib/format";
+import { DeadlineBadge, LatePill } from "@/components/Deadline";
 
 function MonitorGroupView() {
   const { id } = useParams<{ id: string }>();
@@ -98,7 +99,7 @@ function MonitorGroupView() {
                 <details className="rounded-2xl bg-lavender-50/60 px-4 py-3 open:bg-lavender-50">
                   <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1">
                     <span className="min-w-0 flex-1 font-bold">{a.title}</span>
-                    {dueLabel(a.due_at) && <span className="text-xs font-semibold text-peach-700">{dueLabel(a.due_at)}</span>}
+                    <DeadlineBadge assignment={a} />
                   </summary>
                   <div className="mt-3 space-y-3">
                     <div className="max-h-60 overflow-auto whitespace-pre-wrap rounded-2xl bg-white p-3 text-sm leading-relaxed">
@@ -210,6 +211,7 @@ function MonitorGroupView() {
                       ) : (
                         <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">Sin retroalimentar</span>
                       )}
+                      <LatePill meta={m} />
                       <StatusPill meta={m} />
                     </button>
                   </li>

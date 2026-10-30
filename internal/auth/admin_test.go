@@ -48,13 +48,13 @@ func TestClassAdmin(t *testing.T) {
 	_, err = s.JoinGroup(ana.ID, code)
 	mustNoErr(t, err)
 
-	a, err := s.CreateAssignment(prof.ID, g.ID, "Taller 1", "Suma", "", nil, []FileUpload{
+	a, err := s.CreateAssignment(prof.ID, g.ID, "Taller 1", "Suma", "", nil, LatePolicy{AllowLate: true}, []FileUpload{
 		{Name: "a.txt", Body: strings.NewReader("uno")},
 		{Name: "b.txt", Body: strings.NewReader("dos")},
 	})
 	mustNoErr(t, err)
 	due := time.Now().Add(48 * time.Hour).UTC().Truncate(time.Second)
-	up, err := s.UpdateAssignment(prof.ID, a.ID, "Taller 1b", "Suma de pares", "Compila (1.0)", &due,
+	up, err := s.UpdateAssignment(prof.ID, a.ID, "Taller 1b", "Suma de pares", "Compila (1.0)", &due, LatePolicy{AllowLate: true},
 		[]string{a.Files[0].ID, "no-existe"}, []FileUpload{{Name: "c.txt", Body: strings.NewReader("tres")}})
 	mustNoErr(t, err)
 	if up.Title != "Taller 1b" || up.Rubric != "Compila (1.0)" || up.DueAt == nil || !up.DueAt.Equal(due) {
@@ -66,14 +66,14 @@ func TestClassAdmin(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(s.assignmentDir(a.ID), a.Files[0].ID)); !os.IsNotExist(err) {
 		t.Fatalf("el archivo quitado sigue en disco: %v", err)
 	}
-	if _, err := s.UpdateAssignment(otro.ID, a.ID, "X", "Y", "", nil, nil, nil); !errors.Is(err, ErrNotFound) {
+	if _, err := s.UpdateAssignment(otro.ID, a.ID, "X", "Y", "", nil, LatePolicy{AllowLate: true}, nil, nil); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("otro profesor editó el taller: %v", err)
 	}
 	many := make([]FileUpload, 9)
 	for i := range many {
 		many[i] = FileUpload{Name: "f.txt", Body: strings.NewReader("x")}
 	}
-	if _, err := s.UpdateAssignment(prof.ID, a.ID, "T", "S", "", nil, nil, many); !errors.Is(err, ErrTooManyFiles) {
+	if _, err := s.UpdateAssignment(prof.ID, a.ID, "T", "S", "", nil, LatePolicy{AllowLate: true}, nil, many); !errors.Is(err, ErrTooManyFiles) {
 		t.Fatalf("más de 10 archivos: %v", err)
 	}
 	entries, _ := os.ReadDir(s.assignmentDir(a.ID))
@@ -104,7 +104,7 @@ func TestClassAdmin(t *testing.T) {
 		t.Fatalf("sus entregas siguen en la clase: %v", err)
 	}
 
-	a2, err := s.CreateAssignment(prof.ID, g.ID, "Taller 2", "Resta", "", nil, []FileUpload{{Name: "x.txt", Body: strings.NewReader("x")}})
+	a2, err := s.CreateAssignment(prof.ID, g.ID, "Taller 2", "Resta", "", nil, LatePolicy{AllowLate: true}, []FileUpload{{Name: "x.txt", Body: strings.NewReader("x")}})
 	mustNoErr(t, err)
 	g2, err := s.CreateGroup(prof.ID, c.ID, "Grupo B")
 	mustNoErr(t, err)
@@ -149,7 +149,7 @@ func TestMonitorRole(t *testing.T) {
 	mustNoErr(t, err)
 	_, err = s.JoinGroup(ana.ID, g.JoinCode)
 	mustNoErr(t, err)
-	a, err := s.CreateAssignment(prof.ID, g.ID, "Taller", "Enunciado", "", nil, nil)
+	a, err := s.CreateAssignment(prof.ID, g.ID, "Taller", "Enunciado", "", nil, LatePolicy{AllowLate: true}, nil)
 	mustNoErr(t, err)
 	official := &Submission{SubmissionMeta: SubmissionMeta{GroupID: g.ID, AssignmentID: a.ID, StudentID: ana.ID, Success: true}, Code: "int main(){}"}
 	mustNoErr(t, s.AddSubmission(official))

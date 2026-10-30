@@ -28,7 +28,10 @@ export interface User {
   email: string;
   role: Role;
   activity: Activity;
+  has_recovery?: boolean;
 }
+
+export type SessionUser = User & { recovery_code?: string };
 
 export interface GroupSummary {
   id: string;
@@ -132,6 +135,9 @@ export interface SubmissionMeta {
   exit_code: number;
   lines: number;
   has_ai_feedback: boolean;
+  due_at?: string;
+  late_seconds?: number;
+  late_penalty?: number;
   review_state?: ReviewState;
   monitor_feedback_count?: number;
 }
@@ -191,6 +197,9 @@ export interface Assignment {
   statement: string;
   rubric?: string;
   due_at?: string;
+  allow_late: boolean;
+  late_until?: string;
+  late_penalty?: number;
   created_at: string;
   files: AssignmentFile[];
 }
@@ -277,7 +286,7 @@ export async function getMe(): Promise<User | null> {
   return response.json();
 }
 
-export function login(email: string, password: string, role: Role): Promise<User> {
+export function login(email: string, password: string, role: Role): Promise<SessionUser> {
   return postJSON("/api/auth/login", { email, password, role });
 }
 
@@ -287,9 +296,25 @@ export function register(data: {
   password: string;
   role: Role;
   teacher_code?: string;
-}): Promise<User> {
+}): Promise<SessionUser> {
   return postJSON("/api/auth/register", data);
 }
+
+export function recoverAccount(email: string, recoveryCode: string, newPassword: string): Promise<SessionUser> {
+  return postJSON("/api/auth/recover", { email, recovery_code: recoveryCode, new_password: newPassword });
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const response = await apiFetch("/api/auth/password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+  if (!response.ok) await throwForStatus(response);
+}
+
+export const newRecoveryCode = (password: string) =>
+  postJSON<{ recovery_code: string }>("/api/auth/recovery-code", { password });
 
 export async function logout(): Promise<void> {
   await apiFetch("/api/auth/logout", { method: "POST" });

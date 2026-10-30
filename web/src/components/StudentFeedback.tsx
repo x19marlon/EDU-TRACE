@@ -2,12 +2,13 @@
 
 import { StudentSubmission } from "@/lib/api";
 import { MonitorNotes } from "@/components/MonitorFeedback";
-import { formatDateTime, formatFeedback, LEVEL_STYLE } from "@/lib/format";
+import { formatDateTime, formatFeedback, LEVEL_STYLE, performanceBand } from "@/lib/format";
 
 export function ReviewStatusPill({ item }: { item: StudentSubmission }) {
   return item.review ? (
     <span className="rounded-full bg-mint-100 px-3 py-1 text-xs font-bold text-mint-700">
-      Revisada{item.review.grade !== undefined ? ` · ${item.review.grade.toFixed(1)} / 5.0` : ""}
+      Revisada
+      {item.review.grade !== undefined ? ` · ${item.review.grade.toFixed(1)} / 5.0 · ${performanceBand(item.review.grade).label}` : ""}
     </span>
   ) : (
     <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-ink-soft">En revisión</span>

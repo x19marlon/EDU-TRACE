@@ -38,10 +38,11 @@ type publicUser struct {
 	Email string `json:"email"`
 	Role auth.Role `json:"role"`
 	Activity auth.Activity `json:"activity"`
+	HasRecovery bool `json:"has_recovery"`
 }
 
 func toPublic(u *auth.User) publicUser {
-	return publicUser{ID: u.ID, Name: u.Name, Email: u.Email, Role: u.Role, Activity: u.Activity}
+	return publicUser{ID: u.ID, Name: u.Name, Email: u.Email, Role: u.Role, Activity: u.Activity, HasRecovery: u.RecoveryHash != ""}
 }
 
 type registerRequest struct {
@@ -143,7 +144,12 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.Info("user registered", "user_id", u.ID, "role", u.Role)
-	h.startSession(w, u)
+	code, err := h.store.NewRecoveryCode(u.ID)
+	if err != nil {
+		slog.Error("recovery code failed", "user_id", u.ID, "error", err)
+		code = ""
+	}
+	h.startSession(w, u, code)
 }
 
 // Login maneja POST /api/auth/login.
@@ -172,10 +178,15 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.startSession(w, u)
+	h.startSession(w, u, "")
 }
 
-func (h *AuthHandler) startSession(w http.ResponseWriter, u *auth.User) {
+type sessionResponse struct {
+	publicUser
+	RecoveryCode string `json:"recovery_code,omitempty"`
+}
+
+func (h *AuthHandler) startSession(w http.ResponseWriter, u *auth.User, recoveryCode string) {
 	token, expires, err := h.store.CreateSession(u.ID)
 	if err != nil {
 		slog.Error("create session failed", "error", err)
@@ -191,7 +202,11 @@ func (h *AuthHandler) startSession(w http.ResponseWriter, u *auth.User) {
 		Secure: h.cfg.CookieSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
-	writeJSON(w, http.StatusOK, toPublic(u))
+	resp := sessionResponse{publicUser: toPublic(u), RecoveryCode: recoveryCode}
+	if recoveryCode != "" {
+		resp.HasRecovery = true
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // Logout maneja POST /api/auth/logout.

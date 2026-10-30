@@ -11,6 +11,7 @@ import TeacherAssignments from "@/components/TeacherAssignments";
 import StudentProcess from "@/components/StudentProcess";
 import RaeScatter from "@/components/RaeScatter";
 import { ReviewPill, StatusPill, SubmissionDetail } from "@/components/SubmissionView";
+import { LatePill } from "@/components/Deadline";
 import {
   Assignment,
   deleteGroup,
@@ -356,6 +357,7 @@ function GroupView() {
                         <span className="rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-lavender-600">Con retroalimentación IA</span>
                       )}
                         <ReviewPill meta={m} />
+                      <LatePill meta={m} />
                       <StatusPill meta={m} />
                     </button>
                   </li>
