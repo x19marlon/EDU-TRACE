@@ -6,10 +6,13 @@ import {
   deleteMonitorFeedbackAsTeacher,
   getMonitorSubmission,
   getSubmission,
+  JobStatus,
   MonitorFeedback,
+  rerunTests,
   Submission,
   SubmissionMeta,
 } from "@/lib/api";
+import TestResults, { TestsPill } from "@/components/TestResults";
 import { Spinner } from "@/components/ui";
 import { useAuth } from "@/components/AuthProvider";
 import { MonitorFeedbackForm, MonitorNotes } from "@/components/MonitorFeedback";
@@ -26,16 +29,49 @@ export function StatusPill({ meta }: { meta: SubmissionMeta }) {
   return <span className="rounded-full bg-mint-100 px-2.5 py-0.5 text-[11px] font-bold text-mint-700">Compila y ejecuta</span>;
 }
 
+const JOB_PILL: Partial<Record<JobStatus, [string, string]>> = {
+  pendiente: ["Propuesta IA en cola", "bg-lavender-50 text-lavender-700"],
+  procesando: ["IA preparando propuesta", "bg-lavender-100 text-lavender-700"],
+  lista: ["Propuesta IA lista", "bg-mint-50 text-mint-700"],
+  error: ["La IA falló", "bg-peach-100 text-peach-700"],
+};
+
+export function AIJobPill({ status }: { status?: JobStatus }) {
+  const pill = status && JOB_PILL[status];
+  if (!pill) return null;
+  return <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${pill[1]}`}>{pill[0]}</span>;
+}
+
 export function ReviewPill({ meta }: { meta: SubmissionMeta }) {
-  if (meta.kind === "attempt") return null;
+  if (meta.kind === "attempt") return <TestsPill meta={meta} />;
   const r = meta.review_state;
-  if (!r) return <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">Sin revisar</span>;
+  const extras = (
+    <>
+      <TestsPill meta={meta} />
+      {r?.status !== "returned" && <AIJobPill status={meta.ai_job} />}
+    </>
+  );
+  if (!r)
+    return (
+      <>
+        {extras}
+        <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">Sin revisar</span>
+      </>
+    );
   if (r.status === "draft")
-    return <span className="rounded-full bg-lavender-50 px-2.5 py-0.5 text-[11px] font-bold text-lavender-700">Borrador</span>;
+    return (
+      <>
+        {extras}
+        <span className="rounded-full bg-lavender-50 px-2.5 py-0.5 text-[11px] font-bold text-lavender-700">Pendiente de revisión</span>
+      </>
+    );
   return (
-    <span className="rounded-full bg-mint-100 px-2.5 py-0.5 text-[11px] font-bold text-mint-700">
-      Devuelta{r.grade !== undefined ? ` · ${r.grade.toFixed(1)}` : ""}
-    </span>
+    <>
+      {extras}
+      <span className="rounded-full bg-mint-100 px-2.5 py-0.5 text-[11px] font-bold text-mint-700">
+        Aprobada y devuelta{r.grade !== undefined ? ` · ${r.grade.toFixed(1)}` : ""}
+      </span>
+    </>
   );
 }
 
@@ -104,6 +140,25 @@ export function SubmissionDetail({
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar el envío"));
   }, [id, mode]);
 
+  const [rerunning, setRerunning] = useState(false);
+  const [rerunError, setRerunError] = useState<string | null>(null);
+
+  const rerun = async () => {
+    if (!sub) return;
+    setRerunning(true);
+    setRerunError(null);
+    try {
+      const tests = await rerunTests(sub.id);
+      const passed = tests.filter((t) => t.passed).length;
+      setSub({ ...sub, tests, tests_total: tests.length, tests_passed: passed });
+      onReviewSaved?.();
+    } catch (err) {
+      setRerunError(err instanceof Error ? err.message : "No se pudieron ejecutar los casos");
+    } finally {
+      setRerunning(false);
+    }
+  };
+
   const removeNote = async (note: MonitorFeedback) => {
     await (mode === "monitor" ? deleteMonitorFeedback(note.id) : deleteMonitorFeedbackAsTeacher(note.id));
     setNotes((list) => list.filter((n) => n.id !== note.id));
@@ -164,6 +219,23 @@ export function SubmissionDetail({
         </div>
       )}
       {sub.run_error && <p className="rounded-2xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">{sub.run_error}</p>}
+
+      {(sub.tests?.length ?? 0) > 0 && (
+        <TestResults results={sub.tests!} outputLabel="Salida del programa" />
+      )}
+      {mode === "teacher" && sub.assignment_id && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={rerun}
+            disabled={rerunning}
+            className="rounded-full bg-white px-3 py-1 text-xs font-bold text-lavender-700 ring-1 ring-lavender-200 transition hover:bg-lavender-50 disabled:opacity-50"
+          >
+            {rerunning ? "Ejecutando casos..." : (sub.tests?.length ?? 0) > 0 ? "Volver a ejecutar los casos de prueba" : "Ejecutar los casos de prueba del taller"}
+          </button>
+          <span className="text-[11px] text-ink-faint">Útil si cambiaste los casos del taller después de esta entrega.</span>
+          {rerunError && <span className="text-xs font-semibold text-peach-700">{rerunError}</span>}
+        </div>
+      )}
 
       
       {sub.kind !== "attempt" && (

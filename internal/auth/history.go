@@ -33,5 +33,8 @@ func (s *Store) OwnSubmission(studentID, submissionID string) (*Submission, erro
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
-	return sub, err
+	if err != nil {
+		return nil, err
+	}
+	return sub, s.withTests(sub, false)
 }

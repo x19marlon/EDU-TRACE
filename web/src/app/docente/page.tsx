@@ -7,7 +7,39 @@ import AppShell from "@/components/AppShell";
 import { Avatar, Card, InlineCreate, RenameForm, SmallButton } from "@/components/ui";
 import RaeEditor from "@/components/RaeEditor";
 import { useAuth } from "@/components/AuthProvider";
-import { createCourse, createGroup, CourseSummary, deleteCourse, listCourses, renameCourse } from "@/lib/api";
+import { AIStatus, createCourse, createGroup, CourseSummary, deleteCourse, getAIStatus, listCourses, renameCourse } from "@/lib/api";
+
+function AIAlert() {
+  const [status, setStatus] = useState<AIStatus | null>(null);
+  useEffect(() => {
+    getAIStatus()
+      .then(setStatus)
+      .catch(() => setStatus(null));
+  }, []);
+  if (!status || (status.available && status.failed.length === 0)) return null;
+  return (
+    <section role="alert" className="rise-in space-y-2 rounded-3xl bg-peach-50 p-5 text-sm text-peach-700">
+      {!status.available && (
+        <p>
+          <span className="font-bold">La IA no está disponible.</span> Las entregas se guardan intactas
+          {status.pending > 0 && ` y ${status.pending} ${status.pending === 1 ? "propuesta espera" : "propuestas esperan"} en la cola`}. Puedes
+          revisar sin IA mientras se restablece.
+        </p>
+      )}
+      {status.failed.map((f) => (
+        <p key={f.group_id}>
+          <span className="font-bold">
+            La IA no pudo preparar {f.failed} {f.failed === 1 ? "propuesta" : "propuestas"} en {f.course_name} · {f.group_name}.
+          </span>{" "}
+          {f.last_error}{" "}
+          <Link href={`/docente/clases/${f.group_id}`} className="font-bold underline">
+            Ver la clase
+          </Link>
+        </p>
+      ))}
+    </section>
+  );
+}
 
 function CourseCard({ course, onChanged }: { course: CourseSummary; onChanged: () => Promise<void> }) {
   const students = course.groups.reduce((n, g) => n + g.student_count, 0);
@@ -134,6 +166,8 @@ function CoursesDashboard() {
         </div>
       </section>
 
+      <AIAlert />
+
       {error && <p className="rounded-2xl bg-peach-50 p-4 text-sm text-peach-700">{error}</p>}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -168,9 +202,9 @@ function CoursesDashboard() {
             <ol className="list-decimal space-y-2 pl-5 text-sm text-ink-soft">
               <li>Crea una materia y agrégale sus clases (grupos).</li>
               <li>Comparte el código de cada clase con tus estudiantes.</li>
-              <li>Dentro de cada clase, publica talleres con su enunciado y archivos de apoyo.</li>
-              <li>Tus estudiantes trabajan el taller, piden retroalimentación formal o informal y te envían su código.</li>
-              <li>Entra a la clase para ver cada envío, a qué taller responde y qué retroalimentación vio el estudiante.</li>
+              <li>Dentro de cada clase, publica talleres con su enunciado, archivos de apoyo y casos de prueba.</li>
+              <li>Tus estudiantes compilan, ven qué casos superan y te envían su código. Cada entrega entra sola a la cola de la IA.</li>
+              <li>Entra a la clase para revisar cada propuesta de la IA: edítala, apruébala o descártala. En modo supervisado el estudiante solo ve lo que apruebas.</li>
               <li>Desde la clase administras todo: renombrarla, cambiar su código, quitar estudiantes, editar talleres y agregar monitores que retroalimentan sin calificar.</li>
             </ol>
           </Card>

@@ -12,7 +12,7 @@ import (
 	"github.com/marlon/edu-trace/internal/config"
 )
 
-func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaClient, store *auth.Store) http.Handler {
+func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaClient, store *auth.Store, drafts *DraftQueue) http.Handler {
 	mux := http.NewServeMux()
 	authH := NewAuthHandler(store, cfg)
 	compileFlight := auth.NewSingleFlight()
@@ -31,9 +31,13 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.HandleFunc("POST /api/auth/recover", authH.Recover)
 	mux.Handle("POST /api/auth/password", auth.RequireAuth(store, http.HandlerFunc(authH.ChangePassword)))
 	mux.Handle("POST /api/auth/recovery-code", auth.RequireAuth(store, http.HandlerFunc(authH.RecoveryCode)))
+	mux.Handle("POST /api/auth/consent", auth.RequireAuth(store, http.HandlerFunc(authH.Consent)))
+	mux.Handle("PATCH /api/auth/profile", auth.RequireAuth(store, http.HandlerFunc(authH.UpdateProfile)))
+	mux.Handle("GET /api/auth/export", auth.RequireAuth(store, http.HandlerFunc(authH.Export)))
+	mux.Handle("POST /api/auth/delete", auth.RequireAuth(store, http.HandlerFunc(authH.DeleteAccount)))
 
 	// docente y sus clases
-	classes := NewClassesHandler(store, comp)
+	classes := NewClassesHandler(store, comp, drafts)
 	teacher := func(f http.HandlerFunc) http.Handler { return auth.RequireRole(store, auth.RoleTeacher, f) }
 	student := func(h http.Handler) http.Handler { return auth.RequireRole(store, auth.RoleStudent, h) }
 	mux.Handle("GET /api/teacher/courses", teacher(classes.Courses))
@@ -59,9 +63,18 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("PATCH /api/teacher/raes/{id}", teacher(classes.UpdateRAE))
 	mux.Handle("DELETE /api/teacher/raes/{id}", teacher(classes.DeleteRAE))
 	mux.Handle("GET /api/teacher/groups/{id}/rae-matrix", teacher(classes.RAEMatrix))
+	mux.Handle("PATCH /api/teacher/groups/{id}/ai-mode", teacher(classes.SetAIMode))
+	mux.Handle("GET /api/teacher/groups/{id}/metrics", teacher(classes.Metrics))
+	mux.Handle("GET /api/teacher/groups/{id}/audit", teacher(classes.GroupAudit))
+	mux.Handle("POST /api/teacher/groups/{id}/ai-queue/retry", teacher(classes.RetryDrafts))
+	mux.Handle("PUT /api/teacher/courses/{id}/thresholds", teacher(classes.SetThresholds))
+	mux.Handle("GET /api/teacher/ai-status", teacher(drafts.Status))
+	mux.Handle("POST /api/teacher/submissions/{id}/tests", auth.RequireRole(store, auth.RoleTeacher, compileFlight.Wrap(http.HandlerFunc(classes.RerunTests))))
 	reviews := NewReviewsHandler(store, ollama)
 	mux.Handle("GET /api/teacher/submissions/{id}/review", teacher(reviews.Get))
 	mux.Handle("PUT /api/teacher/submissions/{id}/review", teacher(reviews.Save))
+	mux.Handle("POST /api/teacher/submissions/{id}/review/discard", teacher(reviews.Discard))
+	mux.Handle("GET /api/teacher/submissions/{id}/audit", teacher(reviews.Audit))
 
 	annotations := NewAnnotationsHandler(store)
 	mux.Handle("POST /api/teacher/submissions/{id}/annotations", teacher(annotations.Create))

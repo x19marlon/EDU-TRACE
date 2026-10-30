@@ -184,6 +184,7 @@ const verifyBlock = `ANTES DE RESPONDER, verifica en silencio:
 - Si se incluye el enunciado del taller, léelo primero: es lo que el programa debe hacer. Comprueba si el código lo cumple.
 - Lee el código línea por línea, usando los números de línea.
 - Si hay entrada y salida del programa, calcula a mano qué debería imprimir con esa entrada y compáralo con la salida real. Si no coinciden, busca la línea exacta que causa la diferencia (por ejemplo, precedencia de operadores, división entera, una condición de ciclo, una variable sin inicializar).
+- Si se incluyen los casos de prueba del profesor, di en "¿Cómo voy?" cuántos pasa y, si alguno no pasa, usa su entrada como pista para que encuentre la diferencia, sin darle la línea corregida.
 - Solo reporta un problema si puedes señalar la línea y explicar la causa. Si el programa funciona y no ves un error claro, dilo con honestidad: no inventes problemas ni casos raros.`
 
 const rulesBlock = `REGLAS:
@@ -230,16 +231,16 @@ const systemPromptInformal = `Eres el monitor de EduTrace para el curso Introduc
 
 ` + verifyBlock + `
 
-Responde SIEMPRE con estas tres secciones, en este orden y con estos títulos exactos:
+Responde SIEMPRE con estas tres secciones, en este orden y con estos títulos exactos (son las tres preguntas de Hattie y Timperley, dichas con tu tono de compañero):
 
-## Lo que ya funciona
-Una o dos cosas concretas de su código que están bien hechas.
+## ¿Hacia dónde voy?
+Una frase sencilla sobre lo que pide el ejercicio y qué Resultado de Aprendizaje Esperado (RAE) del curso practica, por ejemplo "RAE 4: implementar en C++".
 
-## Recomendaciones de código
-De dos a cuatro recomendaciones concretas sobre los elementos del código, empezando por cualquier error real: nombres de variables, tipos de datos, condicionales y ciclos, funciones, constantes, indentación, comentarios, mensajes de salida o código repetido. En cada una indica la línea y por qué mejora el programa. Puedes mostrar un ejemplo corto (una o dos líneas) de una buena práctica general, por ejemplo cómo se ve un nombre de variable descriptivo, pero nunca la corrección del ejercicio.
+## ¿Cómo voy?
+Una o dos cosas concretas que ya funcionan y de dos a cuatro recomendaciones sobre los elementos del código, empezando por cualquier error real: nombres de variables, tipos de datos, condicionales y ciclos, funciones, constantes, indentación, comentarios, mensajes de salida o código repetido. En cada una indica la línea y por qué mejora el programa. Puedes mostrar un ejemplo corto (una o dos líneas) de una buena práctica general, por ejemplo cómo se ve un nombre de variable descriptivo, pero nunca la corrección del ejercicio.
 
-## Tip rápido
-Un consejo breve para depurar o para seguir practicando (por ejemplo, imprimir el valor de una variable dentro del ciclo para ver qué pasa).
+## ¿Qué sigue?
+El siguiente paso concreto y un tip para depurar o seguir practicando (por ejemplo, imprimir el valor de una variable dentro del ciclo para ver qué pasa).
 
 ` + rulesBlock
 
@@ -303,6 +304,9 @@ func (o *OllamaClient) BuildMessages(req model.FeedbackRequest, statement string
 		writeBlock(&b, "Enunciado del taller (escrito por mi profesor):", "", truncate(statement, maxStatementChars))
 	}
 	writeBlock(&b, "Mi código (con números de línea):", "cpp", numberLines(req.Code))
+	if req.Compiled {
+		writeTests(&b, req.Tests)
+	}
 
 	switch {
 	case !req.Compiled:
@@ -351,7 +355,7 @@ func estimateTokens(messages []chatMessage) int {
 
 // StreamFeedback sends student code to Ollama and streams the response token by token.
 // The onToken callback is called for each chunk of text as it arrives.
-func (o *OllamaClient) StreamFeedback(ctx context.Context, fb model.FeedbackRequest, statement string, onToken func(token string)) error {
+func (o *OllamaClient) StreamFeedback(ctx context.Context, fb model.FeedbackRequest, statement string, onToken func(token string), onReplace func(text string)) (bool, error) {
 	messages := o.BuildMessages(fb, statement)
 	slog.Info("sending streaming feedback request to Ollama",
 		"model", o.cfg.OllamaModel,
@@ -360,13 +364,22 @@ func (o *OllamaClient) StreamFeedback(ctx context.Context, fb model.FeedbackRequ
 		"code_length", len(fb.Code),
 		"est_tokens", estimateTokens(messages),
 	)
-	guard := NewSolutionGuard(onToken, fb.Code, statement)
+	tracker := NewSectionTracker(onToken)
+	guard := NewSolutionGuard(tracker.Write, fb.Code, statement)
 	err := o.streamChat(ctx, messages, guard.Write)
 	guard.Close()
 	if n := guard.Omitted(); n > 0 {
 		slog.Info("filtro anti-solución: código omitido", "fragmentos", n, "mode", fb.Mode)
 	}
-	return err
+	if err != nil {
+		return false, err
+	}
+	fixed, ok := EnsureSections(tracker.Text(), FallbackSections(OutcomeOf(fb, statement)))
+	if !ok {
+		slog.Info("secciones de Hattie y Timperley completadas", "mode", fb.Mode, "faltaban", MissingSections(tracker.Text()))
+		onReplace(fixed)
+	}
+	return ok, nil
 }
 
 // outputTokens es lo que se reserva para la salida del modelo: la respuesta y, si el

@@ -1,13 +1,97 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Assignment, assignmentFileUrl, createAssignment, deleteAssignment, updateAssignment } from "@/lib/api";
+import { Assignment, assignmentFileUrl, createAssignment, deleteAssignment, TestCase, TestMatch, updateAssignment } from "@/lib/api";
 import { Card, SmallButton } from "@/components/ui";
 import { formatDeadline, formatSize } from "@/lib/format";
 import { DeadlineBadge } from "@/components/Deadline";
 
 const MAX_FILES = 10;
 const MAX_FILE_MB = 10;
+const MAX_TESTS = 10;
+
+const emptyTest = (): TestCase => ({ name: "", stdin: "", expected: "", match: "contiene", hidden: false });
+
+function TestsEditor({ tests, onChange }: { tests: TestCase[]; onChange: (tests: TestCase[]) => void }) {
+  const update = (i: number, patch: Partial<TestCase>) => onChange(tests.map((t, j) => (j === i ? { ...t, ...patch } : t)));
+  const small =
+    "w-full rounded-xl border border-lavender-100 bg-white px-3 py-1.5 font-mono text-xs focus:border-lavender-300 focus:outline-none focus:ring-4 focus:ring-lavender-100";
+  return (
+    <div className="space-y-2 rounded-2xl bg-lavender-50/60 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold text-ink-soft">Casos de prueba</span>
+        <span className="text-xs text-ink-faint">
+          (opcional) Cada envío y cada compilación del estudiante se ejecuta con estas entradas y se compara con la salida esperada.
+        </span>
+      </div>
+      {tests.map((t, i) => (
+        <div key={i} className="space-y-2 rounded-2xl bg-white p-3 ring-1 ring-lavender-100">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              value={t.name}
+              onChange={(e) => update(i, { name: e.target.value })}
+              maxLength={80}
+              placeholder={`Caso ${i + 1}`}
+              aria-label={`Nombre del caso ${i + 1}`}
+              className="min-w-0 flex-1 rounded-full border border-lavender-100 bg-lavender-50/60 px-3 py-1.5 text-sm focus:outline-none focus:ring-4 focus:ring-lavender-100"
+            />
+            <select
+              value={t.match}
+              onChange={(e) => update(i, { match: e.target.value as TestMatch })}
+              aria-label={`Comparación del caso ${i + 1}`}
+              className="rounded-full border border-lavender-100 bg-white px-3 py-1.5 text-xs font-semibold text-ink focus:outline-none focus:ring-4 focus:ring-lavender-100"
+            >
+              <option value="contiene">La salida contiene lo esperado</option>
+              <option value="exacta">La salida es exactamente lo esperado</option>
+            </select>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
+              <input type="checkbox" checked={t.hidden} onChange={(e) => update(i, { hidden: e.target.checked })} />
+              Oculto al estudiante
+            </label>
+            <button
+              type="button"
+              onClick={() => onChange(tests.filter((_, j) => j !== i))}
+              className="text-xs font-bold text-peach-700 hover:underline"
+            >
+              Quitar
+            </button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <textarea
+              value={t.stdin}
+              onChange={(e) => update(i, { stdin: e.target.value })}
+              maxLength={4000}
+              placeholder="Entrada (lo que se escribe en cin), p. ej. 5"
+              aria-label={`Entrada del caso ${i + 1}`}
+              className={`${small} h-16 resize-y`}
+            />
+            <textarea
+              value={t.expected}
+              onChange={(e) => update(i, { expected: e.target.value })}
+              maxLength={4000}
+              placeholder="Salida esperada, p. ej. Suma: 15"
+              aria-label={`Salida esperada del caso ${i + 1}`}
+              className={`${small} h-16 resize-y`}
+            />
+          </div>
+        </div>
+      ))}
+      {tests.length < MAX_TESTS && (
+        <button
+          type="button"
+          onClick={() => onChange([...tests, emptyTest()])}
+          className="rounded-full bg-white px-4 py-1.5 text-sm font-bold text-lavender-700 ring-1 ring-lavender-200 transition hover:bg-lavender-50"
+        >
+          Agregar caso de prueba
+        </button>
+      )}
+      <p className="text-[11px] text-ink-faint">
+        Se ignoran los espacios repetidos y las líneas vacías. «Contiene» acepta mensajes extra como «Ingrese un número:». Los casos
+        ocultos solo le muestran al estudiante si pasa o no.
+      </p>
+    </div>
+  );
+}
 
 const fieldClass =
   "w-full rounded-2xl border border-lavender-100 bg-lavender-50/60 px-4 py-2.5 text-sm placeholder-ink-faint " +
@@ -40,6 +124,8 @@ function AssignmentForm({
   );
   const [lateUntil, setLateUntil] = useState(toLocalInput(initial?.late_until));
   const [penalty, setPenalty] = useState(initial?.late_penalty !== undefined ? String(initial.late_penalty) : "");
+  const [tests, setTests] = useState<TestCase[]>(initial?.tests ?? []);
+  const testsError = tests.some((t) => !t.expected.trim()) ? "Cada caso de prueba necesita su salida esperada." : null;
   const dueMs = due ? new Date(due).getTime() : null;
   const lateUntilMs = lateMode === "until" && lateUntil ? new Date(lateUntil).getTime() : null;
   const policyError =
@@ -85,6 +171,10 @@ function AssignmentForm({
         if (lateMode === "until" && lateUntil) form.append("late_until", new Date(lateUntil).toISOString());
         if (lateMode !== "closed" && penalty.trim()) form.append("late_penalty", penalty.trim().replace(",", "."));
       }
+      form.append(
+        "tests",
+        JSON.stringify(tests.map((t) => ({ name: t.name.trim(), stdin: t.stdin, expected: t.expected, match: t.match, hidden: t.hidden })))
+      );
       files.forEach((f) => form.append("files", f, f.name));
       removed.forEach((id) => form.append("remove_files", id));
       const a = initial ? await updateAssignment(initial.id, form) : await createAssignment(groupId, form);
@@ -96,6 +186,7 @@ function AssignmentForm({
         setLateMode("accept");
         setLateUntil("");
         setPenalty("");
+        setTests([]);
         setFiles([]);
       }
       onSaved(a);
@@ -193,6 +284,9 @@ function AssignmentForm({
         </div>
       )}
 
+      <TestsEditor tests={tests} onChange={setTests} />
+      {testsError && <p className="text-xs font-semibold text-peach-700">{testsError}</p>}
+
       <div>
         <input ref={fileInput} type="file" multiple className="hidden" onChange={(e) => addFiles(e.target.files)} />
         <button
@@ -252,7 +346,7 @@ function AssignmentForm({
       <div className="flex flex-wrap gap-2">
         <button
           type="submit"
-          disabled={busy || title.trim().length < 2 || !statement.trim() || (!!due && !!policyError)}
+          disabled={busy || title.trim().length < 2 || !statement.trim() || (!!due && !!policyError) || !!testsError}
           className="rounded-full bg-lavender-600 px-5 py-2.5 text-sm font-bold text-white shadow-soft transition
             hover:bg-lavender-700 disabled:opacity-40"
         >
@@ -362,7 +456,8 @@ export default function TeacherAssignments({
                   <span className="min-w-0 flex-1 font-bold">{a.title}</span>
                   <DeadlineBadge assignment={a} />
                   <span className="text-xs text-ink-soft">
-                    {a.files.length} {a.files.length === 1 ? "archivo" : "archivos"} · {submissionCounts.get(a.id) ?? 0} entregas
+                    {a.files.length} {a.files.length === 1 ? "archivo" : "archivos"} · {(a.tests ?? []).length}{" "}
+                    {(a.tests ?? []).length === 1 ? "caso de prueba" : "casos de prueba"} · {submissionCounts.get(a.id) ?? 0} entregas
                   </span>
                   <svg className="h-4 w-4 text-ink-faint transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
                     <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" />
@@ -384,6 +479,20 @@ export default function TeacherAssignments({
                   <div className="max-h-60 overflow-auto whitespace-pre-wrap rounded-2xl bg-white p-3 text-sm leading-relaxed">
                     {a.statement}
                   </div>
+                  {(a.tests ?? []).length > 0 && (
+                    <ul className="space-y-1">
+                      {a.tests.map((t, i) => (
+                        <li key={t.id ?? i} className="flex flex-wrap items-center gap-2 rounded-xl bg-white px-3 py-1.5 text-xs">
+                          <span className="font-bold">{t.name}</span>
+                          <span className="font-mono text-ink-soft">
+                            {JSON.stringify(t.stdin)} → {JSON.stringify(t.expected)}
+                          </span>
+                          <span className="text-ink-faint">{t.match === "exacta" ? "exacta" : "contiene"}</span>
+                          {t.hidden && <span className="rounded-full bg-lavender-100 px-2 py-0.5 font-bold text-lavender-700">oculto</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {a.files.length > 0 && (
                     <ul className="flex flex-wrap gap-2">
                       {a.files.map((f) => (

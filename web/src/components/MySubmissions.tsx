@@ -5,6 +5,7 @@ import Link from "next/link";
 import { listMySubmissions, StudentSubmission } from "@/lib/api";
 import { Card } from "@/components/ui";
 import { AnnotationsPill, MonitorCountPill, ReviewStatusPill, SubmissionFeedback } from "@/components/StudentFeedback";
+import { TestsPill } from "@/components/TestResults";
 import { formatDateTime } from "@/lib/format";
 import { LatePill } from "@/components/Deadline";
 
@@ -45,6 +46,7 @@ export default function MySubmissions({ refreshKey }: { refreshKey: number }) {
                   {s.course_name} · {s.group_name} · {formatDateTime(s.created_at)}
                 </span>
                 <span className="flex-1" />
+                <TestsPill meta={s} />
                 <LatePill meta={s} />
                 <AnnotationsPill item={s} />
                 <MonitorCountPill item={s} />

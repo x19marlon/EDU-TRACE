@@ -1,6 +1,6 @@
 "use client";
 
-import { StudentSubmission } from "@/lib/api";
+import { FeedbackOrigin, StudentSubmission } from "@/lib/api";
 import { MonitorNotes } from "@/components/MonitorFeedback";
 import { formatDateTime, formatFeedback, LEVEL_STYLE, performanceBand } from "@/lib/format";
 
@@ -35,12 +35,29 @@ export function AnnotationsPill({ item }: { item: StudentSubmission }) {
   );
 }
 
+const ORIGIN_NOTE: Record<FeedbackOrigin, string> = {
+  ia: "Texto propuesto por la IA y aprobado sin cambios por",
+  ia_editada: "Texto propuesto por la IA, editado y aprobado por",
+  docente: "Retroalimentación escrita por",
+};
+
 export function SubmissionFeedback({ item }: { item: StudentSubmission }) {
   const review = item.review;
+  const origin = review?.origin || (review?.ai_assisted ? "ia_editada" : "docente");
+  const teacher = review?.teacher_name || "tu profesor";
   return (
     <div className="space-y-3">
       {review ? (
         <div>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            {origin !== "docente" ? (
+              <span className="rounded-full bg-lavender-100 px-2.5 py-0.5 text-[11px] font-bold text-lavender-700">
+                Generado con IA · aprobado por {teacher}
+              </span>
+            ) : (
+              <span className="rounded-full bg-mint-100 px-2.5 py-0.5 text-[11px] font-bold text-mint-700">Escrito por {teacher}</span>
+            )}
+          </div>
           <div
             className="rounded-2xl bg-white p-4 text-sm leading-relaxed"
             dangerouslySetInnerHTML={{ __html: formatFeedback(review.feedback) }}
@@ -61,8 +78,9 @@ export function SubmissionFeedback({ item }: { item: StudentSubmission }) {
             </ul>
           )}
           <p className="mt-2 text-xs text-ink-faint">
-            Revisada por tu profesor el {formatDateTime(review.returned_at)}.
-            {review.ai_assisted && " Tu profesor usó apoyo de IA; la calificación la definió tu profesor."}
+            {ORIGIN_NOTE[origin]} {teacher} el {formatDateTime(review.returned_at)}.
+            {review.ai_assisted && " La calificación la definió tu profesor, no la IA."} Si tienes dudas sobre esta retroalimentación,
+            pregúntale a {teacher} en clase o a tu monitor.
           </p>
         </div>
       ) : (

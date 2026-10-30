@@ -47,6 +47,7 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	Activity Activity `json:"activity"`
 	RecoveryHash string `json:"-"`
+	ConsentAt *time.Time `json:"consent_at,omitempty"`
 }
 
 //go:embed schema.sql
@@ -175,16 +176,17 @@ func hashToken(token string) string {
 
 // ---------- Usuarios y sesiones ----------
 
-const userCols = `u.id, u.name, u.email, u.role, u.password_hash, u.created_at, u.compiles, u.feedbacks, u.last_active_at, u.recovery_hash`
+const userCols = `u.id, u.name, u.email, u.role, u.password_hash, u.created_at, u.compiles, u.feedbacks, u.last_active_at, u.recovery_hash, u.consent_at`
 
 func scanUser(sc scanner) (*User, error) {
 	var u User
 	var created string
-	var lastActive sql.NullString
+	var lastActive, consent sql.NullString
 	if err := sc.Scan(&u.ID, &u.Name, &u.Email, &u.Role, &u.PasswordHash, &created,
-		&u.Activity.Compiles, &u.Activity.Feedbacks, &lastActive, &u.RecoveryHash); err != nil {
+		&u.Activity.Compiles, &u.Activity.Feedbacks, &lastActive, &u.RecoveryHash, &consent); err != nil {
 		return nil, err
 	}
+	u.ConsentAt = timePtr(consent)
 	u.CreatedAt = parseTime(created)
 	if t := timePtr(lastActive); t != nil {
 		u.Activity.LastActiveAt = *t

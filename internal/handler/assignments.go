@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/marlon/edu-trace/internal/auth"
 	"github.com/marlon/edu-trace/internal/model"
@@ -35,6 +36,8 @@ type assignmentForm struct {
 	dueAt *time.Time
 	policy auth.LatePolicy
 	files []*multipart.FileHeader
+	tests []model.TestCase
+	hasTests bool
 }
 
 func parseAssignmentForm(w http.ResponseWriter, r *http.Request) (*assignmentForm, bool) {
@@ -93,6 +96,17 @@ func parseAssignmentForm(w http.ResponseWriter, r *http.Request) (*assignmentFor
 		p = math.Round(p*10) / 10
 		f.policy.LatePenalty = &p
 	}
+	if _, ok := r.MultipartForm.Value["tests"]; ok {
+		var raw []model.TestCase
+		if err := json.Unmarshal([]byte(r.FormValue("tests")), &raw); err != nil {
+			return fail(http.StatusBadRequest, "los casos de prueba no son válidos")
+		}
+		tests, err := auth.NormalizeTests(raw)
+		if err != nil {
+			return fail(http.StatusBadRequest, err.Error())
+		}
+		f.tests, f.hasTests = tests, true
+	}
 	if len(f.files) > maxAssignmentFiles {
 		return fail(http.StatusBadRequest, "máximo 10 archivos por taller")
 	}
@@ -147,7 +161,13 @@ func (h *ClassesHandler) CreateAssignment(w http.ResponseWriter, r *http.Request
 		writeStoreErr(w, err, "crear el taller")
 		return
 	}
-	slog.Info("assignment created", "user_id", user.ID, "group_id", a.GroupID, "assignment_id", a.ID, "files", len(a.Files))
+	if len(form.tests) > 0 {
+		if a.Tests, err = h.store.SetAssignmentTests(user.ID, a.ID, form.tests); err != nil {
+			writeStoreErr(w, err, "guardar los casos de prueba")
+			return
+		}
+	}
+	slog.Info("assignment created", "user_id", user.ID, "group_id", a.GroupID, "assignment_id", a.ID, "files", len(a.Files), "tests", len(a.Tests))
 	writeJSON(w, http.StatusCreated, a)
 }
 
@@ -174,7 +194,13 @@ func (h *ClassesHandler) UpdateAssignment(w http.ResponseWriter, r *http.Request
 		writeStoreErr(w, err, "guardar el taller")
 		return
 	}
-	slog.Info("assignment updated", "user_id", user.ID, "assignment_id", a.ID, "files", len(a.Files))
+	if form.hasTests {
+		if a.Tests, err = h.store.SetAssignmentTests(user.ID, a.ID, form.tests); err != nil {
+			writeStoreErr(w, err, "guardar los casos de prueba")
+			return
+		}
+	}
+	slog.Info("assignment updated", "user_id", user.ID, "assignment_id", a.ID, "files", len(a.Files), "tests", len(a.Tests))
 	writeJSON(w, http.StatusOK, a)
 }
 

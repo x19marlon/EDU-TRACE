@@ -107,7 +107,7 @@ func (s *Store) MonitorGroupAssignments(monitorID, groupID string) ([]Assignment
 	if _, err := s.assignedGroup(s.db, monitorID, groupID); err != nil {
 		return nil, err
 	}
-	return s.groupAssignments(groupID)
+	return s.groupAssignments(groupID, false)
 }
 
 func (s *Store) SubmissionForMonitor(monitorID, submissionID string) (*Submission, error) {
@@ -118,7 +118,10 @@ func (s *Store) SubmissionForMonitor(monitorID, submissionID string) (*Submissio
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
-	return sub, err
+	if err != nil {
+		return nil, err
+	}
+	return sub, s.withTests(sub, false)
 }
 
 func (s *Store) AddMonitorFeedback(monitorID, submissionID, body string) (*MonitorFeedback, error) {

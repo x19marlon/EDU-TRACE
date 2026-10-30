@@ -10,6 +10,7 @@ import AnnotatedCode from "@/components/AnnotatedCode";
 import { LatePill } from "@/components/Deadline";
 import { AnnotationsPill, MonitorCountPill, ReviewStatusPill, SubmissionFeedback } from "@/components/StudentFeedback";
 import { getMyHistory, getMySubmission, StudentHistory, StudentSubmission, Submission } from "@/lib/api";
+import TestResults, { TestsPill } from "@/components/TestResults";
 import { formatDateTime, formatFeedback } from "@/lib/format";
 
 type Tab = "entregas" | "intentos";
@@ -54,6 +55,7 @@ function HistoryDetail({ item }: { item: StudentSubmission }) {
         </div>
       )}
       {sub.run_error && <p className="rounded-2xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">{sub.run_error}</p>}
+      {(sub.tests?.length ?? 0) > 0 && <TestResults results={sub.tests!} />}
 
       {item.kind === "official" && (
         <div className="space-y-3">
@@ -274,6 +276,7 @@ function HistoryView() {
                         <span className="text-xs text-ink-faint">{s.lines} líneas</span>
                         <span className="flex-1" />
                         <StatusPill meta={s} />
+                        <TestsPill meta={s} />
                         <LatePill meta={s} />
                         <AnnotationsPill item={s} />
                         <MonitorCountPill item={s} />

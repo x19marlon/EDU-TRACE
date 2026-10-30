@@ -11,7 +11,7 @@ TEACHER_CODE="${TEACHER_CODE:-admin123}"
 echo "=== 1. Registrando profesor ==="
 PROF_COOKIE=$(curl -s -c - "$API/api/auth/register" \
   -H "Content-Type: application/json" \
-  -d "$(python3 -c "import json, sys; print(json.dumps({'name': 'Prof. María García', 'email': 'maria.garcia@universidad.edu.co', 'password': 'Profesor2026!', 'role': 'teacher', 'teacher_code': sys.argv[1]}))" "$TEACHER_CODE")" \
+  -d "$(python3 -c "import json, sys; print(json.dumps({'name': 'Prof. María García', 'email': 'maria.garcia@universidad.edu.co', 'password': 'Profesor2026!', 'role': 'teacher', 'teacher_code': sys.argv[1], 'consent': True}))" "$TEACHER_CODE")" \
   | grep edutrace_session | awk '{print $NF}')
 echo "  Cookie profesor: $PROF_COOKIE"
 
@@ -42,6 +42,9 @@ GROUP2=$(curl -s -b "edutrace_session=$PROF_COOKIE" "$API/api/teacher/courses/$C
 GROUP2_ID=$(echo "$GROUP2" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
 GROUP2_CODE=$(echo "$GROUP2" | python3 -c "import sys,json; print(json.load(sys.stdin)['join_code'])")
 echo "  Grupo 2 (Prog Avanzada): $GROUP2_ID  Código: $GROUP2_CODE"
+curl -s -b "edutrace_session=$PROF_COOKIE" -X PATCH "$API/api/teacher/groups/$GROUP2_ID/ai-mode" \
+  -H "Content-Type: application/json" -d '{"ai_mode":"inmediata"}' > /dev/null
+echo "  Grupo A en modo supervisado (predeterminado) · Grupo B en modo inmediato"
 
 echo "=== 4. Registrando 5 estudiantes y asignándolos a clases ==="
 
@@ -50,7 +53,7 @@ register_and_join() {
   local cookie
   cookie=$(curl -s -c - "$API/api/auth/register" \
     -H "Content-Type: application/json" \
-    -d "{\"name\":\"$name\",\"email\":\"$email\",\"password\":\"Alumno2026!\",\"role\":\"student\"}" \
+    -d "{\"name\":\"$name\",\"email\":\"$email\",\"password\":\"Alumno2026!\",\"role\":\"student\",\"consent\":true}" \
     | grep edutrace_session | awk '{print $NF}')
   curl -s -b "edutrace_session=$cookie" "$API/api/student/groups/join" \
     -H "Content-Type: application/json" \
@@ -111,18 +114,21 @@ T1=$(create_assignment "$GROUP1_ID" "Taller 1: promedio de notas" \
   "Lee tres notas (de 0.0 a 5.0) y muestra su promedio con dos decimales.
 Ejemplo: entrada 4.5 3.0 5.0 -> salida Promedio: 4.17" \
   "Compila (1.0) · Lee bien la entrada (1.0) · Promedio correcto (2.0) · Legibilidad (1.0)" \
-  "due_at=$(iso_utc '+5 days')" "allow_late=true")
+  "due_at=$(iso_utc '+5 days')" "allow_late=true" \
+  'tests=[{"name":"Ejemplo del enunciado","stdin":"4.5 3.0 5.0","expected":"Promedio: 4.17","match":"contiene","hidden":false},{"name":"Notas enteras","stdin":"4 5 5","expected":"Promedio: 4.67","match":"contiene","hidden":false},{"name":"Promedio bajo","stdin":"0 0 1","expected":"Promedio: 0.33","match":"contiene","hidden":true}]')
 T2=$(create_assignment "$GROUP1_ID" "Taller 2: suma con ciclos" \
   "Lee un entero n y muestra la suma de 1 hasta n usando un ciclo.
 Ejemplo: entrada 5 -> salida Suma: 15" \
   "Compila (1.0) · Usa un ciclo (1.0) · Resultado correcto (2.0) · Legibilidad (1.0)" \
-  "due_at=$(iso_utc '+20 hours')" "allow_late=false")
+  "due_at=$(iso_utc '+20 hours')" "allow_late=false" \
+  'tests=[{"name":"Ejemplo del enunciado","stdin":"5","expected":"Suma: 15","match":"contiene","hidden":false},{"name":"n = 1","stdin":"1","expected":"Suma: 1","match":"contiene","hidden":false},{"name":"n = 10","stdin":"10","expected":"Suma: 55","match":"contiene","hidden":true}]')
 T3=$(create_assignment "$GROUP1_ID" "Taller 3: el mayor de tres" \
   "Lee tres enteros y muestra el mayor usando condicionales.
 Ejemplo: entrada 7 12 3 -> salida Mayor: 12" \
   "Compila (1.0) · Usa condicionales (1.0) · Resultado correcto (2.0) · Legibilidad (1.0)" \
-  "due_at=$(iso_utc '-27 hours')" "allow_late=true" "late_penalty=0.5")
-echo "  ✓ 3 talleres: el 1 vence en 5 días, el 2 en 20 h (sin tardías) y el 3 venció hace 27 h (tardías con −0.5 por día)"
+  "due_at=$(iso_utc '-27 hours')" "allow_late=true" "late_penalty=0.5" \
+  'tests=[{"name":"Ejemplo del enunciado","stdin":"7 12 3","expected":"Mayor: 12","match":"contiene","hidden":false},{"name":"Repetidos","stdin":"5 5 2","expected":"Mayor: 5","match":"contiene","hidden":false},{"name":"Negativos","stdin":"-3 -8 -1","expected":"Mayor: -1","match":"contiene","hidden":true}]')
+echo "  ✓ 3 talleres con 3 casos de prueba cada uno (1 oculto): el 1 vence en 5 días, el 2 en 20 h (sin tardías) y el 3 venció hace 27 h (tardías con −0.5 por día)"
 
 ANA_COOKIE=$(login_cookie "ana.rodriguez@est.edu.co" "Alumno2026!")
 CARLOS_COOKIE=$(login_cookie "carlos.perez@est.edu.co" "Alumno2026!")
@@ -234,6 +240,8 @@ ANA_T3=$(submit "$ANA_COOKIE" "$GROUP1_ID" "$T3" "$CODE_MAYOR" "7 12 3")
 CARLOS_T1=$(submit "$CARLOS_COOKIE" "$GROUP1_ID" "$T1" "$CODE_PROMEDIO_ENTERO" "4 5 5")
 LUIS_T2=$(submit "$LUIS_COOKIE" "$GROUP1_ID" "$T2" "$CODE_SUMA_OK" "5")
 echo "  ✓ Ana: 3 entregas y 2 intentos · Carlos: 1 entrega · Luis: 1 entrega"
+echo "  ✓ Casos de prueba: Ana pasa 3/3, 0/3 y 3/3 · Carlos 0/3 · Luis 3/3"
+echo "  ✓ Las 5 entregas oficiales entraron a la cola: la IA prepara sus propuestas en segundo plano"
 
 echo "=== 7. Calificando ==="
 review "$ANA_T1" 4.5 true "Muy bien: lees las tres notas con \`double\` y usas paréntesis para sumar antes de dividir, por eso el promedio sale correcto (4.17 con 4.5, 3.0 y 5.0). La salida con dos decimales cumple el enunciado.
@@ -272,4 +280,5 @@ echo "    ana.rodriguez@est.edu.co: Taller 1 = 4.5, Taller 2 = 3.2, Taller 3 en 
 echo "    luis.martinez@est.edu.co: Taller 2 = 5.0"
 echo "    carlos.perez@est.edu.co:  Taller 1 = 2.8"
 echo "  RAE: los 4 oficiales del curso 33698 en Introducción a la Programación, con niveles en cada revisión"
+echo "  IA: Grupo A supervisado (el estudiante solo ve lo que aprueba el profesor) · Grupo B inmediato"
 echo ""

@@ -270,7 +270,10 @@ func main() {
 			}
 			var b strings.Builder
 			start := time.Now()
-			err := client.StreamFeedback(ctx, req, c.statement, func(t string) { b.WriteString(t) })
+			_, err := client.StreamFeedback(ctx, req, c.statement, func(t string) { b.WriteString(t) }, func(text string) {
+				b.Reset()
+				b.WriteString(text)
+			})
 			elapsed := time.Since(start)
 			totalTime += elapsed
 			out := b.String()

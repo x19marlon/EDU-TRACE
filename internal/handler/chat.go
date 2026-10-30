@@ -41,6 +41,9 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := auth.UserFrom(r.Context())
+	if !aiAllowed(w, h.store, user, req.AssignmentID) {
+		return
+	}
 
 	var statement string
 	if req.AssignmentID != "" {
@@ -56,7 +59,8 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"code_size", len(req.Code),
 	)
 
-	streamSSE(w, h.modelName, func(onToken func(string)) error {
+	stats := streamSSE(w, h.modelName, func(onToken, _ func(string)) error {
 		return h.ollama.StreamChat(r.Context(), req, statement, onToken)
 	})
+	h.store.RecordAIRequest(stats.record(auth.AIKindChat, h.store.AssignmentGroup(req.AssignmentID), user.Role))
 }

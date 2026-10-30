@@ -26,6 +26,10 @@ func New(cfg *config.Config) *Compiler {
 
 // Compile compiles and runs C++ source code in a temporary sandbox.
 func (c *Compiler) Compile(ctx context.Context, sourceCode string, stdin string) *model.CompileResult {
+	return c.CompileAndTest(ctx, sourceCode, stdin, nil)
+}
+
+func (c *Compiler) CompileAndTest(ctx context.Context, sourceCode string, stdin string, tests []model.TestCase) *model.CompileResult {
 	result := &model.CompileResult{}
 
 	// Create isolated temp directory.
@@ -75,17 +79,36 @@ func (c *Compiler) Compile(ctx context.Context, sourceCode string, stdin string)
 			result.Error = "la compilación tardó demasiado"
 		}
 		result.ExitCode = exitCodeFrom(compileCmd)
+		for _, t := range tests {
+			result.Tests = append(result.Tests, testResult(t, runOutcome{}, "el programa no compiló"))
+		}
 		return result
 	}
 
 	// --- Execution phase ---
 	result.Success = true
 
+	run := c.run(ctx, tmpDir, stdin)
+	result.ProgramOutput, result.ExitCode, result.Error, result.RunTimeMs = run.output, run.exitCode, run.err, run.ms
+	result.Tests = c.runTests(ctx, tmpDir, tests)
+	return result
+}
+
+type runOutcome struct {
+	output string
+	exitCode int
+	err string
+	ms int64
+	timedOut bool
+}
+
+func (c *Compiler) run(ctx context.Context, tmpDir, stdin string) runOutcome {
+	var out runOutcome
 	runStart := time.Now()
 	runCtx, runCancel := context.WithTimeout(ctx, c.cfg.RunTimeout)
 	defer runCancel()
 
-	name, args = c.runCommand(tmpDir)
+	name, args := c.runCommand(tmpDir)
 	runCmd := exec.CommandContext(runCtx, name, args...)
 	runCmd.Dir = tmpDir
 	runCmd.WaitDelay = time.Second
@@ -102,25 +125,82 @@ func (c *Compiler) Compile(ctx context.Context, sourceCode string, stdin string)
 	runCmd.Stderr = runStderr
 
 	runErr := runCmd.Run()
-	result.RunTimeMs = time.Since(runStart).Milliseconds()
+	out.ms = time.Since(runStart).Milliseconds()
 
 	programOutput := runStdout.String() + runStderr.String()
 	if len(programOutput) > c.cfg.MaxOutputSize {
 		programOutput = programOutput[:c.cfg.MaxOutputSize] + "\n... (salida recortada)"
 	}
-	result.ProgramOutput = programOutput
+	out.output = programOutput
 
 	if runErr != nil {
-		result.ExitCode = exitCodeFrom(runCmd)
+		out.exitCode = exitCodeFrom(runCmd)
 		if runCtx.Err() == context.DeadlineExceeded {
 			// Success sigue en true: compiló bien, el problema fue al ejecutar.
-			result.Error = "se agotó el tiempo de ejecución (¿un ciclo infinito o esperando entrada?)"
+			out.err = "se agotó el tiempo de ejecución (¿un ciclo infinito o esperando entrada?)"
+			out.timedOut = true
 		}
-		return result
 	}
+	return out
+}
 
-	result.ExitCode = 0
-	return result
+const (
+	maxTestOutput = 2000
+	maxTimeouts = 2
+)
+
+func (c *Compiler) runTests(ctx context.Context, tmpDir string, tests []model.TestCase) []model.TestResult {
+	var results []model.TestResult
+	timeouts := 0
+	for _, t := range tests {
+		if timeouts >= maxTimeouts || ctx.Err() != nil {
+			results = append(results, testResult(t, runOutcome{}, "no se ejecutó: el programa no terminó en los casos anteriores"))
+			continue
+		}
+		out := c.run(ctx, tmpDir, t.Stdin)
+		if out.timedOut {
+			timeouts++
+		}
+		results = append(results, testResult(t, out, ""))
+	}
+	return results
+}
+
+func testResult(t model.TestCase, out runOutcome, skipped string) model.TestResult {
+	r := model.TestResult{TestID: t.ID, Name: t.Name, Hidden: t.Hidden, Stdin: t.Stdin, Expected: t.Expected}
+	switch {
+	case skipped != "":
+		r.Error = skipped
+		return r
+	case out.err != "":
+		r.Error = out.err
+	case out.exitCode != 0:
+		r.Error = fmt.Sprintf("el programa terminó con código de salida %d", out.exitCode)
+	}
+	r.Output = out.output
+	if len(r.Output) > maxTestOutput {
+		r.Output = strings.ToValidUTF8(r.Output[:maxTestOutput], "") + "\n... (salida recortada)"
+	}
+	r.Passed = r.Error == "" && OutputMatches(t.Expected, out.output, t.Match)
+	return r
+}
+
+func normalizeOutput(s string) string {
+	var lines []string
+	for _, line := range strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n") {
+		if f := strings.Fields(line); len(f) > 0 {
+			lines = append(lines, strings.Join(f, " "))
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func OutputMatches(expected, output, match string) bool {
+	exp, got := normalizeOutput(expected), normalizeOutput(output)
+	if match == model.MatchExact {
+		return exp == got
+	}
+	return exp != "" && strings.Contains(got, exp)
 }
 
 // limitedBuffer guarda como máximo max bytes y descarta el resto sin fallar,

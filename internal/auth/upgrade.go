@@ -24,6 +24,15 @@ var addedColumns = []struct{ table, column, ddl string }{
 	{"assignments", "allow_late", `ALTER TABLE assignments ADD COLUMN allow_late INTEGER NOT NULL DEFAULT 1`},
 	{"assignments", "late_until", `ALTER TABLE assignments ADD COLUMN late_until TEXT`},
 	{"assignments", "late_penalty", `ALTER TABLE assignments ADD COLUMN late_penalty REAL`},
+	{"users", "consent_at", `ALTER TABLE users ADD COLUMN consent_at TEXT`},
+	{"users", "consent_version", `ALTER TABLE users ADD COLUMN consent_version TEXT NOT NULL DEFAULT ''`},
+	{"courses", "review_minutes_max", `ALTER TABLE courses ADD COLUMN review_minutes_max REAL`},
+	{"courses", "batch_hours_max", `ALTER TABLE courses ADD COLUMN batch_hours_max REAL`},
+	{"courses", "feedback_hours_max", `ALTER TABLE courses ADD COLUMN feedback_hours_max REAL`},
+	{"class_groups", "ai_mode", `ALTER TABLE class_groups ADD COLUMN ai_mode TEXT NOT NULL DEFAULT 'supervisada' CHECK (ai_mode IN ('supervisada', 'inmediata'))`},
+	{"reviews", "ai_discarded_at", `ALTER TABLE reviews ADD COLUMN ai_discarded_at TEXT`},
+	{"reviews", "feedback_origin", `ALTER TABLE reviews ADD COLUMN feedback_origin TEXT NOT NULL DEFAULT ''`},
+	{"reviews", "review_ms", `ALTER TABLE reviews ADD COLUMN review_ms INTEGER NOT NULL DEFAULT 0`},
 }
 
 func (s *Store) upgradeSchema() error {
@@ -40,6 +49,13 @@ func (s *Store) upgradeSchema() error {
 				return fmt.Errorf("columna %s.%s: %w", c.table, c.column, err)
 			}
 		}
+	}
+	if _, err := s.db.Exec(`INSERT INTO ai_jobs (submission_id, status, enqueued_at)
+		SELECT s.id, 'pendiente', s.created_at FROM submissions s
+		LEFT JOIN reviews r ON r.submission_id = s.id
+		WHERE s.kind = 'official' AND NOT EXISTS (SELECT 1 FROM ai_jobs j WHERE j.submission_id = s.id)
+			AND (r.submission_id IS NULL OR (r.status = 'draft' AND r.ai_at IS NULL AND r.ai_discarded_at IS NULL))`); err != nil {
+		return fmt.Errorf("cola de propuestas: %w", err)
 	}
 	return nil
 }

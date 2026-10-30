@@ -25,6 +25,7 @@ type submissionItem struct {
 	auth.SubmissionMeta
 	ReviewState *auth.ReviewState `json:"review_state,omitempty"`
 	MonitorFeedbackCount int `json:"monitor_feedback_count,omitempty"`
+	AIJob string `json:"ai_job,omitempty"`
 }
 
 func submissionItems(store *auth.Store, subs []auth.SubmissionMeta, withReview bool) []submissionItem {
@@ -32,14 +33,14 @@ func submissionItems(store *auth.Store, subs []auth.SubmissionMeta, withReview b
 	for i, m := range subs {
 		ids[i] = m.ID
 	}
-	states := map[string]auth.ReviewState{}
+	states, jobs := map[string]auth.ReviewState{}, map[string]string{}
 	if withReview {
-		states = store.ReviewStates(ids)
+		states, jobs = store.ReviewStates(ids), store.JobStates(ids)
 	}
 	counts := store.MonitorFeedbackCounts(ids)
 	out := make([]submissionItem, len(subs))
 	for i, m := range subs {
-		out[i] = submissionItem{SubmissionMeta: m, MonitorFeedbackCount: counts[m.ID]}
+		out[i] = submissionItem{SubmissionMeta: m, MonitorFeedbackCount: counts[m.ID], AIJob: jobs[m.ID]}
 		if st, ok := states[m.ID]; ok {
 			out[i].ReviewState = &st
 		}

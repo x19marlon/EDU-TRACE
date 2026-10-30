@@ -39,10 +39,11 @@ type publicUser struct {
 	Role auth.Role `json:"role"`
 	Activity auth.Activity `json:"activity"`
 	HasRecovery bool `json:"has_recovery"`
+	ConsentAt *time.Time `json:"consent_at,omitempty"`
 }
 
 func toPublic(u *auth.User) publicUser {
-	return publicUser{ID: u.ID, Name: u.Name, Email: u.Email, Role: u.Role, Activity: u.Activity, HasRecovery: u.RecoveryHash != ""}
+	return publicUser{ID: u.ID, Name: u.Name, Email: u.Email, Role: u.Role, Activity: u.Activity, HasRecovery: u.RecoveryHash != "", ConsentAt: u.ConsentAt}
 }
 
 type registerRequest struct {
@@ -51,6 +52,7 @@ type registerRequest struct {
 	Password string `json:"password"`
 	Role auth.Role `json:"role"`
 	TeacherCode string `json:"teacher_code"`
+	Consent bool `json:"consent"`
 }
 
 type loginRequest struct {
@@ -111,6 +113,10 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "la contraseña debe tener entre 8 y 128 caracteres"})
 		return
 	}
+	if !req.Consent {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "debes autorizar el tratamiento de tus datos personales para crear la cuenta"})
+		return
+	}
 
 	switch req.Role {
 	case auth.RoleStudent, auth.RoleMonitor:
@@ -143,6 +149,12 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	consentAt, err := h.store.RecordConsent(u.ID)
+	if err != nil {
+		slog.Error("record consent failed", "user_id", u.ID, "error", err)
+	} else {
+		u.ConsentAt = &consentAt
+	}
 	slog.Info("user registered", "user_id", u.ID, "role", u.Role)
 	code, err := h.store.NewRecoveryCode(u.ID)
 	if err != nil {

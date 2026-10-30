@@ -10,6 +10,7 @@ import { MonitorsCard } from "@/components/ClassAdmin";
 import TeacherAssignments from "@/components/TeacherAssignments";
 import StudentProcess from "@/components/StudentProcess";
 import RaeScatter from "@/components/RaeScatter";
+import ClassOversight from "@/components/ClassOversight";
 import { ReviewPill, StatusPill, SubmissionDetail } from "@/components/SubmissionView";
 import { LatePill } from "@/components/Deadline";
 import {
@@ -225,6 +226,13 @@ function GroupView() {
           </div>
         </Card>
       </div>
+
+      <ClassOversight
+        groupId={group.id}
+        mode={group.ai_mode}
+        onModeChange={(ai_mode) => setGroup({ ...group, ai_mode })}
+        refreshKey={matrixKey}
+      />
 
       <RaeScatter
         groupId={group.id}

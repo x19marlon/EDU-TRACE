@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/AppShell";
 import RecoveryCodeDialog from "@/components/RecoveryCodeDialog";
 import { Avatar, Card } from "@/components/ui";
 import { useAuth } from "@/components/AuthProvider";
-import { changePassword, newRecoveryCode } from "@/lib/api";
+import { changePassword, deleteAccount, exportMyData, newRecoveryCode, updateProfile } from "@/lib/api";
+import { formatDateTime } from "@/lib/format";
 import { ROLE_LABELS } from "@/lib/role";
 
 const inputClass =
@@ -158,6 +161,150 @@ function RecoverySection() {
   );
 }
 
+function MyData() {
+  const { user, setUser } = useAuth();
+  const router = useRouter();
+  const [name, setName] = useState(user?.name ?? "");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState<"name" | "export" | "delete" | null>(null);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  if (!user) return null;
+
+  const run = async (kind: "name" | "export" | "delete", action: () => Promise<string | null>) => {
+    setBusy(kind);
+    setMessage(null);
+    try {
+      const text = await action();
+      if (text) setMessage({ ok: true, text });
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : "No se pudo completar la acción" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const saveName = (e: React.FormEvent) => {
+    e.preventDefault();
+    run("name", async () => {
+      setUser(await updateProfile(name.trim()));
+      return "Nombre actualizado.";
+    });
+  };
+
+  const download = () =>
+    run("export", async () => {
+      const blob = await exportMyData();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "edutrace-mis-datos.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      return "Descargamos un archivo JSON con todos tus datos.";
+    });
+
+  const remove = (e: React.FormEvent) => {
+    e.preventDefault();
+    run("delete", async () => {
+      await deleteAccount(password);
+      setUser(null);
+      router.replace("/login");
+      return null;
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-ink-soft">
+        {user.consent_at
+          ? `Autorizaste el tratamiento de tus datos el ${formatDateTime(user.consent_at)}. `
+          : "Aún no registras tu autorización. "}
+        Lee la{" "}
+        <Link href="/privacidad" target="_blank" className="font-bold text-lavender-600 underline">
+          política de tratamiento de datos
+        </Link>
+        .
+      </p>
+      <form onSubmit={saveName} className="flex flex-wrap gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          minLength={2}
+          maxLength={80}
+          required
+          aria-label="Tu nombre"
+          className={`${inputClass} min-w-0 flex-1`}
+        />
+        <button
+          type="submit"
+          disabled={busy !== null || name.trim() === user.name || name.trim().length < 2}
+          className="shrink-0 rounded-full bg-lavender-100 px-5 py-2.5 text-sm font-bold text-lavender-700 transition hover:bg-lavender-200 disabled:opacity-40"
+        >
+          {busy === "name" ? "Guardando..." : "Corregir nombre"}
+        </button>
+      </form>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={download}
+          disabled={busy !== null}
+          className="rounded-full bg-mint-100 px-5 py-2.5 text-sm font-bold text-mint-700 transition hover:bg-mint-200 disabled:opacity-40"
+        >
+          {busy === "export" ? "Preparando..." : "Descargar mis datos"}
+        </button>
+        <span className="text-xs text-ink-faint">Tu perfil, tus clases, tus entregas e intentos con su código y las revisiones que recibiste.</span>
+      </div>
+      <div className="rounded-2xl border border-peach-200 p-4">
+        {!confirming ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="min-w-0 flex-1 text-sm text-ink-soft">
+              Eliminar tu cuenta borra tus entregas, intentos, revisiones y registros. No se puede deshacer.
+              {user.role === "teacher" && " Si eres profesor, primero debes eliminar tus materias."}
+            </p>
+            <button
+              onClick={() => setConfirming(true)}
+              className="rounded-full bg-white px-4 py-2 text-sm font-bold text-peach-700 ring-1 ring-peach-200 transition hover:bg-peach-50"
+            >
+              Eliminar mi cuenta
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={remove} className="space-y-2">
+            <p className="text-sm font-bold text-peach-700">Confirma con tu contraseña para eliminar tu cuenta y todos tus datos.</p>
+            <div className="flex flex-wrap gap-2">
+              <input
+                type="password"
+                required
+                autoComplete="current-password"
+                placeholder="Tu contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`${inputClass} min-w-0 flex-1`}
+              />
+              <button
+                type="submit"
+                disabled={busy !== null || !password}
+                className="shrink-0 rounded-full bg-peach-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-peach-700 disabled:opacity-40"
+              >
+                {busy === "delete" ? "Eliminando..." : "Eliminar definitivamente"}
+              </button>
+              <button type="button" onClick={() => setConfirming(false)} className="rounded-full px-4 py-2 text-sm font-bold text-ink-soft hover:bg-lavender-50">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+      {message && (
+        <p className={`rounded-2xl px-4 py-2 text-sm font-semibold ${message.ok ? "bg-mint-50 text-mint-700" : "bg-peach-50 text-peach-700"}`}>
+          {message.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function AccountView() {
   const { user } = useAuth();
   if (!user) return null;
@@ -181,6 +328,9 @@ function AccountView() {
           crear una nueva. Cada código sirve una sola vez.
         </p>
         <RecoverySection />
+      </Card>
+      <Card title="Mis datos" className="rise-in">
+        <MyData />
       </Card>
     </div>
   );

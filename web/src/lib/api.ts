@@ -6,6 +6,41 @@ export interface CompileResult {
   compile_time_ms: number;
   run_time_ms: number;
   error?: string;
+  tests?: TestResult[];
+}
+
+export type TestMatch = "contiene" | "exacta";
+
+export interface TestCase {
+  id?: string;
+  name: string;
+  stdin: string;
+  expected: string;
+  match: TestMatch;
+  hidden: boolean;
+}
+
+export interface TestResult {
+  test_id: string;
+  name: string;
+  hidden: boolean;
+  passed: boolean;
+  stdin?: string;
+  expected?: string;
+  output?: string;
+  error?: string;
+}
+
+export type AIMode = "supervisada" | "inmediata";
+
+export type JobStatus = "pendiente" | "procesando" | "lista" | "error" | "omitida";
+
+export interface JobState {
+  status: JobStatus;
+  attempts: number;
+  error?: string;
+  enqueued_at: string;
+  ahead: number;
 }
 
 export interface FeedbackMeta {
@@ -29,6 +64,7 @@ export interface User {
   role: Role;
   activity: Activity;
   has_recovery?: boolean;
+  consent_at?: string;
 }
 
 export type SessionUser = User & { recovery_code?: string };
@@ -39,6 +75,7 @@ export interface GroupSummary {
   join_code: string;
   student_count: number;
   submission_count: number;
+  ai_mode: AIMode;
 }
 
 export type RAELevel = "bajo" | "medio" | "alto";
@@ -95,6 +132,7 @@ export interface GroupDetail {
   course_name: string;
   students: GroupStudent[];
   monitors: GroupMonitor[];
+  ai_mode: AIMode;
 }
 
 export interface MonitorGroup {
@@ -138,8 +176,11 @@ export interface SubmissionMeta {
   due_at?: string;
   late_seconds?: number;
   late_penalty?: number;
+  tests_total?: number;
+  tests_passed?: number;
   review_state?: ReviewState;
   monitor_feedback_count?: number;
+  ai_job?: JobStatus;
 }
 
 export interface Submission extends SubmissionMeta {
@@ -151,6 +192,7 @@ export interface Submission extends SubmissionMeta {
   ai_feedback_informal: string;
   monitor_feedback?: MonitorFeedback[];
   annotations?: Annotation[];
+  tests?: TestResult[];
 }
 
 export type AnnotationKind = "highlight" | "strike" | "good" | "note" | "drawing";
@@ -202,6 +244,7 @@ export interface Assignment {
   late_penalty?: number;
   created_at: string;
   files: AssignmentFile[];
+  tests: TestCase[];
 }
 
 export interface StudentAssignment extends Assignment {
@@ -214,6 +257,7 @@ export interface StudentGroup {
   name: string;
   course_name: string;
   teacher_name: string;
+  ai_mode: AIMode;
 }
 
 export interface Review {
@@ -229,7 +273,14 @@ export interface Review {
   returned_at?: string;
   grade_source: "ai_confirmed"|"profesor" |"";
   raes: ReviewRAE[];
+  ai_discarded_at?: string;
+  origin?: FeedbackOrigin;
+  review_ms: number;
+  ai_job?: JobState;
+  ai_available: boolean;
 }
+
+export type FeedbackOrigin = "ia" | "ia_editada" | "docente";
 
 export interface ReviewRAE {
   rae_id: string;
@@ -245,6 +296,8 @@ export interface StudentReview {
   returned_at: string;
   ai_assisted: boolean;
   raes?: { code: string; description: string; level: RAELevel }[];
+  origin?: FeedbackOrigin;
+  teacher_name?: string;
 }
 export interface StudentSubmission extends SubmissionMeta {
   group_name: string;
@@ -296,6 +349,7 @@ export function register(data: {
   password: string;
   role: Role;
   teacher_code?: string;
+  consent: boolean;
 }): Promise<SessionUser> {
   return postJSON("/api/auth/register", data);
 }
@@ -315,6 +369,24 @@ export async function changePassword(currentPassword: string, newPassword: strin
 
 export const newRecoveryCode = (password: string) =>
   postJSON<{ recovery_code: string }>("/api/auth/recovery-code", { password });
+
+export const recordConsent = () => postJSON<User>("/api/auth/consent", {});
+export const updateProfile = (name: string) => sendJSON<User>("PATCH", "/api/auth/profile", { name });
+
+export async function exportMyData(): Promise<Blob> {
+  const response = await apiFetch("/api/auth/export");
+  if (!response.ok) await throwForStatus(response);
+  return response.blob();
+}
+
+export async function deleteAccount(password: string): Promise<void> {
+  const response = await apiFetch("/api/auth/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  if (!response.ok) await throwForStatus(response);
+}
 
 export async function logout(): Promise<void> {
   await apiFetch("/api/auth/logout", { method: "POST" });
@@ -366,6 +438,94 @@ export const deleteRAE = (raeId: string) => deleteReq(`/api/teacher/raes/${enc(r
 export const getRAEMatrix = (groupId: string) => getJSON<RAEMatrix>(`/api/teacher/groups/${enc(groupId)}/rae-matrix`);
 export const deleteMonitorFeedbackAsTeacher = (feedbackId: string) =>
   deleteReq(`/api/teacher/monitor-feedback/${enc(feedbackId)}`);
+export const setGroupAIMode = (groupId: string, aiMode: AIMode) =>
+  sendJSON<{ ai_mode: AIMode }>("PATCH", `/api/teacher/groups/${enc(groupId)}/ai-mode`, { ai_mode: aiMode });
+export const getGroupMetrics = (groupId: string) => getJSON<GroupMetrics>(`/api/teacher/groups/${enc(groupId)}/metrics`);
+export const getGroupAudit = (groupId: string) => getJSON<AuditEntry[]>(`/api/teacher/groups/${enc(groupId)}/audit`);
+export const retryDrafts = (groupId: string) =>
+  postJSON<{ retried: number }>(`/api/teacher/groups/${enc(groupId)}/ai-queue/retry`, {});
+export const setThresholds = (courseId: string, t: Thresholds) =>
+  sendJSON<Thresholds>("PUT", `/api/teacher/courses/${enc(courseId)}/thresholds`, t);
+export const getAIStatus = () => getJSON<AIStatus>("/api/teacher/ai-status");
+export const discardReviewDraft = (submissionId: string, elapsedMs: number) =>
+  postJSON<Review>(`/api/teacher/submissions/${enc(submissionId)}/review/discard`, { elapsed_ms: elapsedMs });
+export const getSubmissionAudit = (submissionId: string) =>
+  getJSON<AuditEntry[]>(`/api/teacher/submissions/${enc(submissionId)}/audit`);
+export const rerunTests = (submissionId: string) =>
+  postJSON<TestResult[]>(`/api/teacher/submissions/${enc(submissionId)}/tests`, {});
+
+export interface AuditEntry {
+  id: number;
+  at: string;
+  actor_name: string;
+  actor_role: Role | "sistema";
+  action: string;
+  submission_id?: string;
+  student_name?: string;
+  assignment_title?: string;
+  detail?: string;
+}
+
+export interface Stat {
+  count: number;
+  avg_ms: number;
+  p50_ms: number;
+  p90_ms: number;
+  max_ms: number;
+  over: number;
+}
+
+export interface Thresholds {
+  review_minutes?: number | null;
+  batch_hours?: number | null;
+  feedback_hours?: number | null;
+}
+
+export interface BatchMetric {
+  assignment_id: string;
+  title: string;
+  submissions: number;
+  done: number;
+  failed: number;
+  waiting: number;
+  worst_ms: number;
+  finished: boolean;
+  over: boolean;
+}
+
+export interface GroupMetrics {
+  course_id: string;
+  course_name: string;
+  ai_mode: AIMode;
+  thresholds: Thresholds;
+  review_time: Stat;
+  turnaround: Stat;
+  pending_reviews: number;
+  pending_over: number;
+  oldest_pending_ms: number;
+  queue: { pending: number; running: number; done: number; failed: number; skipped: number; wait: Stat; run: Stat };
+  batches: BatchMetric[];
+  instant: {
+    requests: number;
+    failures: number;
+    first_token: Stat;
+    total: Stat;
+    sections_checked: number;
+    sections_ok: number;
+    chats: number;
+  };
+  decisions: { ia: number; ia_editada: number; docente: number; descartadas: number };
+}
+
+export interface AIStatus {
+  available: boolean;
+  last_error?: string;
+  last_error_at?: string;
+  last_ok_at?: string;
+  pending: number;
+  running: number;
+  failed: { group_id: string; group_name: string; course_name: string; failed: number; last_error: string; last_at?: string }[];
+}
 
 export async function updateAssignment(assignmentId: string, form: FormData): Promise<Assignment> {
   const response = await apiFetch(`/api/teacher/assignments/${enc(assignmentId)}`, { method: "PUT", body: form });
@@ -423,7 +583,7 @@ export const generateReviewDraft = (submissionId: string) =>
   postJSON<Review>(`/api/teacher/submissions/${encodeURIComponent(submissionId)}/review/draft`, {});
 export async function saveReview(
   submissionId: string,
-  data: { feedback: string; grade: number | null; return: boolean; rae_levels?: Record<string, RAELevel | ""> }
+  data: { feedback: string; grade: number | null; return: boolean; rae_levels?: Record<string, RAELevel | "">; elapsed_ms?: number }
 ): Promise<Review> {
   const response = await apiFetch(`/api/teacher/submissions/${encodeURIComponent(submissionId)}/review`, {
     method: "PUT",
@@ -503,12 +663,14 @@ export interface FeedbackContext {
   program_output?: string;
   exit_code?: number;
   run_error?: string;
+  tests?: TestResult[];
 }
 
 
 export async function streamFeedback(
   context: FeedbackContext,
-  onToken: (token: string) => void
+  onToken: (token: string) => void,
+  onReplace?: (text: string) => void
 ): Promise<FeedbackMeta> {
   const response = await apiFetch("/api/feedback", {
     method: "POST",
@@ -517,11 +679,15 @@ export async function streamFeedback(
   });
 
   if (!response.ok) await throwForStatus(response);
-  return readSSE(response, onToken);
+  return readSSE(response, onToken, onReplace);
 }
 
 /** Lee una respuesta SSE del backend: tokens, "error" y "done" con metadatos. */
-async function readSSE(response: Response, onToken: (token: string) => void): Promise<FeedbackMeta> {
+async function readSSE(
+  response: Response,
+  onToken: (token: string) => void,
+  onReplace?: (text: string) => void
+): Promise<FeedbackMeta> {
   const reader = response.body?.getReader();
   if (!reader) throw new Error("No se recibió respuesta del servidor");
 
@@ -554,6 +720,9 @@ async function readSSE(response: Response, onToken: (token: string) => void): Pr
 
         if (eventType === "done") {
           meta = data as FeedbackMeta;
+        } else if (eventType === "replace") {
+          const text = (data as { text?: unknown })?.text;
+          if (typeof text === "string") onReplace?.(text);
         } else if (eventType === "error") {
           streamError =
             (data as { error?: string })?.error ?? String(data);

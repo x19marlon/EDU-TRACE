@@ -59,7 +59,8 @@ func (h *AnalysisHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	streamSSE(w, h.modelName, func(onToken func(string)) error {
+	stats := streamSSE(w, h.modelName, func(onToken, _ func(string)) error {
 		return h.ollama.StreamAnalysis(r.Context(), entries, onToken)
 	})
+	h.store.RecordAIRequest(stats.record(auth.AIKindAnalysis, groupID, teacher.Role))
 }

@@ -29,10 +29,15 @@ Para iniciar sesión como docente, elige la pestaña **Profesor** en la pantalla
 
 ## Cursos y clases
 
-| Curso | Clase | Alumnos |
-|---|---|---|
-| Introducción a la Programación 2026-1 | Grupo A - Mañana | 3 |
-| Programación Avanzada 2026-1 | Grupo B - Tarde | 2 |
+| Curso | Clase | Alumnos | IA para el estudiante |
+|---|---|---|---|
+| Introducción a la Programación 2026-1 | Grupo A - Mañana | 3 | Supervisada (predeterminada) |
+| Programación Avanzada 2026-1 | Grupo B - Tarde | 2 | Inmediata |
+
+- **Supervisada**: el estudiante no puede pedir retroalimentación ni chat a la IA. La IA prepara una propuesta de cada entrega y el estudiante solo ve lo que la profesora aprueba (RNF-06).
+- **Inmediata**: el estudiante pide retroalimentación y chat a la IA mientras practica.
+
+El modo se cambia en la clase, en la tarjeta «Retroalimentación con IA».
 
 ## Alumnos
 
@@ -50,20 +55,34 @@ Todos usan la contraseña `Alumno2026!`.
 
 En *Intro a la Programación - Grupo A* hay tres talleres. Las notas van de 0.0 a 5.0.
 
-| Alumno | Taller | Resultado en el sandbox | Estado |
-|---|---|---|---|
-| Ana Rodríguez | Taller 1: promedio de notas | `Promedio: 4.17` | **4.5**, devuelta |
-| Ana Rodríguez | Taller 2: suma con ciclos | `Suma: 10` (esperado 15) | **3.2**, devuelta |
-| Ana Rodríguez | Taller 3: el mayor de tres | `Mayor: 12` | En revisión (borrador con 4.0, no devuelta); **tardía** ~27 h |
-| Luis Martínez | Taller 2: suma con ciclos | `Suma: 15` | **5.0**, devuelta |
-| Carlos Pérez | Taller 1: promedio de notas | `Promedio: 4` (división entera) | **2.8**, devuelta |
+| Alumno | Taller | Resultado en el sandbox | Casos de prueba | Estado |
+|---|---|---|---|---|
+| Ana Rodríguez | Taller 1: promedio de notas | `Promedio: 4.17` | 3/3 | **4.5**, devuelta |
+| Ana Rodríguez | Taller 2: suma con ciclos | `Suma: 10` (esperado 15) | 0/3 | **3.2**, devuelta |
+| Ana Rodríguez | Taller 3: el mayor de tres | `Mayor: 12` | 3/3 | En revisión (borrador con 4.0, no devuelta); **tardía** ~27 h |
+| Luis Martínez | Taller 2: suma con ciclos | `Suma: 15` | 3/3 | **5.0**, devuelta |
+| Carlos Pérez | Taller 1: promedio de notas | `Promedio: 4` (división entera) | 0/3 | **2.8**, devuelta |
+
+Cada taller tiene tres casos de prueba: el ejemplo del enunciado, otro visible y uno oculto. Los casos se ejecutan al compilar con el taller elegido y al entregar; el estudiante ve cuáles pasa y, de los ocultos, solo si pasan.
+
+Las cinco entregas entran a la cola de la IA al enviarse. Con Ollama encendido, la propuesta del Taller 3 de Ana aparece en su revisión en menos de un minuto. Las que la profesora ya devolvió quedan como «omitidas».
 
 Fechas límite (relativas al momento de cargar los datos): el Taller 1 vence en 5 días; el Taller 2 vence en 20 horas y no acepta entregas tardías; el Taller 3 venció 27 horas antes y acepta tardías con una penalización sugerida de 0.5 por día iniciado (la entrega de Ana queda tardía, 2 días iniciados → −1.0 sugerido).
 
 Ana también tiene dos intentos de compilación en el Taller 2 (uno sin compilar por un `;` faltante), visibles en su proceso desde la vista del profesor.
 
-- **Como Ana** (`ana.rodriguez@est.edu.co`): en «Mis entregas» ve sus dos notas con la retroalimentación del profesor y la tercera entrega «En revisión».
-- **Como profesora** (`maria.garcia@universidad.edu.co`): en *Grupo A - Mañana* ve las cinco entregas con su estado (devuelta o borrador), el diagrama «Rendimiento por RAE» y el proceso de cada estudiante.
+- **Como Ana** (`ana.rodriguez@est.edu.co`):
+  - En «Mis entregas» ve sus dos notas con la retroalimentación de la profesora, con su nombre y si hubo IA, y la tercera entrega «En revisión».
+  - Los botones de IA aparecen deshabilitados porque su clase es supervisada.
+- **Como Sofía** (`sofia.lopez@est.edu.co`): su clase es inmediata, así que puede pedir retroalimentación formal o informal y usar el chat.
+- **Como profesora** (`maria.garcia@universidad.edu.co`), en *Grupo A - Mañana* ve:
+  - las cinco entregas con sus casos y su estado;
+  - el modo de IA y la cola;
+  - los indicadores RNF-08, RNF-10 y RNF-11, con umbrales editables;
+  - la bitácora;
+  - el diagrama «Rendimiento por RAE» y el proceso de cada estudiante.
+
+  En la revisión puede editar, aprobar o descartar la propuesta de la IA, y ver su historial.
 
 ## RAE y niveles de logro
 
@@ -80,4 +99,18 @@ Solo cuentan las revisiones devueltas (el Taller 3 de Ana está en borrador). Si
 ```bash
 python3 scripts/seed_rae_levels.py
 ```
+
+## Prueba de carga (RNF-10)
+
+Con los datos cargados y Ollama encendido:
+
+```bash
+API=http://127.0.0.1:8080 python3 scripts/prueba_carga.py 20
+```
+
+El script envía 20 entregas al Taller 1, espera a que la IA prepare todas las propuestas y compara la peor demora con el umbral «Procesar cada lote» de la materia. Con `llama3.1:8b` cada propuesta tarda unos 25 s.
+
+## Autorización de datos
+
+Las cuentas de prueba se registran con la autorización de tratamiento de datos. Si una cuenta antigua no la tiene, al entrar ve primero el aviso «Autorización de tratamiento de datos».
 

@@ -48,7 +48,12 @@ func main() {
 		ollama = ollamaClient
 	}
 
-	router := handler.NewRouter(cfg, comp, ollama, store)
+	drafts := handler.NewDraftQueue(store, ollama, time.Duration(cfg.OllamaTimeout)*time.Second)
+	workerCtx, stopWorker := context.WithCancel(context.Background())
+	defer stopWorker()
+	go drafts.Run(workerCtx)
+
+	router := handler.NewRouter(cfg, comp, ollama, store, drafts)
 
 	srv := &http.Server{
 		Addr: net.JoinHostPort(cfg.Host, cfg.Port),
@@ -64,6 +69,7 @@ func main() {
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		sig := <-sigCh
 		slog.Info("shutting down", "signal", sig.String())
+		stopWorker()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -87,5 +93,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := store.Close(); err != nil {
+		slog.Error("close store", "error", err)
+	}
 	slog.Info("server stopped")
 }

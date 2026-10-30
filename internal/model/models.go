@@ -19,6 +19,47 @@ type CompileResult struct {
 	CompileTimeMs int64 `json:"compile_time_ms"`
 	RunTimeMs int64 `json:"run_time_ms"`
 	Error string `json:"error,omitempty"`
+	Tests []TestResult `json:"tests,omitempty"`
+}
+
+const (
+	MatchContains = "contiene"
+	MatchExact = "exacta"
+)
+
+type TestCase struct {
+	ID string `json:"id"`
+	Name string `json:"name"`
+	Stdin string `json:"stdin"`
+	Expected string `json:"expected"`
+	Match string `json:"match"`
+	Hidden bool `json:"hidden"`
+}
+
+type TestResult struct {
+	TestID string `json:"test_id"`
+	Name string `json:"name"`
+	Hidden bool `json:"hidden"`
+	Passed bool `json:"passed"`
+	Stdin string `json:"stdin,omitempty"`
+	Expected string `json:"expected,omitempty"`
+	Output string `json:"output,omitempty"`
+	Error string `json:"error,omitempty"`
+}
+
+func (r TestResult) Public() TestResult {
+	if !r.Hidden {
+		return r
+	}
+	return TestResult{TestID: r.TestID, Name: r.Name, Hidden: true, Passed: r.Passed}
+}
+
+func PublicResults(results []TestResult) []TestResult {
+	out := make([]TestResult, len(results))
+	for i, r := range results {
+		out[i] = r.Public()
+	}
+	return out
 }
 
 // ErrorResponse is returned for client or server errors.

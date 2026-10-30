@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/marlon/edu-trace/internal/model"
 )
 
 // AssignmentFile es un archivo adjunto a un taller.
@@ -32,6 +34,7 @@ type Assignment struct {
 	AllowLate bool `json:"allow_late"`
 	LateUntil *time.Time `json:"late_until,omitempty"`
 	LatePenalty *float64 `json:"late_penalty,omitempty"`
+	Tests []model.TestCase `json:"tests"`
 }
 
 // FileUpload es un archivo recibido para guardar en un taller.
@@ -79,7 +82,7 @@ func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric st
 	a := &Assignment{
 		ID: id, GroupID: groupID,
 		Title: strings.TrimSpace(title), Statement: strings.TrimSpace(statement), Rubric: strings.TrimSpace(rubric),
-		DueAt: dueAt, CreatedAt: time.Now().UTC(), Files: []AssignmentFile{},
+		DueAt: dueAt, CreatedAt: time.Now().UTC(), Files: []AssignmentFile{}, Tests: []model.TestCase{},
 		AllowLate: policy.AllowLate, LateUntil: policy.LateUntil, LatePenalty: policy.LatePenalty,
 	}
 
@@ -133,7 +136,7 @@ func scanAssignment(sc scanner, extra ...any) (Assignment, error) {
 	if err := sc.Scan(dest...); err != nil {
 		return a, err
 	}
-	a.DueAt, a.CreatedAt, a.Files = timePtr(due), parseTime(created), []AssignmentFile{}
+	a.DueAt, a.CreatedAt, a.Files, a.Tests = timePtr(due), parseTime(created), []AssignmentFile{}, []model.TestCase{}
 	a.LateUntil, a.LatePenalty = timePtr(lateUntil), floatPtr(penalty)
 	return a, nil
 }
@@ -168,10 +171,10 @@ func (s *Store) GroupAssignments(teacherID, groupID string) ([]Assignment, error
 	if _, err := s.ownedGroup(s.db, teacherID, groupID); err != nil {
 		return nil, err
 	}
-	return s.groupAssignments(groupID)
+	return s.groupAssignments(groupID, true)
 }
 
-func (s *Store) groupAssignments(groupID string) ([]Assignment, error) {
+func (s *Store) groupAssignments(groupID string, full bool) ([]Assignment, error) {
 	rows, err := s.db.Query(`SELECT `+assignmentCols+` FROM assignments a
 		WHERE a.group_id = ? ORDER BY a.created_at DESC`, groupID)
 	if err != nil {
@@ -190,7 +193,10 @@ func (s *Store) groupAssignments(groupID string) ([]Assignment, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	return out, s.attachFiles(out)
+	if err := s.attachFiles(out); err != nil {
+		return nil, err
+	}
+	return out, s.attachTests(out, full)
 }
 
 // StudentAssignment es un taller visto por el estudiante.
@@ -237,6 +243,9 @@ func (s *Store) studentAssignments(studentID string) ([]StudentAssignment, error
 		return nil, err
 	}
 	if err := s.attachFiles(list); err != nil {
+		return nil, err
+	}
+	if err := s.attachTests(list, false); err != nil {
 		return nil, err
 	}
 	out := make([]StudentAssignment, len(list))

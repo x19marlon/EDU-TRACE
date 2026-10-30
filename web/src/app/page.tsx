@@ -81,6 +81,9 @@ const EMPTY_FEEDBACK: FeedbackState = { text: "", meta: null, loading: false, er
 
 const MODE_LABEL: Record<FeedbackMode, string> = { formal: "Formal", informal: "Informal" };
 
+const SUPERVISED_NOTE =
+  "En tu clase la retroalimentación de la IA la revisa y aprueba tu profesor antes de que la veas. Envía tu código y la recibirás en «Mis entregas».";
+
 function CompilerPage() {
   const { user, setUser } = useAuth();
   const [code, setCode] = useState(DEFAULT_CODE);
@@ -191,13 +194,21 @@ function CompilerPage() {
               program_output: compileResult.program_output,
               exit_code: compileResult.exit_code,
               run_error: compileResult.error ?? "",
+              tests: compileResult.tests,
             }
           : { ...base, compiled: false };
 
-      const meta = await streamFeedback(context, (token) => {
-        feedbackText.current[mode] += token;
-        updateFeedback(mode, { text: feedbackText.current[mode] });
-      });
+      const meta = await streamFeedback(
+        context,
+        (token) => {
+          feedbackText.current[mode] += token;
+          updateFeedback(mode, { text: feedbackText.current[mode] });
+        },
+        (text) => {
+          feedbackText.current[mode] = text;
+          updateFeedback(mode, { text });
+        }
+      );
       updateFeedback(mode, { meta });
       setStats((s) => ({ ...s, feedbacks: s.feedbacks + 1 }));
     } catch (err) {
@@ -223,7 +234,7 @@ function CompilerPage() {
     try {
       const formal = usableFeedback("formal");
       const informal = usableFeedback("informal");
-      await submitCode({
+      const sent = await submitCode({
         group_id: group.id,
         assignment_id: assignment?.id,
         code,
@@ -234,11 +245,17 @@ function CompilerPage() {
       setStats((s) => ({ ...s, compiles: s.compiles + 1 }));
       setSentCount((n) => n + 1);
       const extras = [formal && "la retroalimentación formal", informal && "la informal"].filter(Boolean);
+      const total = sent.tests_total ?? 0;
+      const tests = total > 0 ? ` Tu programa pasa ${sent.tests_passed ?? 0} de ${total} casos de prueba.` : "";
+      const next =
+        group.ai_mode === "supervisada"
+          ? " Tu profesor revisará la retroalimentación antes de enviártela."
+          : "";
       setSendStatus({
         ok: true,
         text:
           `Enviado a ${group.course_name} · ${group.name}${assignment ? ` (${assignment.title})` : ""}. ` +
-          `Tu profesor ya puede verlo${extras.length ? ` junto con ${extras.join(" y ")}` : ""}.`,
+          `Tu profesor ya puede verlo${extras.length ? ` junto con ${extras.join(" y ")}` : ""}.${tests}${next}`,
       });
     } catch (err) {
       if (err instanceof UnauthorizedError) setUser(null);
@@ -250,6 +267,9 @@ function CompilerPage() {
 
   if (!user) return null;
   const firstName = user.name.split(" ")[0];
+  const currentGroup = groups.find((g) => g.id === groupId);
+  const aiAllowed =
+    !isStudent || (assignmentId ? currentGroup?.ai_mode === "inmediata" : groups.every((g) => g.ai_mode === "inmediata"));
   const selectedAssignment = groupAssignments.find((a) => a.id === assignmentId);
   const deadline = selectedAssignment ? deadlineState(selectedAssignment, now) : null;
   const closed = deadline !== null && !deadline.canSubmit;
@@ -264,7 +284,9 @@ function CompilerPage() {
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">¡Hola, {firstName}!</h1>
               <p className="text-ink-soft text-sm mt-0.5">
-                Escribe tu solución, compílala y pide retroalimentación formal o informal cuando la necesites.
+                {aiAllowed
+                  ? "Escribe tu solución, compílala y pide retroalimentación formal o informal cuando la necesites."
+                  : "Escribe tu solución, compílala, revisa los casos de prueba y envíasela a tu profesor."}
               </p>
             </div>
           </div>
@@ -324,8 +346,8 @@ function CompilerPage() {
                   <button
                     key={mode}
                     onClick={() => handleFeedback(mode)}
-                    disabled={anyFeedbackLoading || !code.trim()}
-                    title={`Pedir retroalimentación ${mode}`}
+                    disabled={anyFeedbackLoading || !code.trim() || !aiAllowed}
+                    title={aiAllowed ? `Pedir retroalimentación ${mode}` : SUPERVISED_NOTE}
                     aria-label={`Pedir retroalimentación ${mode}`}
                     className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold transition disabled:opacity-50 ${
                       mode === "formal"
@@ -438,7 +460,7 @@ function CompilerPage() {
             {activeTab === "output" ? (
               <OutputPanel result={compileResult} isLoading={isCompiling} error={compileError} />
             ) : activeTab === "chat" ? (
-              <ChatPanel code={code} stdin={stdin} assignmentId={assignmentId ?? undefined} />
+              <ChatPanel code={code} stdin={stdin} assignmentId={assignmentId ?? undefined} disabledReason={aiAllowed ? undefined : SUPERVISED_NOTE} />
             ) : (
               <FeedbackPanel
                 mode={activeTab}
@@ -447,7 +469,8 @@ function CompilerPage() {
                 isLoading={feedback[activeTab].loading}
                 error={feedback[activeTab].error}
                 onRequestFeedback={() => handleFeedback(activeTab)}
-                canRequestFeedback={!anyFeedbackLoading && !!code.trim()}
+                canRequestFeedback={!anyFeedbackLoading && !!code.trim() && aiAllowed}
+                disabledReason={aiAllowed ? undefined : SUPERVISED_NOTE}
               />
             )}
           </Card>

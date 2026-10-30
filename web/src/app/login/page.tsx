@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import Logo from "@/components/Logo";
 import { login, recoverAccount, register, Role, SessionUser } from "@/lib/api";
@@ -67,6 +68,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [teacherCode, setTeacherCode] = useState("");
+  const [consent, setConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -113,6 +115,7 @@ export default function LoginPage() {
               email,
               password,
               role,
+              consent,
               ...(role === "teacher" && { teacher_code: teacherCode }),
             });
       if (u.recovery_code) setPending({ user: u, code: u.recovery_code, title: "Guarda tu código de recuperación" });
@@ -281,9 +284,24 @@ export default function LoginPage() {
               )}
 
               {mode === "register" && (
-                <div className="rounded-xl border border-lavender-100 bg-lavender-50/50 p-3 text-[11px] text-ink-soft leading-relaxed">
-                  <span className="font-semibold text-ink">Protección de Datos (Ley 1581 de 2012 y Circ. 002/2024 SIC):</span> Al registrarte autorizas el tratamiento de tus datos personales exclusivamente con fines académicos en el marco de la asignatura. Tus datos no se transfieren a terceros y la retroalimentación automática es siempre supervisada y aprobada por tu profesor.
-                </div>
+                <label className="flex items-start gap-2.5 rounded-xl border border-lavender-100 bg-lavender-50/50 p-3 text-[11px] leading-relaxed text-ink-soft">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={consent}
+                    onChange={(e) => setConsent(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-lavender-600"
+                  />
+                  <span>
+                    <span className="font-semibold text-ink">Autorizo el tratamiento de mis datos personales</span> (Ley 1581 de 2012) con
+                    fines académicos de la asignatura, según la{" "}
+                    <Link href="/privacidad" target="_blank" className="font-bold text-lavender-600 underline">
+                      política de tratamiento de datos
+                    </Link>
+                    . Mis datos y mi código no salen del servidor de EduTrace: la IA funciona en el propio servidor. Puedo consultar,
+                    descargar, corregir o eliminar mis datos desde «Mi cuenta».
+                  </span>
+                </label>
               )}
 
               {error && (
@@ -294,7 +312,7 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || (mode === "register" && !consent)}
                 className="w-full rounded-full bg-lavender-600 py-3 font-bold text-white shadow-soft transition
                   hover:bg-lavender-700 hover:shadow-lift active:scale-[0.99] disabled:opacity-50"
               >

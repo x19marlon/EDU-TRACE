@@ -15,6 +15,7 @@ type FeedbackRequest struct {
 	ProgramOutput string `json:"program_output"`
 	ExitCode int `json:"exit_code"`
 	RunError string `json:"run_error"`
+	Tests []TestResult `json:"tests,omitempty"`
 }
 
 // FeedbackResult holds the AI-generated pedagogical feedback.

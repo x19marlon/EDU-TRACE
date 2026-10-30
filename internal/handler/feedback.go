@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -62,6 +63,9 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := auth.UserFrom(r.Context())
+	if !aiAllowed(w, h.store, user, req.AssignmentID) {
+		return
+	}
 
 	// El enunciado del taller solo se usa si el usuario tiene acceso a ese taller.
 	var statement string
@@ -83,27 +87,78 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"compiled", req.Success,
 	)
 
-	streamSSE(w, h.modelName, func(onToken func(string)) error {
-		return h.ollama.StreamFeedback(r.Context(), req, statement, onToken)
+	var sectionsOK bool
+	stats := streamSSE(w, h.modelName, func(onToken, onReplace func(string)) error {
+		ok, err := h.ollama.StreamFeedback(r.Context(), req, statement, onToken, onReplace)
+		sectionsOK = ok
+		return err
 	})
+	kind := auth.AIKindFormal
+	if req.Mode == ai.ModeInformal {
+		kind = auth.AIKindInformal
+	}
+	rec := stats.record(kind, h.store.AssignmentGroup(req.AssignmentID), user.Role)
+	if stats.err == nil {
+		rec.SectionsOK = &sectionsOK
+	}
+	h.store.RecordAIRequest(rec)
+}
+
+const supervisedMessage = "En tu clase la retroalimentación de la IA pasa primero por tu profesor: envía tu código y la verás en «Mis entregas» después de su revisión y aprobación."
+
+func aiAllowed(w http.ResponseWriter, store *auth.Store, user *auth.User, assignmentID string) bool {
+	if user.Role != auth.RoleStudent {
+		return true
+	}
+	ok, err := store.StudentAIAllowed(user.ID, assignmentID)
+	if err != nil {
+		writeStoreErr(w, err, "consultar el modo de la IA")
+		return false
+	}
+	if !ok {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": supervisedMessage, "code": auth.AIModeSupervised})
+	}
+	return ok
+}
+
+type streamStats struct {
+	firstMs int64
+	totalMs int64
+	err error
+}
+
+func (st streamStats) record(kind, groupID string, role auth.Role) auth.AIRequest {
+	rec := auth.AIRequest{Kind: kind, GroupID: groupID, Role: role, FirstMs: st.firstMs, TotalMs: st.totalMs, OK: st.err == nil}
+	if st.err != nil {
+		rec.Error = auth.JobError(st.err)
+	}
+	return rec
 }
 
 // streamSSE envía la respuesta del modelo como Server-Sent Events: un evento por
 // trozo de texto, "error" si falla y "done" con el tiempo empleado.
-func streamSSE(w http.ResponseWriter, modelName string, run func(onToken func(string)) error) {
+func streamSSE(w http.ResponseWriter, modelName string, run func(onToken, onReplace func(string)) error) streamStats {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Error: "streaming not supported"})
-		return
+		return streamStats{err: errors.New("streaming not supported")}
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
 	start := time.Now()
+	var first int64
 	err := run(func(token string) {
+		if first == 0 {
+			first = time.Since(start).Milliseconds() + 1
+		}
 		payload, _ := json.Marshal(map[string]string{"token": token})
 		fmt.Fprintf(w, "data: %s\n\n", payload)
+		flusher.Flush()
+	}, func(text string) {
+		payload, _ := json.Marshal(map[string]string{"text": text})
+		fmt.Fprintf(w, "event: replace\ndata: %s\n\n", payload)
 		flusher.Flush()
 	})
 	elapsed := time.Since(start).Milliseconds()
@@ -119,4 +174,5 @@ func streamSSE(w http.ResponseWriter, modelName string, run func(onToken func(st
 	fmt.Fprintf(w, "event: done\ndata: %s\n\n", donePayload)
 	flusher.Flush()
 	slog.Info("streaming completed", "time_ms", elapsed)
+	return streamStats{firstMs: first, totalMs: elapsed, err: err}
 }

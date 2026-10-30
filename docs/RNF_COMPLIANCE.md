@@ -1,24 +1,83 @@
-# Matriz de Cumplimiento e Implementación de Requisitos No Funcionales (RNF)
+# Matriz de cumplimiento de requisitos
 
-Este documento detalla la arquitectura, directrices y mecanismos técnicos implementados en **EDU-TRACE** para asegurar el cumplimiento estricto de los requisitos no funcionales éticos, legales, de seguridad, pedagógicos y tecnológicos.
+Estado de EduTrace frente al *Catálogo de requisitos* (RF-01 a RF-23, RNF-01 a RNF-16 y RV-01 a RV-03), verificado sobre el código y no sobre la intención de diseño.
 
----
+Estados:
+- **Cumple**: hay una implementación y una prueba o verificación que lo demuestra.
+- **Instrumentado**: la plataforma mide el criterio; falta que el docente acuerde la cifra del umbral, como pide el catálogo.
+- **Parcial**: cubre una parte del criterio.
+- **Falta**: no está implementado.
+- **Fuera del código**: depende de un documento, una auditoría o una validación con personas.
 
-| ID | Requisito No Funcional | Categoría / Dimensión | Criterio de Aceptación | Mecanismo Técnico Implementado en EDU-TRACE | Estado |
-| :--- | :--- | :--- | :--- | :--- | :---: |
-| **RNF-01** | Cumplimiento de la **Ley 1581 de 2012** (Habeas Data Colombia). | Legal / Ético-legal | La auditoría legal confirma el cumplimiento y la gestión de consentimiento informado. | - Se implementó consentimiento explícito de tratamiento de datos personales en el registro (`/login`).<br>- Principio de finalidad y proporcionalidad: sólo se recolecta nombre, correo institucional y rol.<br>- Contraseñas cifradas con algoritmo robusto `PBKDF2-SHA256` y sesiones seguras en cookies `HttpOnly; SameSite=Lax`. | **Cumplido** |
-| **RNF-02** | Cumplimiento de la **Circular Externa 002 de 2024 de la SIC** (Inteligencia Artificial y Datos Personales). | Legal / Ético-legal | Auditoría de IA y privacidad por diseño con evaluación de impacto en derechos fundamentales. | - **Privacidad por diseño (Privacy by Design)**: No se envían datos sensibles ni identificadores personales (nombres, correos, IDs) a los modelos de lenguaje.<br>- El estudiante es notificado explícitamente en la interfaz de qué datos entran al modelo de IA y que éste opera como tutor de apoyo formativo. | **Cumplido** |
-| **RNF-03** | Confidencialidad del **código del estudiante**. | Seguridad / F | El código no resulta accesible para terceros no autorizados. | - Sistema de Control de Acceso Basado en Roles (**RBAC** con `RequireRole` y `RequireAuth`).<br>- Los docentes sólo pueden ver entregas de sus clases asignadas (`ownedOfficialLocked`).<br>- Los estudiantes sólo tienen visibilidad sobre su propio código.<br>- Almacenamiento seguro y aislado en disco (`data/submissions/<id>.json`). | **Cumplido** |
-| **RNF-04** | Confidencialidad de los **datos personales** del estudiante. | Seguridad / F | Los datos personales no resultan accesibles para terceros no autorizados. | - Aislamiento estricto de sesiones con tokens opacos aleatorios de 256 bits (`crypto/rand`).<br>- Ningún estudiante puede listar perfiles ni información de compañeros.<br>- En el análisis docente vía IA, el nombre del estudiante se anonimiza por completo. | **Cumplido** |
-| **RNF-05** | Control de información enviada a **servicios de IA**. | Seguridad / F | Existe una política que define qué datos salen del sistema. | - **Inferencia 100% Local**: Uso de Ollama local (`localhost:11434`), evitando fuga de datos a APIs externas o terceros comerciales en la nube.<br>- Política de anonimización en prompts: Se envían exclusivamente fragmentos de código, salidas técnicas del compilador y el enunciado del taller. | **Cumplido** |
-| **RNF-06** | Toda retroalimentación oficial sometida a **validación docente**. | Confiabilidad / R | Ninguna retroalimentación oficial llega al estudiante sin aprobación docente. | - El módulo de revisión docente (`/internal/handler/reviews.go`) clasifica las propuestas de IA como `draft` (borrador).<br>- La evaluación de la IA es provisional y el estudiante **no puede verla** hasta que el profesor la revise, edite y marque explícitamente la entrega como `returned` (devuelta). | **Cumplido** |
-| **RNF-07** | Preservar al **docente como decisor final** del proceso. | Diseño / Ético-legal | La decisión final siempre queda en manos del docente. | - El docente dispone de controles completos para modificar la nota propuesta por la IA, reescribir la retroalimentación y verificar el proceso iterativo de intentos del alumno.<br>- Se audita el origen de la nota (`profesor` vs `ai_confirmed`). | **Cumplido** |
-| **RNF-08** | Tiempo de **revisión docente bajo umbral definido**. | Usabilidad / U | El tiempo medido por entrega resulta menor al umbral acordado. | - El panel del docente cuenta con generación de borrador de revisión con un solo clic (`SuggestReview`), precargando rúbricas de evaluación y justificación por criterios.<br>- Agiliza el tiempo medio de revisión de minutos a segundos por entrega. | **Cumplido** |
-| **RNF-09** | Retroalimentación en **lenguaje comprensible para CS1** (Intro a Programación). | Usabilidad / Pedagógico | Validación con estudiantes confirma la comprensión. | - Prompts estructurados pedagógicamente con criterios del curso (`syllabus/criterios.md`).<br>- Reglas explícitas: Prohibición de temas avanzados (punteros, memoria dinámica, templates), uso del modelo formativo (*¿Hacia dónde voy?, ¿Cómo voy?, ¿Qué sigue?*) y explicaciones pedagógicas de mensajes de `g++`. | **Cumplido** |
-| **RNF-10** | Procesamiento del **volumen total de entregas** dentro del plazo definido. | Rendimiento / P | Una carga de N entregas se procesa dentro del plazo. | - Mecanismo de control de concurrencia `SingleFlight` por usuario y timeouts configurables (`COMPILE_TIMEOUT_SECS=10s`, `RUN_TIMEOUT_SECS=5s`).<br>- Ejecución compilada nativa en C++ y almacenamiento optimizado en JSON con bloqueos atómicos en Go. | **Cumplido** |
-| **RNF-11** | Entrega de retroalimentación en **tiempo óptimo formativo**. | Rendimiento / Pedagógico | Tiempo entrega-retroalimentación menor al umbral definido. | - Streaming en tiempo real mediante **Server-Sent Events (SSE)** token a token.<br>- El estudiante y el profesor no tienen que esperar la generación completa; visualizan la respuesta de inmediato conforme se genera. | **Cumplido** |
-| **RNF-12** | Operación bajo **condiciones de conectividad limitada**. | Entorno / Socio-cultural | Funciona dentro del ancho de banda mínimo definido. | - Frontend optimizado en Next.js con compresión de activos y fuentes locales.<br>- Cero dependencia de internet externo para la IA ni el compilador: tanto Ollama como `g++` corren localmente en la red o servidor institucional. | **Cumplido** |
-| **RNF-13** | Integración con la **plataforma institucional existente**. | Soportabilidad / S | La integración funciona sin migrar de plataforma. | - Módulo de integración con Google Classroom (`src/classroom`) y bot de Telegram (`src/telegram`).<br>- API REST estándar interoperable con cualquier LMS universitario (Moodle, Canvas, Blackboard) mediante endpoints JSON y cookies de sesión. | **Cumplido** |
-| **RNF-14** | Conservación de la entrega ante **fallo del componente de IA**. | Confiabilidad / R | Tras un fallo simulado la entrega permanece intacta. | - Desacoplamiento total: la recepción de entregas (`POST /api/student/submissions`) almacena el código inmediatamente en disco antes de cualquier interacción con la IA.<br>- Si Ollama no está disponible o falla, la entrega queda registrada y accesible para calificación manual por el docente. | **Cumplido** |
-| **RNF-15** | Notificación al docente ante **fallo del componente de IA**. | Confiabilidad / R | Un fallo simulado dispara una notificación/alerta al docente. | - El panel del docente (`ReviewPanel`) captura los errores de servicio de IA, muestra indicadores de estado y registra logs centralizados de fallas sin bloquear la revisión manual. | **Cumplido** |
-| **RNF-16** | Preservación del **vínculo docente-estudiante**. | Diseño / Socio-cultural | La retroalimentación mantiene un canal humano identificable. | - La interfaz del estudiante muestra explícitamente el nombre del docente que revisa la entrega y los comentarios directos personalizados por este.<br>- El sistema se presenta como un asistente de apoyo al docente, no como un calificador autónomo. | **Cumplido** |
+Las pruebas citadas están en `internal/**/*_test.go` y se ejecutan con `go test ./...`.
+
+## Requisitos funcionales
+
+| ID | MoSCoW | Estado | Evidencia | Pendiente |
+|---|---|---|---|---|
+| RF-01 Retroalimentación para cada entrega | Must | Cumple | Cada entrega oficial entra a la cola `ai_jobs` y un trabajador genera la propuesta en segundo plano (`internal/handler/drafts.go`, `internal/auth/jobs.go`). Al actualizar, las entregas antiguas sin propuesta también entran a la cola. Prueba: `TestDraftQueueJobs`. | — |
+| RF-02 Tres preguntas de Hattie y Timperley | Must | Cumple | Los modos formal e informal y la propuesta del profesor usan «¿Hacia dónde voy?», «¿Cómo voy?» y «¿Qué sigue?». `EnsureSections` completa en su lugar las secciones que falten (`internal/ai/sections.go`). Prueba: `TestEnsureSections`. | — |
+| RF-03 «¿Qué sigue?» en el 100 % de las salidas | Must | Cumple | Si el modelo la omite, se agrega una pista según el resultado: no compila, falla al ejecutar, no pasa un caso o funciona. En el streaming el texto corregido llega como evento `replace`. Se mide el porcentaje de salidas que la traían (`ai_requests.sections_ok`). | — |
+| RF-04 Corrección funcional con casos de prueba | Must | Cumple | Hasta 10 casos por taller: entrada, salida esperada, comparación «contiene» o «exacta» y opción de ocultarlo al estudiante. Se ejecutan en el sandbox al compilar y al entregar; el resultado se ve como «Pasa X de N» y llega a la IA (`internal/compiler/compiler.go`, `internal/auth/tests.go`). Pruebas: `TestCompileAndTest`, `TestAssignmentTestsAndResults`. | — |
+| RF-05 Observación sobre legibilidad | Should | Parcial | El sílabo pide revisar estilo, nombres e indentación. | No se verifica que cada salida incluya la observación. |
+| RF-06 Observación sobre mantenibilidad | Should | Parcial | Igual que RF-05: funciones, código repetido y `const`. | Ídem. |
+| RF-07 Observación sobre documentación | Could | Parcial | Igual que RF-05: comentarios útiles. | Ídem. |
+| RF-08 Pistas orientadas al razonamiento | Must | Cumple | Las reglas del prompt piden preguntas guía y ejemplos de pista. | — |
+| RF-09 No revelar la solución completa | Must | Cumple | `SolutionGuard` filtra el streaming y `FilterSolution` filtra la propuesta (`internal/ai/guard.go`). Prueba: `guard_test.go`. | — |
+| RF-10 Estado «pendiente de revisión» | Must | Cumple | Toda revisión empieza como borrador («Pendiente de revisión») y el estudiante no la ve hasta que se aprueba. | — |
+| RF-11 Editar antes de entregar | Must | Cumple | El texto, la nota y los niveles por RAE son editables en el panel de revisión. | — |
+| RF-12 Aprobación registrada | Must | Cumple | «Aprobar y devolver» queda en `audit_log` con autor, fecha, nota y origen del texto. Prueba: `TestDiscardOriginAndAudit`. | — |
+| RF-13 Descarte registrado | Must | Cumple | «Descartar propuesta de la IA» (`POST /api/teacher/submissions/{id}/review/discard`) quita la propuesta, impide que la cola la regenere y queda en la bitácora. | — |
+| RF-14 Configurar criterios de evaluación | Must | Cumple | Criterios por taller, los cuatro RAE oficiales por materia y casos de prueba, definidos antes de ejecutar. | — |
+| RF-15 La rúbrica se refleja en la salida | Should | Cumple en modo supervisado | La propuesta, que es lo que recibe el estudiante tras la aprobación, se genera con los criterios, los RAE y los casos. | La retroalimentación inmediata (modo inmediato) usa el enunciado, no los criterios. |
+| RF-16 Ejecución automática ante cada entrega | Must | Cumple | Una entrega dispara la compilación, los casos de prueba y la propuesta de la IA sin intervención manual. | — |
+| RF-17 Separar lo formativo de lo sumativo | Must | Cumple | La retroalimentación de la IA tiene prohibido poner notas; la nota es un campo aparte que define el profesor. | — |
+| RF-18 Aviso de participación de la IA | Must | Cumple | Toda salida de la IA lleva su aviso; cada revisión devuelta indica si hubo IA. | — |
+| RF-19 Contenido de IA marcado | Should | Cumple | El origen del texto devuelto queda como `ia`, `ia_editada` o `docente`, y el estudiante ve «Generado con IA · aprobado por …» o «Escrito por …». La marca es por texto completo, no por frase. | — |
+| RF-20 Bitácora de intervenciones | Should | Cumple | `audit_log` registra autor, acción, fecha y detalle de cada propuesta, descarte, borrador, aprobación, cambio de nota, cambio de modo, marcas enviadas por monitores y casos re-ejecutados. Se ve por clase y por entrega. | — |
+| RF-21 Errores frecuentes del curso | Should | Falta | Solo existe el análisis del proceso por estudiante. | Falta la vista agregada por clase (`error_summary` ya se guarda en cada intento). |
+| RF-22 Aclaración sobre la retroalimentación | Could | Parcial | Chat con la IA en modo inmediato. En modo supervisado se remite al profesor o al monitor. | Falta un canal en la plataforma para preguntar sobre una retroalimentación concreta. |
+| RF-23 Iterar | Could | Cumple | El estudiante puede volver a enviar; cada versión tiene su propia revisión. | — |
+
+## Requisitos no funcionales
+
+| ID | MoSCoW | Estado | Evidencia | Pendiente |
+|---|---|---|---|---|
+| RNF-01 Ley 1581 de 2012 | Must | Implementado; falta la auditoría | Autorización explícita al registrarse, guardada con fecha y versión; las cuentas antiguas deben autorizar al entrar. Política pública en `/privacidad`. Derechos del titular en «Mi cuenta»: descargar los datos en JSON, corregir el nombre y eliminar la cuenta en cascada. Prueba: `TestPersonalData`. | Auditoría legal. Nombrar responsable y canal de contacto institucional. Publicar `scripts/limpiar_historial.sh` (ver «Incidente»). |
+| RNF-02 Circular 002 de 2024 (SIC) | Must | Parcial | Supervisión humana por defecto, transparencia sobre la IA, modelo local y minimización de datos. | Evaluación de impacto de la IA y auditoría legal. |
+| RNF-03 Confidencialidad del código | Must | Cumple en el código | Cada consulta filtra en SQL por dueño, clase o monitor asignado; el código se ejecuta en `bwrap` sin red. | En producción: HTTPS y `COOKIE_SECURE=true`. |
+| RNF-04 Confidencialidad de datos personales | Must | Cumple en el código | Igual que RNF-03; contraseñas y códigos de recuperación con hash, y sesión en cookie `HttpOnly`. | Ídem, y limpiar el historial de git. |
+| RNF-05 Control de lo que se envía a la IA | Must | Cumple | Política en `docs/POLITICA_DATOS.md`: el modelo es local y solo recibe código, entrada, salida, compilador, enunciado y casos; nunca nombre ni email. | — |
+| RNF-06 Validación docente de toda retroalimentación automática | Must | Cumple en modo supervisado | Cada clase tiene un modo de IA y por defecto es «supervisada»: el estudiante no puede pedir retroalimentación ni chat a la IA (`403`) y solo recibe lo que el profesor aprueba. El modo «inmediata» es una excepción que el profesor activa con una advertencia y que queda en la bitácora. Prueba: `TestAIModeGate`. | — |
+| RNF-07 Docente como decisor final | Must | Cumple | La IA solo propone; aprobar, editar, descartar y calificar son acciones del profesor. | — |
+| RNF-08 Tiempo de revisión por entrega | Must | Instrumentado | Se mide el tiempo activo en el panel de revisión: pestaña visible, con una pausa tras 5 minutos sin actividad y un máximo de 2 h por sesión. La clase muestra el promedio, la mediana y el percentil 90, contrastados con el umbral de la materia. Prueba: `TestGroupMetrics`. | Acordar el umbral en minutos. |
+| RNF-09 Lenguaje comprensible para CS1 | Should | Fuera del código | Prompts adaptados al curso 33698 y a sus RAE. | Validación con estudiantes. |
+| RNF-10 Procesar el volumen del curso a tiempo | Must | Instrumentado | Cola persistente con reintentos (3 intentos). Por cada taller se mide la peor demora entrega→propuesta. `scripts/prueba_carga.py N` simula N entregas y mide el lote: unos 25 s por entrega con `llama3.1:8b`. | Acordar el plazo en horas y correr la prueba con el N real del curso. |
+| RNF-11 Retroalimentación a tiempo | Should | Instrumentado | Se mide el tiempo entrega→retroalimentación aprobada y las entregas pendientes que ya superan el umbral. En modo inmediato se mide el tiempo hasta el primer texto y hasta la respuesta completa. | Acordar el umbral en horas. |
+| RNF-12 Conectividad limitada | Should | Parcial | IA y compilador locales; las fuentes se sirven desde el propio servidor (`next/font`). | Definir el ancho de banda mínimo y medir el peso de las páginas. |
+| RNF-13 Integración con la plataforma institucional | Should | Falta | `src/classroom` y `src/telegram` son prototipos en Python sin conexión con el backend. | LTI 1.3 o exportar notas y entregas. |
+| RNF-14 Conservar la entrega si falla la IA | Should | Cumple | La entrega se guarda antes de la IA y la cola reintenta sin tocarla. | — |
+| RNF-15 Avisar al docente si falla la IA | Could | Cumple | Aviso en el tablero y en la clase cuando la IA no responde o una propuesta falla tres veces; botón «Reintentar ahora». | — |
+| RNF-16 Vínculo docente-estudiante | Should | Cumple | La revisión devuelta muestra el nombre del profesor que la aprobó y el origen del texto. | — |
+
+## Restricciones de viabilidad
+
+| ID | Estado | Pendiente |
+|---|---|---|
+| RV-01 Costo-beneficio | Fuera del código | Análisis con el costo del servidor con GPU frente al tiempo docente ahorrado. Insumos disponibles: RNF-08, RNF-10 y la cantidad de propuestas aprobadas sin cambios. |
+| RV-02 Mantenimiento a largo plazo | Fuera del código | Plan de mantenimiento: responsables, actualizaciones de dependencias y respaldo de `data/`. |
+| RV-03 Actualización de modelos de IA | Fuera del código | Presupuesto y procedimiento. `cmd/aieval` sirve para comparar modelos antes de cambiar `OLLAMA_MODEL`. |
+
+## Incidente: datos personales en el historial público
+
+El commit `c727708` subió la carpeta `data-backup-2026-10-21/` a GitHub. Contenía cuentas reales (nombres, emails y hashes de contraseña) y entregas. El commit `ac17031` la quitó, pero sigue en el historial.
+
+`scripts/limpiar_historial.sh` hace lo siguiente:
+1. Reescribe una copia del repositorio sin esa carpeta.
+2. Verifica que no quede rastro y que el contenido actual de `main` no cambie.
+3. Solo publica si se escribe «SI», porque reescribe `main` para todos.
+
+Después hay que:
+- Sincronizar cada clon.
+- Pedir a GitHub Support que purgue las vistas en caché.
+- Pedir a esas personas que cambien su contraseña.

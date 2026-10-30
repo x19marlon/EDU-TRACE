@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS users (
   compiles INTEGER NOT NULL DEFAULT 0,
   feedbacks INTEGER NOT NULL DEFAULT 0,
   last_active_at TEXT,
-  recovery_hash TEXT NOT NULL DEFAULT ''
+  recovery_hash TEXT NOT NULL DEFAULT '',
+  consent_at TEXT,
+  consent_version TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -21,7 +23,10 @@ CREATE TABLE IF NOT EXISTS courses (
   id TEXT PRIMARY KEY,
   teacher_id TEXT NOT NULL REFERENCES users(id),
   name TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  review_minutes_max REAL,
+  batch_hours_max REAL,
+  feedback_hours_max REAL
 );
 CREATE INDEX IF NOT EXISTS courses_teacher ON courses(teacher_id);
 
@@ -31,7 +36,8 @@ CREATE TABLE IF NOT EXISTS class_groups (
   course_id  TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   join_code  TEXT NOT NULL UNIQUE,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  ai_mode TEXT NOT NULL DEFAULT 'supervisada' CHECK (ai_mode IN ('supervisada', 'inmediata'))
 );
 
 
@@ -101,7 +107,10 @@ CREATE TABLE IF NOT EXISTS reviews (
   grade REAL,
   status TEXT NOT NULL CHECK (status IN ('draft', 'returned')),
   returned_at TEXT,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  ai_discarded_at TEXT,
+  feedback_origin TEXT NOT NULL DEFAULT '',
+  review_ms INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS group_monitors (
@@ -153,3 +162,64 @@ CREATE TABLE IF NOT EXISTS code_annotations (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS code_annotations_submission ON code_annotations(submission_id, created_at);
+
+CREATE TABLE IF NOT EXISTS assignment_tests (
+  id TEXT PRIMARY KEY,
+  assignment_id TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  stdin TEXT NOT NULL DEFAULT '',
+  expected TEXT NOT NULL,
+  match TEXT NOT NULL DEFAULT 'contiene' CHECK (match IN ('contiene', 'exacta')),
+  hidden INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS assignment_tests_assignment ON assignment_tests(assignment_id, position);
+
+CREATE TABLE IF NOT EXISTS submission_tests (
+  submission_id TEXT NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  test_id TEXT NOT NULL REFERENCES assignment_tests(id) ON DELETE CASCADE,
+  passed INTEGER NOT NULL,
+  output TEXT NOT NULL DEFAULT '',
+  error TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (submission_id, test_id)
+);
+CREATE INDEX IF NOT EXISTS submission_tests_test ON submission_tests(test_id);
+
+CREATE TABLE IF NOT EXISTS ai_jobs (
+  submission_id TEXT PRIMARY KEY REFERENCES submissions(id) ON DELETE CASCADE,
+  status TEXT NOT NULL CHECK (status IN ('pendiente', 'procesando', 'lista', 'error', 'omitida')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  error TEXT NOT NULL DEFAULT '',
+  enqueued_at TEXT NOT NULL,
+  started_at TEXT,
+  finished_at TEXT
+);
+CREATE INDEX IF NOT EXISTS ai_jobs_status ON ai_jobs(status, enqueued_at);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL,
+  actor_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  actor_name TEXT NOT NULL,
+  actor_role TEXT NOT NULL,
+  action TEXT NOT NULL,
+  group_id TEXT REFERENCES class_groups(id) ON DELETE CASCADE,
+  submission_id TEXT REFERENCES submissions(id) ON DELETE CASCADE,
+  detail TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS audit_log_group ON audit_log(group_id, at);
+CREATE INDEX IF NOT EXISTS audit_log_submission ON audit_log(submission_id, at);
+
+CREATE TABLE IF NOT EXISTS ai_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  group_id TEXT REFERENCES class_groups(id) ON DELETE CASCADE,
+  role TEXT NOT NULL,
+  first_token_ms INTEGER,
+  total_ms INTEGER NOT NULL,
+  ok INTEGER NOT NULL,
+  sections_ok INTEGER,
+  error TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS ai_requests_group ON ai_requests(group_id, at);

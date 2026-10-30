@@ -64,9 +64,19 @@ func (h *CompileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	slog.Info("compile request received", "user_id", user.ID, "code_size", len(req.Code), "has_stdin", len(req.Stdin) > 0)
 	h.store.RecordCompile(user.ID)
 
-	result := h.compiler.Compile(r.Context(), req.Code, req.Stdin)
-	h.saveAttempt(user, req, result)
-
+	enrolled := user.Role == auth.RoleStudent && req.GroupID != "" && h.store.IsEnrolled(user.ID, req.GroupID)
+	if !enrolled || (req.AssignmentID != "" && !h.store.AssignmentInGroup(req.AssignmentID, req.GroupID)) {
+		req.AssignmentID = ""
+	}
+	tests, err := h.store.TestsForRun(req.AssignmentID)
+	if err != nil {
+		slog.Error("load tests failed", "assignment_id", req.AssignmentID, "error", err)
+	}
+	result := h.compiler.CompileAndTest(r.Context(), req.Code, req.Stdin, tests)
+	if enrolled {
+		h.saveAttempt(user, req, result)
+	}
+	result.Tests = model.PublicResults(result.Tests)
 	writeJSON(w, http.StatusOK, result)
 }
 
@@ -81,12 +91,6 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 // saveAttempt guarda la compilación como intento si el estudiante eligió una clase
 // en la que está inscrito. Nunca hace fallar la compilación.
 func (h *CompileHandler) saveAttempt(user *auth.User, req model.CompileRequest, result *model.CompileResult) {
-	if user.Role != auth.RoleStudent || req.GroupID == "" || !h.store.IsEnrolled(user.ID, req.GroupID) {
-		return
-	}
-	if req.AssignmentID != "" && !h.store.AssignmentInGroup(req.AssignmentID, req.GroupID) {
-		req.AssignmentID = ""
-	}
 	err := h.store.AddSubmission(&auth.Submission{
 		SubmissionMeta: auth.SubmissionMeta{
 			Kind: auth.KindAttempt,
@@ -102,6 +106,7 @@ func (h *CompileHandler) saveAttempt(user *auth.User, req model.CompileRequest, 
 		Stdin: req.Stdin,
 		CompilerOutput: result.CompilerOutput,
 		ProgramOutput: result.ProgramOutput,
+		Tests: result.Tests,
 	})
 	if err != nil && !errors.Is(err, auth.ErrDuplicateAttempt) {
 		slog.Error("save attempt failed", "user_id", user.ID, "error", err)

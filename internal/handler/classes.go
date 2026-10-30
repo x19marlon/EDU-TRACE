@@ -16,13 +16,15 @@ type ClassesHandler struct {
 	store *auth.Store
 	compiler *compiler.Compiler
 	joinLimits *auth.LoginLimiter
+	drafts *DraftQueue
 }
 
-func NewClassesHandler(store *auth.Store, comp *compiler.Compiler) *ClassesHandler {
+func NewClassesHandler(store *auth.Store, comp *compiler.Compiler, drafts *DraftQueue) *ClassesHandler {
 	return &ClassesHandler{
 		store: store,
 		compiler: comp,
 		joinLimits: auth.NewLoginLimiter(10, 15*time.Minute),
+		drafts: drafts,
 	}
 }
 
@@ -190,7 +192,12 @@ func (h *ClassesHandler) Submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := h.compiler.Compile(r.Context(), req.Code, req.Stdin)
+	tests, err := h.store.TestsForRun(req.AssignmentID)
+	if err != nil {
+		writeStoreErr(w, err, "cargar los casos de prueba")
+		return
+	}
+	result := h.compiler.CompileAndTest(r.Context(), req.Code, req.Stdin, tests)
 	h.store.RecordCompile(user.ID)
 	sub := &auth.Submission{
 		SubmissionMeta: auth.SubmissionMeta{
@@ -208,6 +215,7 @@ func (h *ClassesHandler) Submit(w http.ResponseWriter, r *http.Request) {
 		ProgramOutput: result.ProgramOutput,
 		AIFeedback: req.AIFeedback,
 		AIFeedbackInf: req.AIFeedbackInformal,
+		Tests: result.Tests,
 	}
 	if err := h.store.AddSubmission(sub); err != nil {
 		var closed *auth.DeadlineError
@@ -218,8 +226,14 @@ func (h *ClassesHandler) Submit(w http.ResponseWriter, r *http.Request) {
 		writeStoreErr(w, err, "guardar el envío")
 		return
 	}
+	h.drafts.Wake()
 	slog.Info("submission saved", "user_id", user.ID, "group_id", req.GroupID, "submission_id", sub.ID)
-	writeJSON(w, http.StatusCreated, sub.SubmissionMeta)
+	writeJSON(w, http.StatusCreated, submittedView{SubmissionMeta: sub.SubmissionMeta, Tests: model.PublicResults(sub.Tests)})
+}
+
+type submittedView struct {
+	auth.SubmissionMeta
+	Tests []model.TestResult `json:"tests,omitempty"`
 }
 
 func clip(s string, max int) string {

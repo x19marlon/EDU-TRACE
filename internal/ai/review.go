@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+
+	"github.com/marlon/edu-trace/internal/model"
 )
 
 const GradeMax = 5.0
@@ -22,6 +24,7 @@ type ReviewInput struct {
 	RunError string
 	ExitCode int
 	RAEs []RAEInput
+	Tests []model.TestResult
 }
 
 type RAEInput struct {
@@ -35,6 +38,7 @@ type ReviewSuggestion struct {
 	Reason string `json:"justificacion"`
 	Confidence string `json:"confianza"`
 	Levels map[string]string `json:"niveles_rae,omitempty"`
+	SectionsFixed bool `json:"-"`
 }
 
 // reviewSchema obliga al modelo a responder con este JSON (salidas estructuradas de Ollama).
@@ -56,8 +60,8 @@ ANTES DE RESPONDER, verifica en silencio:
 - Si hay entrada y salida, calcula a mano qué debería imprimir el programa y compáralo con la salida real.
 
 Responde ÚNICAMENTE con un JSON con estos campos:
-- "retroalimentacion": retroalimentación formativa dirigida directamente al estudiante, en segunda persona ("tu programa", "revisa la línea 6"); nunca escribas "el estudiante" en este campo. En español, con las secciones "## ¿Hacia dónde voy?", "## ¿Cómo voy?" y "## ¿Qué sigue?", cada título en su propia línea y separado del texto por un salto de línea. En "¿Hacia dónde voy?" nombra el Resultado de Aprendizaje Esperado que desarrolla el taller con su número y nombre corto, por ejemplo "RAE 4: implementar en C++" (RAE aquí nunca es la Real Academia Española). Da pistas, nunca la línea corregida ni el programa resuelto. Máximo 250 palabras.
-- "nota": calificación tentativa de 0.0 a 5.0, con un decimal, según los criterios de evaluación del taller (o, si no hay, la rúbrica del RAE 4 del curso), el enunciado y el resultado real de la ejecución. Primero ubica la entrega en un nivel de la escala de desempeño (Insatisfactorio [0–2), Bajo el estándar [2–3), Competente [3–3.75), Ejemplar [3.75–4.25), Ejemplar de alto nivel [4.25–5]) y da una nota dentro de ese rango.
+- "retroalimentacion": retroalimentación formativa dirigida directamente al estudiante, en segunda persona ("tu programa", "revisa la línea 6"); nunca escribas "el estudiante" en este campo. En español, con las secciones "## ¿Hacia dónde voy?", "## ¿Cómo voy?" y "## ¿Qué sigue?", cada título en su propia línea y separado del texto por un salto de línea. Si hay casos de prueba del profesor, en "¿Cómo voy?" di cuántos pasa. En "¿Hacia dónde voy?" nombra el Resultado de Aprendizaje Esperado que desarrolla el taller con su número y nombre corto, por ejemplo "RAE 4: implementar en C++" (RAE aquí nunca es la Real Academia Española). Da pistas, nunca la línea corregida ni el programa resuelto. Máximo 250 palabras.
+- "nota": calificación tentativa de 0.0 a 5.0, con un decimal, según los criterios de evaluación del taller (o, si no hay, la rúbrica del RAE 4 del curso), el enunciado, el resultado real de la ejecución y los casos de prueba del profesor, si los hay. Primero ubica la entrega en un nivel de la escala de desempeño (Insatisfactorio [0–2), Bajo el estándar [2–3), Competente [3–3.75), Ejemplar [3.75–4.25), Ejemplar de alto nivel [4.25–5]) y da una nota dentro de ese rango.
 - "justificacion": para el profesor, de 2 a 4 frases que expliquen la nota criterio por criterio, nombrando el nivel de desempeño y el RAE.
 - "confianza": "alta", "media" o "baja". Usa "baja" si el enunciado es ambiguo, faltan criterios o no puedes comprobar si la salida es correcta y explica el porque.
 - "niveles_rae": solo si se incluyen Resultados de Aprendizaje Esperados (RAE): para cada uno, el nivel de logro que demuestra esta entrega según la escala del curso: "bajo" (Insatisfactorio o Bajo el estándar), "medio" (Competente) o "alto" (Ejemplar o Ejemplar de alto nivel). Usa "no_aplica" si el ejercicio no trabaja ese RAE (por ejemplo, el RAE 3 en un taller sin arreglos).
@@ -109,6 +113,7 @@ func (o *OllamaClient) SuggestReview(ctx context.Context, in ReviewInput) (*Revi
 			fmt.Fprintf(&b, "El programa terminó con código de salida %d.\n", in.ExitCode)
 		}
 	}
+	writeTests(&b, in.Tests)
 	messages := []chatMessage{
 		{Role: "system", Content: fmt.Sprintf(systemPromptReview, o.syllabus)},
 		{Role: "user", Content: b.String()},
@@ -146,6 +151,14 @@ func (o *OllamaClient) SuggestReview(ctx context.Context, in ReviewInput) (*Revi
 	sug.Reason = strings.TrimSpace(sug.Reason)
 	if sug.Feedback == "" {
 		return nil, errors.New("la IA devolvió una retroalimentación vacía, inténtalo de nuevo")
+	}
+	passed, total := countPassed(in.Tests)
+	outcome := Outcome{Statement: in.Statement != "", Compiled: true, Success: in.Success,
+		RunFailed: in.RunError != "" || in.ExitCode != 0, TestsPassed: passed, TestsTotal: total}
+	if fixed, ok := EnsureSections(sug.Feedback, FallbackSections(outcome)); !ok {
+		slog.Info("secciones de Hattie y Timperley completadas en la propuesta", "faltaban", MissingSections(sug.Feedback))
+		sug.Feedback = fixed
+		sug.SectionsFixed = true
 	}
 	if sug.Confidence != "alta" && sug.Confidence != "media" && sug.Confidence != "baja" {
 		sug.Confidence = "baja"

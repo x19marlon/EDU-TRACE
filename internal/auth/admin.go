@@ -328,6 +328,9 @@ func (s *Store) UpdateAssignment(teacherID, assignmentID, title, statement, rubr
 	if err := s.attachFiles(list); err != nil {
 		return nil, err
 	}
+	if err := s.attachTests(list, true); err != nil {
+		return nil, err
+	}
 	return &list[0], nil
 }
 

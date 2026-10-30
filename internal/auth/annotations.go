@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -231,5 +232,12 @@ func (s *Store) SendMonitorAnnotations(monitor *User, submissionID string) (int6
 		return 0, now, err
 	}
 	n, err := res.RowsAffected()
-	return n, now, err
+	if err != nil || n == 0 {
+		return n, now, err
+	}
+	detail := "Envió 1 marca al estudiante"
+	if n > 1 {
+		detail = fmt.Sprintf("Envió %d marcas al estudiante", n)
+	}
+	return n, now, logAudit(s.db, monitor.ID, AuditAnnotationsSent, "", submissionID, detail)
 }

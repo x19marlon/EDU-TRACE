@@ -1,5 +1,6 @@
 import { CompileResult } from "@/lib/api";
 import { Spinner } from "@/components/ui";
+import TestResults from "@/components/TestResults";
 
 interface OutputPanelProps {
   result: CompileResult | null;
@@ -77,6 +78,12 @@ export default function OutputPanel({ result, isLoading, error }: OutputPanelPro
           <pre className="whitespace-pre-wrap rounded-2xl bg-mint-50 p-4 font-mono text-sm text-ink">
             {result.program_output || "(sin salida)"}
           </pre>
+        </div>
+      )}
+
+      {result.tests && result.tests.length > 0 && (
+        <div className="mb-4">
+          <TestResults results={result.tests} />
         </div>
       )}
 

@@ -10,6 +10,7 @@ interface FeedbackPanelProps {
   error: string | null;
   onRequestFeedback: () => void;
   canRequestFeedback: boolean;
+  disabledReason?: string;
 }
 
 /** Textos y colores de cada modalidad de retroalimentación. */
@@ -29,9 +30,9 @@ const MODE_INFO: Record<FeedbackMode, { intro: React.ReactNode; button: string; 
   informal: {
     intro: (
       <>
-        Consejos rápidos, como los de un monitor: <strong className="text-ink">qué ya funciona</strong>,{" "}
-        <strong className="text-ink">recomendaciones sobre tu código</strong> (nombres, ciclos, funciones, orden…) y un{" "}
-        <strong className="text-ink">tip</strong>.
+        Consejos prácticos, como los de un monitor, con las mismas tres preguntas:{" "}
+        <strong className="text-ink">qué pide el ejercicio</strong>, <strong className="text-ink">qué ya funciona y qué mejorar</strong>{" "}
+        (nombres, ciclos, funciones, orden…) y <strong className="text-ink">qué sigue</strong>.
       </>
     ),
     button: "Pedir retroalimentación informal",
@@ -49,6 +50,7 @@ export default function FeedbackPanel({
   error,
   onRequestFeedback,
   canRequestFeedback,
+  disabledReason,
 }: FeedbackPanelProps) {
   const hasContent = feedbackText.length > 0;
   const info = MODE_INFO[mode];
@@ -72,14 +74,18 @@ export default function FeedbackPanel({
               Te da pistas para que llegues tú a la solución, no te la resuelve. No es una calificación:
               tu docente tiene la última palabra.
             </p>
-            <button
-              onClick={onRequestFeedback}
-              disabled={!canRequestFeedback}
-              className="mt-1 rounded-full bg-lavender-600 px-5 py-2 text-sm font-bold text-white shadow-soft
-                transition hover:bg-lavender-700 disabled:opacity-50"
-            >
-              {info.button}
-            </button>
+            {disabledReason ? (
+              <p className="max-w-sm rounded-2xl bg-lavender-50 px-4 py-3 text-sm font-semibold text-lavender-700">{disabledReason}</p>
+            ) : (
+              <button
+                onClick={onRequestFeedback}
+                disabled={!canRequestFeedback}
+                className="mt-1 rounded-full bg-lavender-600 px-5 py-2 text-sm font-bold text-white shadow-soft
+                  transition hover:bg-lavender-700 disabled:opacity-50"
+              >
+                {info.button}
+              </button>
+            )}
           </div>
         )}
 

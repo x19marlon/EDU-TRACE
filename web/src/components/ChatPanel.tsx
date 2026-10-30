@@ -9,9 +9,10 @@ interface ChatPanelProps {
   code: string;
   stdin: string;
   assignmentId?: string;
+  disabledReason?: string;
 }
 
-export default function ChatPanel({ code, stdin, assignmentId }: ChatPanelProps) {
+export default function ChatPanel({ code, stdin, assignmentId, disabledReason }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -78,6 +79,15 @@ export default function ChatPanel({ code, stdin, assignmentId }: ChatPanelProps)
     setMessages([]);
     setError(null);
   };
+
+  if (disabledReason) {
+    return (
+      <div className="flex h-[480px] flex-col items-center justify-center gap-3 bg-white p-6 text-center">
+        <p className="max-w-sm rounded-2xl bg-lavender-50 px-4 py-3 text-sm font-semibold text-lavender-700">{disabledReason}</p>
+        <p className="max-w-sm text-xs text-ink-faint">Si tienes una duda, pregúntale a tu profesor o a tu monitor.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[480px] flex-col bg-white">

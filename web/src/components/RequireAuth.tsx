@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { Role } from "@/lib/api";
 import { homeFor } from "@/lib/role";
+import ConsentGate from "@/components/ConsentGate";
 
 /**
  * Muestra el contenido solo con sesión iniciada (y el rol indicado, si se pasa).
@@ -33,6 +34,8 @@ export default function RequireAuth({
       </div>
     );
   }
+
+  if (!user.consent_at) return <ConsentGate />;
 
   return <>{children}</>;
 }
