@@ -27,6 +27,7 @@ type Review struct {
 	Status string `json:"status"`
 	ReturnedAt *time.Time `json:"returned_at,omitempty"`
 	UpdatedAt time.Time `json:"updated_at"`
+	RAEs []ReviewRAE `json:"raes"`
 }
 
 
@@ -52,6 +53,7 @@ type StudentReview struct {
 	Grade *float64 `json:"grade,omitempty"`
 	ReturnedAt *time.Time `json:"returned_at"`
 	AIAssisted bool `json:"ai_assisted"` // transparencia: hubo apoyo de IA
+	RAEs []StudentRAE `json:"raes,omitempty"`
 }
 
 // ownedOfficial comprueba que la entrega existe, es oficial y es de una clase del profesor.
@@ -111,7 +113,14 @@ func (s *Store) ReviewForTeacher(teacherID, submissionID string) (*Review, error
 	if err := ownedOfficial(s.db, teacherID, submissionID); err != nil {
 		return nil, err
 	}
-	return loadReview(s.db, teacherID, submissionID)
+	r, err := loadReview(s.db, teacherID, submissionID)
+	if err != nil {
+		return nil, err
+	}
+	if r.RAEs, err = reviewRAEs(s.db, submissionID); err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 // ReviewStates devuelve el estado de revisión de las entregas indicadas (las que no
@@ -147,7 +156,7 @@ func (s *Store) ReviewStates(submissionIDs []string) map[string]ReviewState {
 }
 
 // updateReview carga la revisión, la modifica con change y la guarda, todo en una transacción.
-func (s *Store) updateReview(teacherID, submissionID string, change func(r *Review, now time.Time)) (*Review, error) {
+func (s *Store) updateReview(teacherID, submissionID string, change func(r *Review, now time.Time), levels func(q querier, r *Review) error) (*Review, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, err
@@ -166,6 +175,12 @@ func (s *Store) updateReview(teacherID, submissionID string, change func(r *Revi
 	if err := saveReview(tx, r); err != nil {
 		return nil, err
 	}
+	if err := levels(tx, r); err != nil {
+		return nil, err
+	}
+	if r.RAEs, err = reviewRAEs(tx, submissionID); err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -174,21 +189,25 @@ func (s *Store) updateReview(teacherID, submissionID string, change func(r *Revi
 
 // SaveAIDraft guarda la propuesta de la IA y, si el profesor aún no escribió nada,
 // precarga su formulario con ella.
-func (s *Store) SaveAIDraft(teacherID, submissionID, feedback string, grade *float64, reason, confidence string) (*Review, error) {
+func (s *Store) SaveAIDraft(teacherID, submissionID, feedback string, grade *float64, reason, confidence string, levels map[string]string) (*Review, error) {
 	return s.updateReview(teacherID, submissionID, func(r *Review, now time.Time) {
 		r.AIFeedback, r.AIGrade, r.AIReason, r.AIConfidence, r.AIAt = feedback, grade, reason, confidence, &now
 		if r.Status != ReviewReturned && r.Feedback == "" {
 			r.Feedback, r.Grade = feedback, grade
 		}
+	}, func(q querier, r *Review) error {
+		return saveAILevels(q, submissionID, levels, r.Status != ReviewReturned)
 	})
 }
 
 // SaveTeacherReview guarda la decisión del profesor; returnIt la hace visible al estudiante.
-func (s *Store) SaveTeacherReview(teacherID, submissionID, feedback string, grade *float64, returnIt bool) (*Review, error) {
+func (s *Store) SaveTeacherReview(teacherID, submissionID, feedback string, grade *float64, returnIt bool, levels map[string]string) (*Review, error) {
 	return s.updateReview(teacherID, submissionID, func(r *Review, now time.Time) {
 		r.Feedback, r.Grade = feedback, grade
 		if returnIt {
 			r.Status, r.ReturnedAt = ReviewReturned, &now
 		}
+	}, func(q querier, r *Review) error {
+		return saveTeacherLevels(q, submissionID, levels)
 	})
 }

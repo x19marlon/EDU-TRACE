@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-# ==============================================================================
-# Script de arranque y configuración automática para EDU-TRACE
-# ==============================================================================
-
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
@@ -14,12 +10,32 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Liberar puertos en caso de que hayan quedado procesos colgados
-echo -e "${BLUE}=== [0/5] Liberando puertos anteriores (8080 y 3000) ===${NC}"
-fuser -k 8080/tcp 2>/dev/null || true
-fuser -k 3000/tcp 2>/dev/null || true
+# 0. Configuración y puertos
+if [ -f .env ]; then
+    while IFS='=' read -r key value || [ -n "$key" ]; do
+        [[ "$key" =~ ^[A-Z_][A-Z0-9_]*$ ]] || continue
+        value="${value%$'\r'}"
+        value="${value#\"}"; value="${value%\"}"
+        value="${value#\'}"; value="${value%\'}"
+        if [ -z "${!key}" ] && [ -n "$value" ]; then
+            export "$key=$value"
+        fi
+    done < .env
+fi
+export HOST="${HOST:-127.0.0.1}"
+export PORT="${PORT:-8080}"
+export SANDBOX="${SANDBOX:-bwrap}"
+export TEACHER_CODE="${TEACHER_CODE:-admin123}"
+export OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://127.0.0.1:11434}"
+export OLLAMA_MODEL="${OLLAMA_MODEL:-llama3.1:8b}"
+WEB_PORT="${WEB_PORT:-3000}"
 
-echo -e "${BLUE}=== [1/5] Verificando dependencias del sistema ===${NC}"
+echo -e "${BLUE}Liberando puertos $PORT y $WEB_PORT${NC}"
+fuser -k "$PORT/tcp" 2>/dev/null || true
+fuser -k "$WEB_PORT/tcp" 2>/dev/null || true
+
+# 1. Dependencias del sistema
+echo -e "\n${BLUE}Verificando dependencias del sistema${NC}"
 MISSING_PKGS=()
 if ! command -v g++ &> /dev/null; then MISSING_PKGS+=("g++"); fi
 if ! command -v bwrap &> /dev/null; then MISSING_PKGS+=("bubblewrap"); fi
@@ -28,16 +44,18 @@ if ! command -v curl &> /dev/null; then MISSING_PKGS+=("curl"); fi
 if ! command -v fuser &> /dev/null; then MISSING_PKGS+=("psmisc"); fi
 
 if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
-    echo -e "${YELLOW}Instalando paquetes del sistema faltantes: ${MISSING_PKGS[*]}.${NC}"
-    sudo apt update && sudo apt install -y "${MISSING_PKGS[@]}"
+    echo -e "${YELLOW}Instalando paquetes faltantes: ${MISSING_PKGS[*]}${NC}"
+    if command -v pacman &> /dev/null; then
+        sudo pacman -S --needed --noconfirm "${MISSING_PKGS[@]/g++/gcc}"
+    else
+        sudo apt update && sudo apt install -y "${MISSING_PKGS[@]}"
+    fi
 else
-    echo -e "${GREEN}✓ Paquetes base del sistema OK.${NC}"
+    echo -e "${GREEN}✓ Paquetes del sistema listos${NC}"
 fi
 
-# ------------------------------------------------------------------------------
-# 2. Configurar Go 1.24
-# ------------------------------------------------------------------------------
-echo -e "\n${BLUE}=== [2/5] Verificando Go (>= 1.24) ===${NC}"
+# 2. Go 1.24
+echo -e "\n${BLUE}Verificando Go (>= 1.24)${NC}"
 LOCAL_GO_DIR="$HOME/.local/go1.24"
 if [ -x "$LOCAL_GO_DIR/bin/go" ]; then
     export PATH="$LOCAL_GO_DIR/bin:$PATH"
@@ -47,14 +65,14 @@ GO_OK=false
 if command -v go &> /dev/null; then
     GO_VER_STR=$(go version | awk '{print $3}' | sed 's/go//')
     IFS='.' read -r G_MAJ G_MIN G_PATCH <<< "$GO_VER_STR"
-    if [ "$G_MAJ" -gt 1 ] || ([ "$G_MAJ" -eq 1 ] && [ "$G_MIN" -ge 24 ]); then
+    if [ "$G_MAJ" -gt 1 ] || { [ "$G_MAJ" -eq 1 ] && [ "$G_MIN" -ge 24 ]; }; then
         GO_OK=true
-        echo -e "${GREEN}✓ Go $GO_VER_STR disponible.${NC}"
+        echo -e "${GREEN}✓ Go $GO_VER_STR${NC}"
     fi
 fi
 
 if [ "$GO_OK" = false ]; then
-    echo -e "${YELLOW}Instalando Go 1.24 en $LOCAL_GO_DIR...${NC}"
+    echo -e "${YELLOW}Instalando Go 1.24 en $LOCAL_GO_DIR${NC}"
     mkdir -p "$HOME/.local"
     curl -fsSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz -o /tmp/go1.24.tar.gz
     rm -rf "$LOCAL_GO_DIR"
@@ -62,109 +80,117 @@ if [ "$GO_OK" = false ]; then
     tar -C "$LOCAL_GO_DIR" --strip-components=1 -xzf /tmp/go1.24.tar.gz
     rm -f /tmp/go1.24.tar.gz
     export PATH="$LOCAL_GO_DIR/bin:$PATH"
-    echo -e "${GREEN}✓ Go 1.24 configurado.${NC}"
+    echo -e "${GREEN}✓ Go 1.24 instalado${NC}"
 fi
 
-# ------------------------------------------------------------------------------
 # 3. Node.js y dependencias frontend
-# ------------------------------------------------------------------------------
-echo -e "\n${BLUE}=== [3/5] Verificando Node.js y dependencias Web ===${NC}"
+echo -e "\n${BLUE}Verificando Node.js y dependencias web${NC}"
 if ! command -v node &> /dev/null || ! command -v npm &> /dev/null; then
-    echo -e "${YELLOW}Instalando Node.js LTS...${NC}"
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    sudo apt install -y nodejs
+    echo -e "${YELLOW}Instalando Node.js LTS${NC}"
+    if command -v pacman &> /dev/null; then
+        sudo pacman -S --needed --noconfirm nodejs npm
+    else
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt install -y nodejs
+    fi
 fi
-echo -e "${GREEN}✓ Node $(node -v) y npm $(npm -v) listos.${NC}"
+if ! NODE_ERR=$(node -v 2>&1); then
+    echo -e "${RED}Node.js está instalado pero no arranca:${NC}"
+    echo -e "${RED}  $NODE_ERR${NC}"
+    echo -e "${RED}  Suele pasar tras una actualización parcial del sistema; actualiza o reinstala nodejs y vuelve a intentar.${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Node $NODE_ERR y npm $(npm -v)${NC}"
 
 if [ ! -d "web/node_modules" ]; then
-    echo -e "${YELLOW}Instalando dependencias en web/...${NC}"
+    echo -e "${YELLOW}Instalando dependencias de web/${NC}"
     (cd web && npm install)
 else
-    echo -e "${GREEN}✓ Dependencias de web/ ya instaladas.${NC}"
+    echo -e "${GREEN}✓ Dependencias de web/ instaladas${NC}"
 fi
 
-# ------------------------------------------------------------------------------
-# 4. Ollama e IA
-# ------------------------------------------------------------------------------
-echo -e "\n${BLUE}=== [4/5] Verificando Ollama y Modelo LLM ===${NC}"
+# 4. Ollama y modelo
+echo -e "\n${BLUE}Verificando Ollama y el modelo $OLLAMA_MODEL${NC}"
 if ! command -v ollama &> /dev/null; then
-    echo -e "${YELLOW}Instalando Ollama...${NC}"
+    echo -e "${YELLOW}Instalando Ollama${NC}"
     curl -fsSL https://ollama.com/install.sh | sh
 fi
 
-if ! curl -s http://127.0.0.1:11434/api/tags &> /dev/null; then
-    echo -e "${YELLOW}Iniciando servicio de Ollama...${NC}"
+if ! curl -s "$OLLAMA_BASE_URL/api/tags" &> /dev/null; then
+    echo -e "${YELLOW}Iniciando Ollama${NC}"
     ollama serve &> /tmp/edutrace_ollama.log &
-    sleep 3
+    for i in {1..15}; do
+        curl -s "$OLLAMA_BASE_URL/api/tags" &> /dev/null && break
+        sleep 1
+    done
 fi
 
-MODEL="llama3.2:latest"
-if ! ollama list | grep -q "llama3.2"; then
-    echo -e "${YELLOW}Descargando modelo $MODEL...${NC}"
-    ollama pull "$MODEL"
+MODEL_TAG="$OLLAMA_MODEL"
+[[ "$MODEL_TAG" == *:* ]] || MODEL_TAG="$MODEL_TAG:latest"
+if ollama list | awk 'NR > 1 {print $1}' | grep -qx "$MODEL_TAG"; then
+    echo -e "${GREEN}✓ Modelo $MODEL_TAG listo${NC}"
 else
-    echo -e "${GREEN}✓ Modelo $MODEL listo.${NC}"
+    echo -e "${YELLOW}Descargando $MODEL_TAG${NC}"
+    ollama pull "$MODEL_TAG"
 fi
 
-# ------------------------------------------------------------------------------
-# 5. Compilar backend y lanzar todo
-# ------------------------------------------------------------------------------
-echo -e "\n${BLUE}=== [5/5] Compilando e iniciando servicios ===${NC}"
+# 5. Compilar e iniciar servicios
+echo -e "\n${BLUE}Compilando e iniciando servicios${NC}"
 
-export TEACHER_CODE="${TEACHER_CODE:-admin123}"
-export OLLAMA_HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
-export HOST="127.0.0.1"
-export PORT="8080"
-
-# Detección de sandbox: Ubuntu 24.04 restringe namespaces sin privilegios por defecto.
-# Si bwrap falla al probarlo, activamos SANDBOX=none para que el backend funcione en desarrollo local.
-if bwrap --ro-bind /usr /usr --dev /dev --proc /proc --tmpfs /tmp --unshare-net -- /usr/bin/true &> /dev/null; then
-    export SANDBOX="bwrap"
-    echo -e "${GREEN}✓ Sandbox 'bwrap' disponible.${NC}"
-else
-    export SANDBOX="none"
-    echo -e "${YELLOW}⚠️  Ubuntu 24.04 restringe userns no privilegiados para bwrap.${NC}"
-    echo -e "${YELLOW}    Usando SANDBOX=none para entorno de desarrollo local.${NC}"
+if [ "$SANDBOX" = "bwrap" ]; then
+    PROBE=(--ro-bind /usr /usr --proc /proc --dev /dev --tmpfs /tmp --unshare-all)
+    for p in /bin /sbin /lib /lib64 /lib32; do
+        if [ -L "$p" ]; then
+            PROBE+=(--symlink "$(readlink "$p")" "$p")
+        elif [ -d "$p" ]; then
+            PROBE+=(--ro-bind "$p" "$p")
+        fi
+    done
+    if bwrap "${PROBE[@]}" -- /usr/bin/true &> /dev/null; then
+        echo -e "${GREEN}✓ Sandbox bwrap disponible${NC}"
+    else
+        export SANDBOX="none"
+        echo -e "${RED}⚠ bwrap no puede crear el sandbox (user namespaces restringidos, típico de Ubuntu 24.04).${NC}"
+        echo -e "${RED}  Se usa SANDBOX=none: el código de los estudiantes se ejecuta SIN aislamiento. Solo para desarrollo.${NC}"
+    fi
 fi
 
-echo -e "Compilando Backend Go..."
+if [ "$1" = "--limpio" ]; then
+    echo -e "${YELLOW}Borrando la caché de Next (web/.next)${NC}"
+    rm -rf web/.next
+fi
+
 mkdir -p bin
 go build -o bin/server ./cmd/server
-echo -e "${GREEN}✓ Backend compilado en bin/server.${NC}"
+echo -e "${GREEN}✓ Backend compilado en bin/server${NC}"
 
 cleanup() {
-    echo -e "\n${YELLOW}Deteniendo servicios...${NC}"
+    echo -e "\n${YELLOW}Deteniendo servicios${NC}"
     kill 0 2>/dev/null || true
     exit 0
 }
 trap cleanup SIGINT SIGTERM EXIT
 
-# 1. Iniciar Backend
-echo -e "${GREEN}Iniciando Backend en http://127.0.0.1:8080...${NC}"
 ./bin/server &
 BACKEND_PID=$!
-
-# Esperar a que el backend esté listo
-for i in {1..10}; do
-    if curl -s http://127.0.0.1:8080/ &> /dev/null || curl -s http://127.0.0.1:8080/api/auth/me &> /dev/null; then
-        echo -e "${GREEN}✓ Backend respondiendo correctamente.${NC}"
+for i in {1..20}; do
+    if curl -s "http://$HOST:$PORT/api/health" &> /dev/null; then
+        echo -e "${GREEN}✓ Backend en http://$HOST:$PORT${NC}"
         break
+    fi
+    if ! kill -0 "$BACKEND_PID" 2> /dev/null; then
+        echo -e "${RED}El backend se detuvo al arrancar; revisa los mensajes de arriba.${NC}"
+        exit 1
     fi
     sleep 1
 done
 
-# 2. Iniciar Frontend Web en puerto 3000
-echo -e "${GREEN}Iniciando Frontend Web en http://localhost:3000...${NC}"
-(cd web && PORT=3000 npm run dev -- -p 3000) &
-FRONTEND_PID=$!
+(cd web && NEXT_PUBLIC_API_URL="http://localhost:$PORT" npm run dev -- -p "$WEB_PORT") &
 
-echo -e "\n${GREEN}====================================================${NC}"
-echo -e "${GREEN}   EDU-TRACE iniciado correctamente!${NC}"
-echo -e "${GREEN}   👉 Abre en tu navegador: http://localhost:3000${NC}"
-echo -e "${GREEN}   - Backend API: http://localhost:8080${NC}"
-echo -e "${GREEN}   - Ollama IA:   http://127.0.0.1:11434 ($MODEL)${NC}"
-echo -e "${YELLOW}   Código de registro docente: ${TEACHER_CODE}${NC}"
-echo -e "${GREEN}====================================================${NC}"
-echo -e "Presiona [Ctrl+C] para detener todo."
+echo -e "\n${GREEN}EDU-TRACE iniciado${NC}"
+echo -e "${GREEN}  Abre en tu navegador: http://localhost:$WEB_PORT${NC}"
+echo -e "  Backend: http://$HOST:$PORT · Ollama: $OLLAMA_BASE_URL ($MODEL_TAG) · Sandbox: $SANDBOX"
+echo -e "  Credenciales de prueba: CREDENCIALES.txt"
+echo -e "Presiona Ctrl+C para detener todo."
 
 wait

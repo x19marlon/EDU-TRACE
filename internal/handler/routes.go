@@ -51,9 +51,18 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("DELETE /api/teacher/groups/{id}/monitors/{monitor}", teacher(classes.RemoveMonitor))
 	mux.Handle("PUT /api/teacher/assignments/{id}", teacher(classes.UpdateAssignment))
 	mux.Handle("DELETE /api/teacher/assignments/{id}", teacher(classes.DeleteAssignment))
+	mux.Handle("GET /api/teacher/courses/{id}/raes", teacher(classes.CourseRAEs))
+	mux.Handle("POST /api/teacher/courses/{id}/raes", teacher(classes.CreateRAE))
+	mux.Handle("PATCH /api/teacher/raes/{id}", teacher(classes.UpdateRAE))
+	mux.Handle("DELETE /api/teacher/raes/{id}", teacher(classes.DeleteRAE))
+	mux.Handle("GET /api/teacher/groups/{id}/rae-matrix", teacher(classes.RAEMatrix))
 	reviews := NewReviewsHandler(store, ollama)
 	mux.Handle("GET /api/teacher/submissions/{id}/review", teacher(reviews.Get))
 	mux.Handle("PUT /api/teacher/submissions/{id}/review", teacher(reviews.Save))
+
+	annotations := NewAnnotationsHandler(store)
+	mux.Handle("POST /api/teacher/submissions/{id}/annotations", teacher(annotations.Create))
+	mux.Handle("DELETE /api/teacher/annotations/{id}", teacher(annotations.Delete))
 
 	monitors := NewMonitorHandler(store)
 	monitor := func(f http.HandlerFunc) http.Handler { return auth.RequireRole(store, auth.RoleMonitor, f) }
@@ -65,6 +74,9 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("GET /api/monitor/submissions/{id}", monitor(monitors.Submission))
 	mux.Handle("POST /api/monitor/submissions/{id}/feedback", monitor(monitors.AddFeedback))
 	mux.Handle("DELETE /api/monitor/feedback/{id}", monitor(monitors.DeleteFeedback))
+	mux.Handle("POST /api/monitor/submissions/{id}/annotations", monitor(annotations.Create))
+	mux.Handle("DELETE /api/monitor/annotations/{id}", monitor(annotations.Delete))
+	mux.Handle("POST /api/monitor/submissions/{id}/annotations/send", monitor(annotations.Send))
 
 	//  adjuntos de talleres
 	mux.Handle("GET /api/assignments/{id}/files/{file}", auth.RequireAuth(store, http.HandlerFunc(classes.AssignmentFile)))
@@ -73,6 +85,8 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("GET /api/student/groups", student(http.HandlerFunc(classes.MyGroups)))
 	mux.Handle("POST /api/student/groups/join", student(http.HandlerFunc(classes.Join)))
 	mux.Handle("GET /api/student/submissions", student(http.HandlerFunc(classes.MySubmissions)))
+	mux.Handle("GET /api/student/submissions/{id}", student(http.HandlerFunc(classes.MySubmission)))
+	mux.Handle("GET /api/student/history", student(http.HandlerFunc(classes.MyHistory)))
 	mux.Handle("GET /api/student/assignments", student(http.HandlerFunc(classes.MyAssignments)))
 	mux.Handle("POST /api/student/submissions", student(compileFlight.Wrap(http.HandlerFunc(classes.Submit))))
 

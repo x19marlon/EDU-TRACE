@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/marlon/edu-trace/internal/ai"
 	"github.com/marlon/edu-trace/internal/auth"
 	"github.com/marlon/edu-trace/internal/model"
@@ -71,6 +72,11 @@ func (h *ReviewsHandler) Draft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	current, err := h.store.ReviewForTeacher(teacher.ID, id)
+	if err != nil {
+		writeStoreErr(w, err, "cargar la revisión")
+		return
+	}
 	in := ai.ReviewInput{
 		Code: sub.Code,
 		Stdin: sub.Stdin,
@@ -79,6 +85,9 @@ func (h *ReviewsHandler) Draft(w http.ResponseWriter, r *http.Request) {
 		ProgramOutput: sub.ProgramOutput,
 		RunError: sub.RunError,
 		ExitCode: sub.ExitCode,
+	}
+	for _, r := range current.RAEs {
+		in.RAEs = append(in.RAEs, ai.RAEInput{Code: r.Code, Description: r.Description})
 	}
 	if sub.AssignmentID != "" {
 		if statement, rubric, err := h.store.AssignmentForGrading(teacher.ID, sub.AssignmentID); err == nil {
@@ -97,7 +106,13 @@ func (h *ReviewsHandler) Draft(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		grade = nil
 	}
-	rev, err := h.store.SaveAIDraft(teacher.ID, id, sug.Feedback, grade, sug.Reason, sug.Confidence)
+	levels := map[string]string{}
+	for i, r := range current.RAEs {
+		if l, ok := sug.Levels[fmt.Sprintf("rae_%d", i+1)]; ok {
+			levels[r.RAEID] = l
+		}
+	}
+	rev, err := h.store.SaveAIDraft(teacher.ID, id, sug.Feedback, grade, sug.Reason, sug.Confidence, levels)
 	if err != nil {
 		writeStoreErr(w, err, "guardar la propuesta")
 		return
@@ -111,6 +126,7 @@ func (h *ReviewsHandler) Save(w http.ResponseWriter, r *http.Request) {
 		Feedback string `json:"feedback"`
 		Grade *float64 `json:"grade"`
 		Return bool `json:"return"`
+		RAELevels map[string]string `json:"rae_levels"`
 	}
 	if !decodeJSONLimit(w, r, &req, 256*1024) {
 		return
@@ -131,8 +147,19 @@ func (h *ReviewsHandler) Save(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(req.RAELevels) > 50 {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "demasiados RAE"})
+		return
+	}
+	for _, l := range req.RAELevels {
+		if !auth.ValidLevel(l) {
+			writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "el nivel de cada RAE debe ser bajo, medio o alto"})
+			return
+		}
+	}
+
 	teacher := auth.UserFrom(r.Context())
-	rev, err := h.store.SaveTeacherReview(teacher.ID, r.PathValue("id"), feedback, grade, req.Return)
+	rev, err := h.store.SaveTeacherReview(teacher.ID, r.PathValue("id"), feedback, grade, req.Return, req.RAELevels)
 	if err != nil {
 		writeStoreErr(w, err, "guardar la revisión")
 		return

@@ -114,7 +114,8 @@ func (h *ClassesHandler) Submission(w http.ResponseWriter, r *http.Request) {
 		writeStoreErr(w, err, "cargar el envío")
 		return
 	}
-	writeJSON(w, http.StatusOK, submissionView{Submission: sub, MonitorFeedback: h.store.MonitorFeedbackFor(sub.ID)})
+	user := auth.UserFrom(r.Context())
+	writeJSON(w, http.StatusOK, submissionView{Submission: sub, MonitorFeedback: h.store.MonitorFeedbackFor(sub.ID), Annotations: h.store.AnnotationsFor(user, sub.ID)})
 }
 
 func (h *ClassesHandler) MyGroups(w http.ResponseWriter, r *http.Request) {
@@ -221,4 +222,23 @@ func clip(s string, max int) string {
 		return s
 	}
 	return strings.ToValidUTF8(s[:max], "")
+}
+
+func (h *ClassesHandler) MyHistory(w http.ResponseWriter, r *http.Request) {
+	hist, err := h.store.History(auth.UserFrom(r.Context()).ID)
+	if err != nil {
+		writeStoreErr(w, err, "cargar tu historial")
+		return
+	}
+	writeJSON(w, http.StatusOK, hist)
+}
+
+func (h *ClassesHandler) MySubmission(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFrom(r.Context())
+	sub, err := h.store.OwnSubmission(user.ID, r.PathValue("id"))
+	if err != nil {
+		writeStoreErr(w, err, "cargar la entrega")
+		return
+	}
+	writeJSON(w, http.StatusOK, submissionView{Submission: sub, Annotations: h.store.AnnotationsFor(user, sub.ID)})
 }

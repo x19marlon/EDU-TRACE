@@ -5,6 +5,7 @@ import Link from "next/link";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/AppShell";
 import { Avatar, Card, InlineCreate, RenameForm, SmallButton } from "@/components/ui";
+import RaeEditor from "@/components/RaeEditor";
 import { useAuth } from "@/components/AuthProvider";
 import { createCourse, createGroup, CourseSummary, deleteCourse, listCourses, renameCourse } from "@/lib/api";
 
@@ -57,6 +58,7 @@ function CourseCard({ course, onChanged }: { course: CourseSummary; onChanged: (
         </div>
       )}
       {error && <p className="mb-3 rounded-2xl bg-peach-50 px-4 py-2 text-sm font-semibold text-peach-700">{error}</p>}
+      <RaeEditor courseId={course.id} raes={course.raes ?? []} onChanged={onChanged} />
       {course.groups.length === 0 ? (
         <p className="mb-3 text-sm text-ink-soft">
           Esta materia aún no tiene clases. Crea una y comparte su código con tus estudiantes.

@@ -9,6 +9,7 @@ import { Avatar, Card, ProgressRing, RenameForm, SmallButton } from "@/component
 import { MonitorsCard } from "@/components/ClassAdmin";
 import TeacherAssignments from "@/components/TeacherAssignments";
 import StudentProcess from "@/components/StudentProcess";
+import RaeScatter from "@/components/RaeScatter";
 import { ReviewPill, StatusPill, SubmissionDetail } from "@/components/SubmissionView";
 import {
   Assignment,
@@ -73,6 +74,7 @@ function GroupView() {
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [managing, setManaging] = useState(false);
+  const [matrixKey, setMatrixKey] = useState(0);
   const [adminError, setAdminError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -223,6 +225,17 @@ function GroupView() {
         </Card>
       </div>
 
+      <RaeScatter
+        groupId={group.id}
+        refreshKey={matrixKey}
+        selectedId={studentId}
+        onSelect={(sid) => {
+          setStudentId(sid);
+          setSubmissionId(null);
+          document.getElementById("estudiantes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      />
+
       <TeacherAssignments
         groupId={group.id}
         assignments={assignments}
@@ -237,7 +250,7 @@ function GroupView() {
 
       <MonitorsCard groupId={group.id} monitors={group.monitors} onChange={(monitors) => setGroup({ ...group, monitors })} />
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
+      <div id="estudiantes" className="grid scroll-mt-4 grid-cols-1 gap-5 lg:grid-cols-5">
         {/* Estudiantes */}
         <Card
           title="Estudiantes"
@@ -302,7 +315,13 @@ function GroupView() {
 
         {/* Proceso del estudiante elegido, o entregas oficiales recientes de la clase */}
         {selected ? (
-          <StudentProcess key={selected.id} groupId={group.id} student={selected} assignmentTitles={assignmentTitles} />
+          <StudentProcess
+            key={selected.id}
+            groupId={group.id}
+            student={selected}
+            assignmentTitles={assignmentTitles}
+            onReviewSaved={() => setMatrixKey((k) => k + 1)}
+          />
         ) : (
         <Card
           title="Entregas oficiales recientes"
@@ -346,7 +365,10 @@ function GroupView() {
                 <div className="border-t border-lavender-100 pt-4">
                   <SubmissionDetail
                     id={submissionId}
-                    onReviewSaved={() => listGroupSubmissions(id).then(setSubmissions).catch(() => {})}
+                    onReviewSaved={() => {
+                      listGroupSubmissions(id).then(setSubmissions).catch(() => {});
+                      setMatrixKey((k) => k + 1);
+                    }}
                     studentName={names.get(visible.find((m) => m.id === submissionId)?.student_id ?? "") ?? "Estudiante"}
                     assignmentTitle={(() => {
                       const aid = visible.find((m) => m.id === submissionId)?.assignment_id;

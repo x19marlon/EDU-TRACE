@@ -58,3 +58,9 @@ export function dueLabel(iso?: string): string | null {
   const late = new Date(iso).getTime() < Date.now();
   return `${late ? "Entrega vencida" : "Entrega"}: ${formatDateTime(iso)}`;
 }
+
+export const LEVEL_STYLE: Record<"bajo" | "medio" | "alto", string> = {
+  bajo: "bg-peach-100 text-peach-700",
+  medio: "bg-amber-100 text-amber-800",
+  alto: "bg-mint-100 text-mint-700",
+};

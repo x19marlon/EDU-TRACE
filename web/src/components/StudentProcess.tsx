@@ -86,10 +86,12 @@ export default function StudentProcess({
   groupId,
   student,
   assignmentTitles,
+  onReviewSaved,
 }: {
   groupId: string;
   student: GroupStudent;
   assignmentTitles: Map<string, string>;
+  onReviewSaved?: () => void;
 }) {
   const [items, setItems] = useState<SubmissionMeta[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -227,7 +229,10 @@ export default function StudentProcess({
               <SubmissionDetail
                 id={selectedId}
                 studentName={student.name}
-                onReviewSaved={reload}
+                onReviewSaved={() => {
+                  reload();
+                  onReviewSaved?.();
+                }}
                 assignmentTitle={(() => {
                   const aid = items.find((m) => m.id === selectedId)?.assignment_id;
                   return aid ? assignmentTitles.get(aid) ?? "Taller" : undefined;

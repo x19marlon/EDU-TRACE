@@ -116,3 +116,36 @@ CREATE TABLE IF NOT EXISTS monitor_feedback (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS monitor_feedback_submission ON monitor_feedback(submission_id, created_at);
+
+CREATE TABLE IF NOT EXISTS course_raes (
+  id TEXT PRIMARY KEY,
+  course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  code TEXT NOT NULL,
+  description TEXT NOT NULL,
+  position INTEGER NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS course_raes_course ON course_raes(course_id, position);
+
+CREATE TABLE IF NOT EXISTS review_raes (
+  submission_id TEXT NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  rae_id TEXT NOT NULL REFERENCES course_raes(id) ON DELETE CASCADE,
+  level TEXT NOT NULL DEFAULT '' CHECK (level IN ('', 'bajo', 'medio', 'alto')),
+  ai_level TEXT NOT NULL DEFAULT '' CHECK (ai_level IN ('', 'bajo', 'medio', 'alto')),
+  PRIMARY KEY (submission_id, rae_id)
+);
+CREATE INDEX IF NOT EXISTS review_raes_rae ON review_raes(rae_id);
+
+CREATE TABLE IF NOT EXISTS code_annotations (
+  id TEXT PRIMARY KEY,
+  submission_id TEXT NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  author_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('highlight', 'strike', 'good', 'note', 'drawing')),
+  line_start INTEGER,
+  line_end INTEGER,
+  comment TEXT NOT NULL DEFAULT '',
+  data TEXT NOT NULL DEFAULT '',
+  sent_at TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS code_annotations_submission ON code_annotations(submission_id, created_at);

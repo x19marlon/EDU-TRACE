@@ -176,6 +176,7 @@ type CourseSummary struct {
 	Name string `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
 	Groups []GroupSummary `json:"groups"`
+	RAEs []RAE `json:"raes"`
 }
 
 // TeacherCourses lista las materias del docente con sus clases.
@@ -203,13 +204,22 @@ func (s *Store) teacherCourses(teacherID string) ([]CourseSummary, error) {
 			rows.Close()
 			return nil, err
 		}
-		c.CreatedAt, c.Groups = parseTime(created), []GroupSummary{}
+		c.CreatedAt, c.Groups, c.RAEs = parseTime(created), []GroupSummary{}, []RAE{}
 		index[c.ID] = len(out)
 		out = append(out, c)
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+	raes, err := s.teacherRAEs(teacherID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range out {
+		if list, ok := raes[out[i].ID]; ok {
+			out[i].RAEs = list
+		}
 	}
 
 	rows, err = s.db.Query(`SELECT g.id, g.course_id, g.name, g.join_code, g.created_at,
@@ -529,6 +539,8 @@ type StudentSubmission struct {
 	SubmissionMeta
 	GroupName string `json:"group_name"`
 	CourseName string `json:"course_name"`
+	AssignmentTitle string `json:"assignment_title,omitempty"`
+	MonitorAnnotations int `json:"monitor_annotations,omitempty"`
 	Review *StudentReview `json:"review,omitempty"` // solo si el profesor ya la devolvió
 	MonitorFeedback []MonitorFeedback `json:"monitor_feedback,omitempty"`
 }
@@ -536,7 +548,7 @@ type StudentSubmission struct {
 // StudentSubmissions lista las últimas entregas oficiales del estudiante, con la
 // revisión que le devolvió su profesor (nunca la propuesta de la IA).
 func (s *Store) StudentSubmissions(studentID string, limit int) []StudentSubmission {
-	out, err := s.studentSubmissions(studentID, limit)
+	out, err := s.studentSubmissions(studentID, KindOfficial, limit)
 	if err != nil {
 		slog.Error("listar entregas del estudiante", "student_id", studentID, "error", err)
 		return []StudentSubmission{}
@@ -544,14 +556,18 @@ func (s *Store) StudentSubmissions(studentID string, limit int) []StudentSubmiss
 	return out
 }
 
-func (s *Store) studentSubmissions(studentID string, limit int) ([]StudentSubmission, error) {
-	rows, err := s.db.Query(`SELECT `+metaCols+`, g.name, c.name, r.feedback, r.grade, r.returned_at, r.ai_at
+func (s *Store) studentSubmissions(studentID, kind string, limit int) ([]StudentSubmission, error) {
+	rows, err := s.db.Query(`SELECT `+metaCols+`, g.name, c.name, COALESCE(a.title, ''),
+			(SELECT COUNT(*) FROM code_annotations n JOIN users nu ON nu.id = n.author_id
+				WHERE n.submission_id = s.id AND nu.role = 'monitor' AND n.sent_at IS NOT NULL),
+			r.feedback, r.grade, r.returned_at, r.ai_at
 		FROM submissions s
 		JOIN class_groups g ON g.id = s.group_id
 		JOIN courses c ON c.id = g.course_id
+		LEFT JOIN assignments a ON a.id = s.assignment_id
 		LEFT JOIN reviews r ON r.submission_id = s.id AND r.status = 'returned'
-		WHERE s.student_id = ? AND s.kind = 'official'
-		ORDER BY s.created_at DESC LIMIT ?`, studentID, limit)
+		WHERE s.student_id = ? AND s.kind = ?
+		ORDER BY s.created_at DESC LIMIT ?`, studentID, kind, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -561,7 +577,7 @@ func (s *Store) studentSubmissions(studentID string, limit int) ([]StudentSubmis
 		var ss StudentSubmission
 		var feedback, returnedAt, aiAt sql.NullString
 		var grade sql.NullFloat64
-		m, err := scanMeta(rows, &ss.GroupName, &ss.CourseName, &feedback, &grade, &returnedAt, &aiAt)
+		m, err := scanMeta(rows, &ss.GroupName, &ss.CourseName, &ss.AssignmentTitle, &ss.MonitorAnnotations, &feedback, &grade, &returnedAt, &aiAt)
 		if err != nil {
 			return nil, err
 		}
@@ -584,8 +600,15 @@ func (s *Store) studentSubmissions(studentID string, limit int) ([]StudentSubmis
 	if err != nil {
 		return nil, err
 	}
+	levels, err := s.returnedRAELevels(ids)
+	if err != nil {
+		return nil, err
+	}
 	for i := range out {
 		out[i].MonitorFeedback = notes[out[i].ID]
+		if out[i].Review != nil {
+			out[i].Review.RAEs = levels[out[i].ID]
+		}
 	}
 	return out, nil
 }

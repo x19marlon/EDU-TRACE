@@ -38,10 +38,33 @@ export interface GroupSummary {
   submission_count: number;
 }
 
+export type RAELevel = "bajo" | "medio" | "alto";
+
+export interface RAE {
+  id: string;
+  course_id: string;
+  code: string;
+  description: string;
+}
+
 export interface CourseSummary {
   id: string;
   name: string;
   groups: GroupSummary[];
+  raes: RAE[];
+}
+
+export interface StudentPoint {
+  id: string;
+  name: string;
+  average_grade?: number;
+  graded: number;
+  levels: Record<string, RAELevel>;
+}
+
+export interface RAEMatrix {
+  raes: RAE[];
+  students: StudentPoint[];
 }
 
 export interface GroupStudent {
@@ -121,6 +144,38 @@ export interface Submission extends SubmissionMeta {
   ai_feedback: string;
   ai_feedback_informal: string;
   monitor_feedback?: MonitorFeedback[];
+  annotations?: Annotation[];
+}
+
+export type AnnotationKind = "highlight" | "strike" | "good" | "note" | "drawing";
+
+export interface Stroke {
+  color: string;
+  width: number;
+  points: [number, number][];
+}
+
+export interface Annotation {
+  id: string;
+  submission_id: string;
+  author_id: string;
+  author_name: string;
+  author_role: Role;
+  kind: AnnotationKind;
+  line_start?: number;
+  line_end?: number;
+  comment?: string;
+  data?: { strokes: Stroke[] };
+  sent_at?: string;
+  created_at: string;
+}
+
+export interface AnnotationInput {
+  kind: AnnotationKind;
+  line_start?: number;
+  line_end?: number;
+  comment?: string;
+  data?: { strokes: Stroke[] };
 }
 
 export interface AssignmentFile {
@@ -164,6 +219,15 @@ export interface Review {
   status: "draft" | "returned";
   returned_at?: string;
   grade_source: "ai_confirmed"|"profesor" |"";
+  raes: ReviewRAE[];
+}
+
+export interface ReviewRAE {
+  rae_id: string;
+  code: string;
+  description: string;
+  level?: RAELevel;
+  ai_level?: RAELevel;
 }
 
 export interface StudentReview {
@@ -171,10 +235,13 @@ export interface StudentReview {
   grade?: number;
   returned_at: string;
   ai_assisted: boolean;
+  raes?: { code: string; description: string; level: RAELevel }[];
 }
 export interface StudentSubmission extends SubmissionMeta {
   group_name: string;
   course_name: string;
+  assignment_title?: string;
+  monitor_annotations?: number;
   review?: StudentReview;
   monitor_feedback?: MonitorFeedback[];
 }
@@ -266,6 +333,12 @@ export const addMonitor = (groupId: string, email: string) =>
 export const removeMonitor = (groupId: string, monitorId: string) =>
   deleteReq(`/api/teacher/groups/${enc(groupId)}/monitors/${enc(monitorId)}`);
 export const deleteAssignment = (assignmentId: string) => deleteReq(`/api/teacher/assignments/${enc(assignmentId)}`);
+export const createRAE = (courseId: string, code: string, description: string) =>
+  postJSON<RAE>(`/api/teacher/courses/${enc(courseId)}/raes`, { code, description });
+export const updateRAE = (raeId: string, code: string, description: string) =>
+  sendJSON<RAE>("PATCH", `/api/teacher/raes/${enc(raeId)}`, { code, description });
+export const deleteRAE = (raeId: string) => deleteReq(`/api/teacher/raes/${enc(raeId)}`);
+export const getRAEMatrix = (groupId: string) => getJSON<RAEMatrix>(`/api/teacher/groups/${enc(groupId)}/rae-matrix`);
 export const deleteMonitorFeedbackAsTeacher = (feedbackId: string) =>
   deleteReq(`/api/teacher/monitor-feedback/${enc(feedbackId)}`);
 
@@ -325,7 +398,7 @@ export const generateReviewDraft = (submissionId: string) =>
   postJSON<Review>(`/api/teacher/submissions/${encodeURIComponent(submissionId)}/review/draft`, {});
 export async function saveReview(
   submissionId: string,
-  data: { feedback: string; grade: number | null; return: boolean }
+  data: { feedback: string; grade: number | null; return: boolean; rae_levels?: Record<string, RAELevel | ""> }
 ): Promise<Review> {
   const response = await apiFetch(`/api/teacher/submissions/${encodeURIComponent(submissionId)}/review`, {
     method: "PUT",
@@ -348,6 +421,21 @@ export const submitCode = (data: {
 }) => postJSON<SubmissionMeta>("/api/student/submissions", data);
 export const listMyAssignments = () => getJSON<StudentAssignment[]>("/api/student/assignments");
 export const listMySubmissions = () => getJSON<StudentSubmission[]>("/api/student/submissions");
+
+export interface StudentHistory {
+  submissions: StudentSubmission[];
+  attempts: StudentSubmission[];
+}
+
+export const createAnnotation = (role: "teacher" | "monitor", submissionId: string, input: AnnotationInput) =>
+  postJSON<Annotation>(`/api/${role}/submissions/${encodeURIComponent(submissionId)}/annotations`, input);
+export const deleteAnnotation = (role: "teacher" | "monitor", annotationId: string) =>
+  deleteReq(`/api/${role}/annotations/${encodeURIComponent(annotationId)}`);
+export const sendMonitorAnnotations = (submissionId: string) =>
+  postJSON<{ sent: number; sent_at: string }>(`/api/monitor/submissions/${encodeURIComponent(submissionId)}/annotations/send`, {});
+
+export const getMyHistory = () => getJSON<StudentHistory>("/api/student/history");
+export const getMySubmission = (id: string) => getJSON<Submission>(`/api/student/submissions/${encodeURIComponent(id)}`);
 
 // Talleres
 export const listGroupAssignments = (groupId: string) =>

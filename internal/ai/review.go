@@ -21,6 +21,12 @@ type ReviewInput struct {
 	ProgramOutput string
 	RunError string
 	ExitCode int
+	RAEs []RAEInput
+}
+
+type RAEInput struct {
+	Code string
+	Description string
 }
 
 type ReviewSuggestion struct {
@@ -28,6 +34,7 @@ type ReviewSuggestion struct {
 	Grade float64 `json:"nota"`
 	Reason string `json:"justificacion"`
 	Confidence string `json:"confianza"`
+	Levels map[string]string `json:"niveles_rae,omitempty"`
 }
 
 // reviewSchema obliga al modelo a responder con este JSON (salidas estructuradas de Ollama).
@@ -53,6 +60,7 @@ Responde ÚNICAMENTE con un JSON con estos campos:
 - "nota": calificación tentativa de 0.0 a 5.0, con un decimal, según los criterios de evaluación (o, si no hay, los criterios del curso), el enunciado y el resultado real de la ejecución.
 - "justificacion": para el profesor, de 2 a 4 frases que expliquen la nota criterio por criterio.
 - "confianza": "alta", "media" o "baja". Usa "baja" si el enunciado es ambiguo, faltan criterios o no puedes comprobar si la salida es correcta y explica el porque.
+- "niveles_rae": solo si se incluyen Resultados de Aprendizaje Esperados (RAE): para cada uno, el nivel de logro que demuestra esta entrega: "bajo" (no hay evidencia o es incorrecta), "medio" (evidencia parcial o con errores) o "alto" (lo demuestra con claridad).
 
 REGLAS:
 1. Basa la nota en logica de programacion. No importa si el codigo no compila solo importa la logica que el estudiante utilizo, no juzges muy duro errores de sintaxis pues estan aprendiendo apenas como programar, ten en cuenta esto para la nota.
@@ -72,6 +80,13 @@ func (o *OllamaClient) SuggestReview(ctx context.Context, in ReviewInput) (*Revi
 	}
 	if in.Rubric != "" {
 		writeBlock(&b, "Criterios de evaluación del profesor:", "", truncate(in.Rubric, maxStatementChars))
+	}
+	if len(in.RAEs) > 0 {
+		var list strings.Builder
+		for i, r := range in.RAEs {
+			fmt.Fprintf(&list, "%s: %s — %s\n", raeKey(i), r.Code, r.Description)
+		}
+		writeBlock(&b, "Resultados de Aprendizaje Esperados (RAE) de la materia; usa estas claves en \"niveles_rae\":", "", list.String())
 	}
 	writeBlock(&b, "Código entregado (con números de línea):", "cpp", numberLines(in.Code))
 	if !in.Success {
@@ -100,7 +115,7 @@ func (o *OllamaClient) SuggestReview(ctx context.Context, in ReviewInput) (*Revi
 	if err != nil {
 		return nil, err
 	}
-	reqBody.Format = reviewSchema
+	reqBody.Format = reviewSchemaFor(len(in.RAEs))
 	slog.Info("sending review request to Ollama", "model", o.cfg.OllamaModel, "est_tokens", estimateTokens(messages))
 	resp, err := o.doChat(ctx, reqBody)
 	if err != nil {
@@ -133,5 +148,38 @@ func (o *OllamaClient) SuggestReview(ctx context.Context, in ReviewInput) (*Revi
 	if sug.Confidence != "alta" && sug.Confidence != "media" && sug.Confidence != "baja" {
 		sug.Confidence = "baja"
 	}
+	levels := map[string]string{}
+	for i := range in.RAEs {
+		switch l := sug.Levels[raeKey(i)]; l {
+		case "bajo", "medio", "alto":
+			levels[raeKey(i)] = l
+		}
+	}
+	sug.Levels = levels
 	return &sug, nil
+}
+
+func raeKey(i int) string { return fmt.Sprintf("rae_%d", i+1) }
+
+func reviewSchemaFor(raes int) json.RawMessage {
+	if raes == 0 {
+		return reviewSchema
+	}
+	var schema map[string]any
+	if err := json.Unmarshal(reviewSchema, &schema); err != nil {
+		return reviewSchema
+	}
+	props := map[string]any{}
+	keys := make([]string, raes)
+	for i := range keys {
+		keys[i] = raeKey(i)
+		props[keys[i]] = map[string]any{"type": "string", "enum": []string{"bajo", "medio", "alto"}}
+	}
+	schema["properties"].(map[string]any)["niveles_rae"] = map[string]any{"type": "object", "properties": props, "required": keys}
+	schema["required"] = append(schema["required"].([]any), "niveles_rae")
+	out, err := json.Marshal(schema)
+	if err != nil {
+		return reviewSchema
+	}
+	return out
 }

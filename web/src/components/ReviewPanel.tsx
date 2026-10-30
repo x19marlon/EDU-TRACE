@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { generateReviewDraft, getReview, Review, saveReview } from "@/lib/api";
+import { generateReviewDraft, getReview, RAELevel, Review, saveReview } from "@/lib/api";
 import { Spinner } from "@/components/ui";
-import { formatDateTime, formatFeedback } from "@/lib/format";
+import { formatDateTime, formatFeedback, LEVEL_STYLE } from "@/lib/format";
 
 const GRADE_MAX = 5;
+
+const LEVELS: RAELevel[] = ["bajo", "medio", "alto"];
 
 const Style: Record<string, string> = {
   alta: "bg-mint-100 text-mint-700", media: "bg-amber-100 text-amber-800", baja: "bg-peach-100 text-peach-700",
@@ -24,13 +26,15 @@ export default function ReviewPanel({ submissionId, onSaved }: { submissionId: s
   const [review, setReview] = useState<Review | null>(null);
   const [feedback, setFeedback] = useState("");
   const [grade, setGrade] = useState("");
+  const [levels, setLevels] = useState<Record<string, RAELevel | "">>({});
   const [busy, setBusy] = useState<"draft" | "save" | null>(null);
   const [error, setError] = useState<string | null>(null);
   // consistencia de datos
   const apply = useCallback((r: Review) => {
     setReview(r);
     setFeedback(r.feedback);
-    setGrade(r.grade === undefined ? "" : r.grade.toFixed(1)); }, []);
+    setGrade(r.grade === undefined ? "" : r.grade.toFixed(1));
+    setLevels(Object.fromEntries((r.raes ?? []).map((x) => [x.rae_id, x.level ?? ""]))); }, []);
   useEffect(() => {
     setReview(null);
     setError(null);
@@ -65,7 +69,7 @@ export default function ReviewPanel({ submissionId, onSaved }: { submissionId: s
     setBusy("save");
     setError(null);
     try {
-      apply(await saveReview(submissionId, { feedback, grade: g, return: returnIt }));
+      apply(await saveReview(submissionId, { feedback, grade: g, return: returnIt, rae_levels: levels }));
       onSaved?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar la revisión");
@@ -161,6 +165,39 @@ export default function ReviewPanel({ submissionId, onSaved }: { submissionId: s
           <span className="text-xs font-normal text-ink-faint">(opcional)</span>
         </label>
       </div>
+
+      {(review.raes ?? []).length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-ink-soft">Nivel de logro por RAE</p>
+          <ul className="space-y-1.5">
+            {review.raes.map((r) => (
+              <li key={r.rae_id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-2xl bg-lavender-50/60 px-3 py-2">
+                <span className="min-w-0 flex-1 text-sm">
+                  <span className="font-bold text-lavender-700">{r.code}</span>{" "}
+                  <span className="text-ink-soft">{r.description}</span>
+                </span>
+                {r.ai_level && <span className="text-[11px] font-semibold text-ink-faint">IA propone: {r.ai_level}</span>}
+                <div role="radiogroup" aria-label={`Nivel de ${r.code}`} className="flex gap-1 rounded-full bg-white p-0.5 ring-1 ring-lavender-100">
+                  {LEVELS.map((l) => (
+                    <button
+                      key={l}
+                      type="button"
+                      role="radio"
+                      aria-checked={levels[r.rae_id] === l}
+                      onClick={() => setLevels((prev) => ({ ...prev, [r.rae_id]: prev[r.rae_id] === l ? "" : l }))}
+                      className={`rounded-full px-3 py-1 text-xs font-bold capitalize transition ${
+                        levels[r.rae_id] === l ? LEVEL_STYLE[l] : "text-ink-soft hover:bg-lavender-50"
+                      }`}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-2xl bg-peach-50 px-3 py-2 text-xs text-peach-700 font-medium">

@@ -14,7 +14,8 @@ import { Spinner } from "@/components/ui";
 import { useAuth } from "@/components/AuthProvider";
 import { MonitorFeedbackForm, MonitorNotes } from "@/components/MonitorFeedback";
 import { formatDateTime, formatFeedback } from "@/lib/format";
-import ReviewPanel from "@/components/ReviewPanel" 
+import ReviewPanel from "@/components/ReviewPanel"
+import AnnotatedCode from "@/components/AnnotatedCode";
 
 /** Estado de compilación/ejecución de un envío o intento. */
 export function StatusPill({ meta }: { meta: SubmissionMeta }) {
@@ -133,7 +134,14 @@ export function SubmissionDetail({
         </span>
       </div>
 
-      <CodeView code={sub.code} />
+      <AnnotatedCode
+        key={sub.id}
+        code={sub.code}
+        submissionId={sub.id}
+        mode={mode}
+        initial={sub.annotations ?? []}
+        canAnnotate={mode === "teacher" || sub.kind === "official"}
+      />
 
       {sub.compiler_output && (
         <div>

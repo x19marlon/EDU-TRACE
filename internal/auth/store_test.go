@@ -176,13 +176,13 @@ func TestStoreFlow(t *testing.T) {
 		t.Fatalf("revisión vacía: %+v", r)
 	}
 	g40 := 4.0
-	r, err = s.SaveAIDraft(prof.ID, official.ID, "borrador IA", &g40, "razón", "media")
+	r, err = s.SaveAIDraft(prof.ID, official.ID, "borrador IA", &g40, "razón", "media", nil)
 	mustNoErr(t, err)
 	if r.Feedback != "borrador IA" || r.Grade == nil || *r.Grade != 4 || r.AIAt == nil || r.GradeSource() != "ai_confirmed" {
 		t.Fatalf("propuesta IA: %+v", r)
 	}
 	g35 := 3.5
-	r, err = s.SaveTeacherReview(prof.ID, official.ID, "mi texto", &g35, false)
+	r, err = s.SaveTeacherReview(prof.ID, official.ID, "mi texto", &g35, false, nil)
 	mustNoErr(t, err)
 	if r.Status != ReviewDraft || *r.AIGrade != 4 || r.GradeSource() != "profesor" {
 		t.Fatalf("guardar sin devolver: %+v", r)
@@ -194,7 +194,7 @@ func TestStoreFlow(t *testing.T) {
 	if len(states) != 1 || states[official.ID].Status != ReviewDraft || *states[official.ID].Grade != 3.5 {
 		t.Fatalf("estados: %+v", states)
 	}
-	r, err = s.SaveTeacherReview(prof.ID, official.ID, "mi texto final", &g35, true)
+	r, err = s.SaveTeacherReview(prof.ID, official.ID, "mi texto final", &g35, true, nil)
 	mustNoErr(t, err)
 	if r.Status != ReviewReturned || r.ReturnedAt == nil {
 		t.Fatalf("devolver: %+v", r)

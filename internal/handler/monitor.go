@@ -49,7 +49,8 @@ func submissionItems(store *auth.Store, subs []auth.SubmissionMeta, withReview b
 
 type submissionView struct {
 	*auth.Submission
-	MonitorFeedback []auth.MonitorFeedback `json:"monitor_feedback"`
+	MonitorFeedback []auth.MonitorFeedback `json:"monitor_feedback,omitempty"`
+	Annotations []auth.Annotation `json:"annotations"`
 }
 
 func (h *MonitorHandler) Groups(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +91,8 @@ func (h *MonitorHandler) Submission(w http.ResponseWriter, r *http.Request) {
 		writeStoreErr(w, err, "cargar la entrega")
 		return
 	}
-	writeJSON(w, http.StatusOK, submissionView{Submission: sub, MonitorFeedback: h.store.MonitorFeedbackFor(sub.ID)})
+	user := auth.UserFrom(r.Context())
+	writeJSON(w, http.StatusOK, submissionView{Submission: sub, MonitorFeedback: h.store.MonitorFeedbackFor(sub.ID), Annotations: h.store.AnnotationsFor(user, sub.ID)})
 }
 
 func (h *MonitorHandler) AddFeedback(w http.ResponseWriter, r *http.Request) {
