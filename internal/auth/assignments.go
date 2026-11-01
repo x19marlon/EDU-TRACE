@@ -34,7 +34,9 @@ type Assignment struct {
 	AllowLate bool `json:"allow_late"`
 	LateUntil *time.Time `json:"late_until,omitempty"`
 	LatePenalty *float64 `json:"late_penalty,omitempty"`
+	Evaluation bool `json:"evaluation"`
 	Tests []model.TestCase `json:"tests"`
+	Criteria []Criterion `json:"criteria"`
 }
 
 // FileUpload es un archivo recibido para guardar en un taller.
@@ -68,7 +70,7 @@ func safeFileName(name string) string {
 }
 
 // CreateAssignment crea un taller en una clase del profesor y guarda sus archivos.
-func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric string, dueAt *time.Time, policy LatePolicy, files []FileUpload) (*Assignment, error) {
+func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric string, dueAt *time.Time, policy AssignmentPolicy, files []FileUpload) (*Assignment, error) {
 	if err := policy.validate(dueAt); err != nil {
 		return nil, err
 	}
@@ -82,8 +84,8 @@ func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric st
 	a := &Assignment{
 		ID: id, GroupID: groupID,
 		Title: strings.TrimSpace(title), Statement: strings.TrimSpace(statement), Rubric: strings.TrimSpace(rubric),
-		DueAt: dueAt, CreatedAt: time.Now().UTC(), Files: []AssignmentFile{}, Tests: []model.TestCase{},
-		AllowLate: policy.AllowLate, LateUntil: policy.LateUntil, LatePenalty: policy.LatePenalty,
+		DueAt: dueAt, CreatedAt: time.Now().UTC(), Files: []AssignmentFile{}, Tests: []model.TestCase{}, Criteria: []Criterion{},
+		AllowLate: policy.AllowLate, LateUntil: policy.LateUntil, LatePenalty: policy.LatePenalty, Evaluation: policy.Evaluation,
 	}
 
 	// Primero los archivos en disco; si algo falla después, se borra la carpeta.
@@ -107,9 +109,9 @@ func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric st
 		return fail(err)
 	}
 	defer tx.Rollback()
-	if _, err := tx.Exec(`INSERT INTO assignments (id, group_id, title, statement, rubric, due_at, created_at, allow_late, late_until, late_penalty)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, a.ID, a.GroupID, a.Title, a.Statement, a.Rubric, fmtTimePtr(a.DueAt), fmtTime(a.CreatedAt),
-		a.AllowLate, fmtTimePtr(a.LateUntil), floatArg(a.LatePenalty)); err != nil {
+	if _, err := tx.Exec(`INSERT INTO assignments (id, group_id, title, statement, rubric, due_at, created_at, allow_late, late_until, late_penalty, evaluation)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, a.ID, a.GroupID, a.Title, a.Statement, a.Rubric, fmtTimePtr(a.DueAt), fmtTime(a.CreatedAt),
+		a.AllowLate, fmtTimePtr(a.LateUntil), floatArg(a.LatePenalty), a.Evaluation); err != nil {
 		return fail(err)
 	}
 	for i, f := range a.Files {
@@ -118,7 +120,7 @@ func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric st
 			return fail(err)
 		}
 	}
-	if err := logAudit(tx, teacherID, AuditAssignmentCreated, a.GroupID, "", quoted(a.Title)); err != nil {
+	if err := logAudit(tx, teacherID, AuditAssignmentCreated, a.GroupID, "", assignmentLabel(a.Title, a.Evaluation)); err != nil {
 		return fail(err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -128,20 +130,27 @@ func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric st
 }
 
 // Columnas de assignments (alias "a"), en el orden que espera scanAssignment.
-const assignmentCols = `a.id, a.group_id, a.title, a.statement, a.rubric, a.due_at, a.created_at, a.allow_late, a.late_until, a.late_penalty`
+const assignmentCols = `a.id, a.group_id, a.title, a.statement, a.rubric, a.due_at, a.created_at, a.allow_late, a.late_until, a.late_penalty, a.evaluation`
 
 func scanAssignment(sc scanner, extra ...any) (Assignment, error) {
 	var a Assignment
 	var due, lateUntil sql.NullString
 	var created string
 	var penalty sql.NullFloat64
-	dest := append([]any{&a.ID, &a.GroupID, &a.Title, &a.Statement, &a.Rubric, &due, &created, &a.AllowLate, &lateUntil, &penalty}, extra...)
+	dest := append([]any{&a.ID, &a.GroupID, &a.Title, &a.Statement, &a.Rubric, &due, &created, &a.AllowLate, &lateUntil, &penalty, &a.Evaluation}, extra...)
 	if err := sc.Scan(dest...); err != nil {
 		return a, err
 	}
-	a.DueAt, a.CreatedAt, a.Files, a.Tests = timePtr(due), parseTime(created), []AssignmentFile{}, []model.TestCase{}
+	a.DueAt, a.CreatedAt, a.Files, a.Tests, a.Criteria = timePtr(due), parseTime(created), []AssignmentFile{}, []model.TestCase{}, []Criterion{}
 	a.LateUntil, a.LatePenalty = timePtr(lateUntil), floatPtr(penalty)
 	return a, nil
+}
+
+func assignmentLabel(title string, evaluation bool) string {
+	if evaluation {
+		return quoted(title) + " (modo evaluación: sin IA)"
+	}
+	return quoted(title)
 }
 
 // attachFiles completa la lista de archivos de cada taller (después de cerrar la
@@ -199,6 +208,9 @@ func (s *Store) groupAssignments(groupID string, full bool) ([]Assignment, error
 	if err := s.attachFiles(out); err != nil {
 		return nil, err
 	}
+	if err := s.attachCriteria(out); err != nil {
+		return nil, err
+	}
 	return out, s.attachTests(out, full)
 }
 
@@ -248,6 +260,9 @@ func (s *Store) studentAssignments(studentID string) ([]StudentAssignment, error
 	if err := s.attachFiles(list); err != nil {
 		return nil, err
 	}
+	if err := s.attachCriteria(list); err != nil {
+		return nil, err
+	}
 	if err := s.attachTests(list, false); err != nil {
 		return nil, err
 	}
@@ -265,7 +280,7 @@ func (s *Store) visibleAssignment(u *User, assignmentID string) (title, statemen
 		JOIN class_groups g ON g.id = a.group_id
 		JOIN courses c ON c.id = g.course_id
 		WHERE a.id = ? AND (
-			(? = 'teacher' AND c.teacher_id = ?) OR
+			(? = 'teacher' AND c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)) OR
 			(? = 'student' AND EXISTS (SELECT 1 FROM group_students gs
 				WHERE gs.group_id = a.group_id AND gs.student_id = ?)) OR
 			(? = 'monitor' AND EXISTS (SELECT 1 FROM group_monitors gm
@@ -288,7 +303,11 @@ func (s *Store) AssignmentContext(u *User, assignmentID string) (statement, rubr
 	if err != nil {
 		return "", "", err
 	}
-	return title + "\n" + body, rubric, nil
+	criteria, err := assignmentCriteria(s.db, assignmentID)
+	if err != nil {
+		return "", "", err
+	}
+	return title + "\n" + body, criteriaText(rubric, criteria), nil
 }
 
 // AssignmentForGrading devuelve el enunciado y los criterios de un taller de una clase del profesor.
@@ -297,14 +316,18 @@ func (s *Store) AssignmentForGrading(teacherID, assignmentID string) (statement,
 	err = s.db.QueryRow(`SELECT a.title, a.statement, a.rubric FROM assignments a
 		JOIN class_groups g ON g.id = a.group_id
 		JOIN courses c ON c.id = g.course_id
-		WHERE a.id = ? AND c.teacher_id = ?`, assignmentID, teacherID).Scan(&title, &body, &rubric)
+		WHERE a.id = ? AND c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`, assignmentID, teacherID).Scan(&title, &body, &rubric)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", "", ErrNotFound
 	}
 	if err != nil {
 		return "", "", err
 	}
-	return title + "\n" + body, rubric, nil
+	criteria, err := assignmentCriteria(s.db, assignmentID)
+	if err != nil {
+		return "", "", err
+	}
+	return title + "\n" + body, criteriaText(rubric, criteria), nil
 }
 
 // AssignmentInGroup indica si el taller pertenece a la clase.

@@ -12,16 +12,17 @@ import (
 	"github.com/marlon/edu-trace/internal/config"
 )
 
-func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaClient, store *auth.Store, drafts *DraftQueue) http.Handler {
+func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaClient, store *auth.Store, drafts *DraftQueue, mailOn bool) http.Handler {
 	mux := http.NewServeMux()
 	authH := NewAuthHandler(store, cfg)
 	compileFlight := auth.NewSingleFlight()
 	feedbackFlight := auth.NewSingleFlight()
+	var aiLimit *auth.LoginLimiter
+	if cfg.AIRequestsPerHour > 0 {
+		aiLimit = auth.NewLoginLimiter(cfg.AIRequestsPerHour, time.Hour)
+	}
 
-	// Health check
-	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-	})
+	mux.Handle("GET /api/health", NewHealthHandler(store, drafts, cfg.DataDir, cfg.DiskMinFreePercent))
 
 	// Auth
 	mux.HandleFunc("POST /api/auth/register", authH.Register)
@@ -35,6 +36,11 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("PATCH /api/auth/profile", auth.RequireAuth(store, http.HandlerFunc(authH.UpdateProfile)))
 	mux.Handle("GET /api/auth/export", auth.RequireAuth(store, http.HandlerFunc(authH.Export)))
 	mux.Handle("POST /api/auth/delete", auth.RequireAuth(store, http.HandlerFunc(authH.DeleteAccount)))
+
+	notices := NewNotificationsHandler(store, mailOn)
+	mux.Handle("GET /api/notifications", auth.RequireAuth(store, http.HandlerFunc(notices.List)))
+	mux.Handle("POST /api/notifications/read", auth.RequireAuth(store, http.HandlerFunc(notices.Read)))
+	mux.Handle("PUT /api/notifications/email", auth.RequireAuth(store, http.HandlerFunc(notices.SetEmail)))
 
 	// docente y sus clases
 	classes := NewClassesHandler(store, comp, drafts)
@@ -54,6 +60,15 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("DELETE /api/teacher/groups/{id}", teacher(classes.DeleteGroup))
 	mux.Handle("POST /api/teacher/groups/{id}/join-code", teacher(classes.RegenerateJoinCode))
 	mux.Handle("DELETE /api/teacher/groups/{id}/students/{student}", teacher(classes.RemoveStudent))
+	mux.Handle("POST /api/teacher/groups/{id}/students/{student}/reset-code", teacher(classes.IssueResetCode))
+	mux.Handle("POST /api/teacher/courses/{id}/close", teacher(classes.CloseCourse))
+	mux.Handle("POST /api/teacher/courses/{id}/clone", teacher(classes.CloneCourse))
+	mux.Handle("POST /api/teacher/courses/{id}/teachers", teacher(classes.AddCoTeacher))
+	mux.Handle("DELETE /api/teacher/courses/{id}/teachers/{teacher}", teacher(classes.RemoveCoTeacher))
+	mux.Handle("GET /api/teacher/groups/{id}/alerts", teacher(classes.StudentAlerts))
+	mux.Handle("GET /api/teacher/groups/{id}/students/{student}/report", teacher(classes.StudentReport))
+	mux.Handle("GET /api/teacher/groups/{id}/similarity", teacher(classes.Similarity))
+	mux.Handle("POST /api/teacher/courses/{id}/reopen", teacher(classes.ReopenCourse))
 	mux.Handle("POST /api/teacher/groups/{id}/monitors", teacher(classes.AddMonitor))
 	mux.Handle("DELETE /api/teacher/groups/{id}/monitors/{monitor}", teacher(classes.RemoveMonitor))
 	mux.Handle("PUT /api/teacher/assignments/{id}", teacher(classes.UpdateAssignment))
@@ -115,14 +130,16 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("POST /api/student/submissions", student(compileFlight.Wrap(http.HandlerFunc(classes.Submit))))
 	mux.Handle("POST /api/student/submissions/{id}/questions", student(http.HandlerFunc(classes.AskQuestion)))
 	mux.Handle("POST /api/student/ratings", student(http.HandlerFunc(classes.RateFeedback)))
+	mux.Handle("GET /api/student/progress", student(http.HandlerFunc(classes.MyProgress)))
+	mux.Handle("GET /api/practice", auth.RequireAuth(store, http.HandlerFunc(classes.PracticeList)))
 
 	// Endpoint de compilacion
 	mux.Handle("POST /api/compile", auth.RequireAuth(store, compileFlight.Wrap(NewCompileHandler(comp, store))))
 
 	// Endpoint de feedback y chat pedagógico
 	if ollama != nil {
-		mux.Handle("POST /api/feedback", auth.RequireAuth(store, feedbackFlight.Wrap(NewFeedbackHandler(ollama, cfg.OllamaModel, store))))
-		mux.Handle("POST /api/chat", auth.RequireAuth(store, feedbackFlight.Wrap(NewChatHandler(ollama, cfg.OllamaModel, store))))
+		mux.Handle("POST /api/feedback", auth.RequireAuth(store, feedbackFlight.Wrap(NewFeedbackHandler(ollama, cfg.OllamaModel, store, aiLimit))))
+		mux.Handle("POST /api/chat", auth.RequireAuth(store, feedbackFlight.Wrap(NewChatHandler(ollama, cfg.OllamaModel, store, aiLimit))))
 		analysisHandler := auth.RequireRole(store, auth.RoleTeacher, feedbackFlight.Wrap(NewAnalysisHandler(ollama, cfg.OllamaModel, store)))
 		mux.Handle("POST /api/teacher/groups/{id}/students/{student}/analysis", analysisHandler)
 		mux.Handle("POST /api/teacher/submissions/{id}/review/draft",
@@ -145,7 +162,9 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	var handler http.Handler = mux
 	handler = compressMiddleware(handler)
 	handler = corsMiddleware(handler, cfg.AllowedOrigins)
+	handler = securityHeaders(handler, cfg.CookieSecure)
 	handler = loggingMiddleware(handler)
+	handler = proxyMiddleware(handler, cfg.TrustProxy)
 
 	return handler
 }

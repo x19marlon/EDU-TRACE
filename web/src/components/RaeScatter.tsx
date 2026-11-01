@@ -21,7 +21,7 @@ const BANDS = [
 ];
 const INK = "#2E2A3F";
 const INK_SOFT = "#6B6680";
-const INK_FAINT = "#A29DB3";
+const INK_FAINT = "#6B6680";
 const GRID = "#EDE7FC";
 const DIVIDER = "#DCD2F8";
 const POINT = "#7154CC";
@@ -165,7 +165,7 @@ export default function RaeScatter({
           ) : (
             <div className="overflow-x-auto">
               <div className="relative min-w-[520px]">
-                <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={`Diagrama de dispersión: nota promedio contra nivel en ${rae.code}`}>
+                <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="group" aria-label={`Diagrama de dispersión: nota promedio contra nivel en ${rae.code}`}>
                   <rect x={M.left} y={M.top + 2 * RH} width={xOf(MID) - M.left} height={RH} fill="#FFF6EF" />
                   <rect x={xOf(HIGH)} y={M.top} width={M.left + PW - xOf(HIGH)} height={RH} fill="#F0FAF5" />
                   <text x={M.left + 8} y={M.top + 2 * RH + 15} fontSize={11} fill={INK_FAINT}>Requiere acompañamiento</text>

@@ -34,10 +34,12 @@ type assignmentForm struct {
 	statement string
 	rubric string
 	dueAt *time.Time
-	policy auth.LatePolicy
+	policy auth.AssignmentPolicy
 	files []*multipart.FileHeader
 	tests []model.TestCase
 	hasTests bool
+	criteria []auth.Criterion
+	hasCriteria bool
 }
 
 func parseAssignmentForm(w http.ResponseWriter, r *http.Request) (*assignmentForm, bool) {
@@ -80,6 +82,7 @@ func parseAssignmentForm(w http.ResponseWriter, r *http.Request) (*assignmentFor
 		f.dueAt = &t
 	}
 	f.policy.AllowLate = r.FormValue("allow_late") != "false"
+	f.policy.Evaluation = r.FormValue("evaluation") == "true"
 	if v := strings.TrimSpace(r.FormValue("late_until")); v != "" {
 		t, err := time.Parse(time.RFC3339, v)
 		if err != nil {
@@ -106,6 +109,17 @@ func parseAssignmentForm(w http.ResponseWriter, r *http.Request) (*assignmentFor
 			return fail(http.StatusBadRequest, err.Error())
 		}
 		f.tests, f.hasTests = tests, true
+	}
+	if _, ok := r.MultipartForm.Value["criteria"]; ok {
+		var raw []auth.Criterion
+		if err := json.Unmarshal([]byte(r.FormValue("criteria")), &raw); err != nil {
+			return fail(http.StatusBadRequest, "los criterios de evaluación no son válidos")
+		}
+		criteria, err := auth.NormalizeCriteria(raw)
+		if err != nil {
+			return fail(http.StatusBadRequest, err.Error())
+		}
+		f.criteria, f.hasCriteria = criteria, true
 	}
 	if len(f.files) > maxAssignmentFiles {
 		return fail(http.StatusBadRequest, "máximo 10 archivos por taller")
@@ -167,6 +181,12 @@ func (h *ClassesHandler) CreateAssignment(w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
+	if len(form.criteria) > 0 {
+		if a.Criteria, err = h.store.SetAssignmentCriteria(user.ID, a.ID, form.criteria); err != nil {
+			writeStoreErr(w, err, "guardar los criterios")
+			return
+		}
+	}
 	slog.Info("assignment created", "user_id", user.ID, "group_id", a.GroupID, "assignment_id", a.ID, "files", len(a.Files), "tests", len(a.Tests))
 	writeJSON(w, http.StatusCreated, a)
 }
@@ -197,6 +217,12 @@ func (h *ClassesHandler) UpdateAssignment(w http.ResponseWriter, r *http.Request
 	if form.hasTests {
 		if a.Tests, err = h.store.SetAssignmentTests(user.ID, a.ID, form.tests); err != nil {
 			writeStoreErr(w, err, "guardar los casos de prueba")
+			return
+		}
+	}
+	if form.hasCriteria {
+		if a.Criteria, err = h.store.SetAssignmentCriteria(user.ID, a.ID, form.criteria); err != nil {
+			writeStoreErr(w, err, "guardar los criterios")
 			return
 		}
 	}

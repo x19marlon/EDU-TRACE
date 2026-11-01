@@ -99,7 +99,7 @@ func writeUploads(dir string, files []FileUpload) ([]AssignmentFile, error) {
 }
 
 func (s *Store) RenameCourse(teacherID, courseID, name string) error {
-	return affected(s.db.Exec(`UPDATE courses SET name = ? WHERE id = ? AND teacher_id = ?`,
+	return affected(s.db.Exec(`UPDATE courses SET name = ? WHERE id = ? AND id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`,
 		strings.TrimSpace(name), courseID, teacherID))
 }
 
@@ -112,7 +112,7 @@ func (s *Store) DeleteCourse(teacherID, courseID string) error {
 	ids, err := queryIDs(tx, `SELECT a.id FROM assignments a
 		JOIN class_groups g ON g.id = a.group_id
 		JOIN courses c ON c.id = g.course_id
-		WHERE c.id = ? AND c.teacher_id = ?`, courseID, teacherID)
+		WHERE c.id = ? AND c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`, courseID, teacherID)
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func (s *Store) DeleteCourse(teacherID, courseID string) error {
 
 func (s *Store) RenameGroup(teacherID, groupID, name string) error {
 	return affected(s.db.Exec(`UPDATE class_groups SET name = ?
-		WHERE id = ? AND course_id IN (SELECT id FROM courses WHERE teacher_id = ?)`,
+		WHERE id = ? AND course_id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`,
 		strings.TrimSpace(name), groupID, teacherID))
 }
 
@@ -244,7 +244,7 @@ func (s *Store) ownedAssignment(q querier, teacherID, assignmentID string) error
 	if err := q.QueryRow(`SELECT COUNT(*) FROM assignments a
 		JOIN class_groups g ON g.id = a.group_id
 		JOIN courses c ON c.id = g.course_id
-		WHERE a.id = ? AND c.teacher_id = ?`, assignmentID, teacherID).Scan(&n); err != nil {
+		WHERE a.id = ? AND c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`, assignmentID, teacherID).Scan(&n); err != nil {
 		return err
 	}
 	if n == 0 {
@@ -253,7 +253,7 @@ func (s *Store) ownedAssignment(q querier, teacherID, assignmentID string) error
 	return nil
 }
 
-func (s *Store) UpdateAssignment(teacherID, assignmentID, title, statement, rubric string, dueAt *time.Time, policy LatePolicy, removeFiles []string, files []FileUpload) (*Assignment, error) {
+func (s *Store) UpdateAssignment(teacherID, assignmentID, title, statement, rubric string, dueAt *time.Time, policy AssignmentPolicy, removeFiles []string, files []FileUpload) (*Assignment, error) {
 	if err := policy.validate(dueAt); err != nil {
 		return nil, err
 	}
@@ -284,9 +284,9 @@ func (s *Store) UpdateAssignment(teacherID, assignmentID, title, statement, rubr
 		return fail(err)
 	}
 	if _, err := tx.Exec(`UPDATE assignments SET title = ?, statement = ?, rubric = ?, due_at = ?,
-			allow_late = ?, late_until = ?, late_penalty = ? WHERE id = ?`,
+			allow_late = ?, late_until = ?, late_penalty = ?, evaluation = ? WHERE id = ?`,
 		strings.TrimSpace(title), strings.TrimSpace(statement), strings.TrimSpace(rubric), fmtTimePtr(dueAt),
-		policy.AllowLate, fmtTimePtr(policy.LateUntil), floatArg(policy.LatePenalty), assignmentID); err != nil {
+		policy.AllowLate, fmtTimePtr(policy.LateUntil), floatArg(policy.LatePenalty), policy.Evaluation, assignmentID); err != nil {
 		return fail(err)
 	}
 	var removed []string
@@ -318,7 +318,7 @@ func (s *Store) UpdateAssignment(teacherID, assignmentID, title, statement, rubr
 	if err != nil {
 		return fail(err)
 	}
-	if err := logAudit(tx, teacherID, AuditAssignmentUpdated, a.GroupID, "", quoted(a.Title)); err != nil {
+	if err := logAudit(tx, teacherID, AuditAssignmentUpdated, a.GroupID, "", assignmentLabel(a.Title, a.Evaluation)); err != nil {
 		return fail(err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -329,6 +329,9 @@ func (s *Store) UpdateAssignment(teacherID, assignmentID, title, statement, rubr
 	}
 	list := []Assignment{a}
 	if err := s.attachFiles(list); err != nil {
+		return nil, err
+	}
+	if err := s.attachCriteria(list); err != nil {
 		return nil, err
 	}
 	if err := s.attachTests(list, true); err != nil {
@@ -347,7 +350,7 @@ func (s *Store) DeleteAssignment(teacherID, assignmentID string) error {
 	err = tx.QueryRow(`SELECT a.group_id, a.title FROM assignments a
 		JOIN class_groups g ON g.id = a.group_id
 		JOIN courses c ON c.id = g.course_id
-		WHERE a.id = ? AND c.teacher_id = ?`, assignmentID, teacherID).Scan(&groupID, &title)
+		WHERE a.id = ? AND c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`, assignmentID, teacherID).Scan(&groupID, &title)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
 	}

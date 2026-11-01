@@ -4,8 +4,8 @@ import { useState } from "react";
 
 const AVATAR_TONES = [
   "bg-lavender-200 text-lavender-700",
-  "bg-mint-200 text-mint-700",
-  "bg-peach-200 text-peach-700",
+  "bg-mint-100 text-mint-700",
+  "bg-peach-100 text-peach-700",
 ];
 
 export function initials(name: string): string {
@@ -39,6 +39,7 @@ export function Card({
   className = "",
   surface = "bg-white",
   bodyClassName = "p-5",
+  id,
   children,
 }: {
   title?: React.ReactNode;
@@ -46,12 +47,13 @@ export function Card({
   className?: string;
   surface?: string;
   bodyClassName?: string;
+  id?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className={`${surface} rounded-3xl shadow-soft border border-lavender-100/70 flex flex-col ${className}`}>
+    <section id={id} className={`${surface} rounded-3xl shadow-soft border border-lavender-100/70 flex flex-col ${className}`}>
       {title && (
-        <header className="flex items-center justify-between gap-3 px-5 pt-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4">
           <h2 className="font-bold text-ink">{title}</h2>
           {action}
         </header>

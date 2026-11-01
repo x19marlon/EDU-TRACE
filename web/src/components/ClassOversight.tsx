@@ -461,6 +461,32 @@ export default function ClassOversight({
                   {metrics.decisions.ia} aprobadas sin cambios · {metrics.decisions.ia_editada} editadas · {metrics.decisions.docente}{" "}
                   escritas por ti · {metrics.decisions.descartadas} descartadas
                 </p>
+                {(metrics.models ?? []).length > 0 && (
+                  <table className="mt-2 w-full text-left">
+                    <caption className="sr-only">Decisiones por modelo de IA y versión del prompt</caption>
+                    <thead className="text-ink-soft">
+                      <tr>
+                        <th scope="col" className="py-0.5 pr-2 font-semibold">Modelo · prompt</th>
+                        <th scope="col" className="py-0.5 pr-2 text-right font-semibold">Sin cambios</th>
+                        <th scope="col" className="py-0.5 pr-2 text-right font-semibold">Editadas</th>
+                        <th scope="col" className="py-0.5 text-right font-semibold">Descartadas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metrics.models.map((m) => (
+                        <tr key={`${m.model}-${m.prompt}`} className="border-t border-lavender-100">
+                          <td className="py-0.5 pr-2">
+                            {m.model}
+                            {m.prompt && <span className="font-mono text-ink-soft"> · {m.prompt}</span>}
+                          </td>
+                          <td className="py-0.5 pr-2 text-right tabular-nums">{m.sin_cambios}</td>
+                          <td className="py-0.5 pr-2 text-right tabular-nums">{m.editadas}</td>
+                          <td className="py-0.5 text-right tabular-nums">{m.descartadas}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
               <div className="rounded-2xl bg-lavender-50/60 p-3 text-xs">
                 <p className="font-bold text-ink-soft">
@@ -495,7 +521,7 @@ export default function ClassOversight({
         ) : audit.length === 0 ? (
           <p className="text-sm text-ink-soft">Aún no hay intervenciones registradas en esta clase.</p>
         ) : (
-          <ul className="max-h-72 space-y-1 overflow-auto pr-1">
+          <ul tabIndex={0} aria-label="Bitácora de la clase" className="max-h-72 space-y-1 overflow-auto rounded-xl pr-1 focus:outline-none focus-visible:ring-4 focus-visible:ring-lavender-100">
             {audit.map((e) => (
               <li key={e.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-xl px-2 py-1.5 text-xs odd:bg-lavender-50/60">
                 <span className="w-32 shrink-0 text-ink-faint">{formatDateTime(e.at)}</span>

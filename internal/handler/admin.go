@@ -85,6 +85,38 @@ func (h *ClassesHandler) RemoveStudent(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *ClassesHandler) IssueResetCode(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFrom(r.Context())
+	code, expires, err := h.store.IssueResetCode(user.ID, r.PathValue("id"), r.PathValue("student"))
+	if err != nil {
+		writeStoreErr(w, err, "generar el código")
+		return
+	}
+	slog.Info("reset code issued", "user_id", user.ID, "group_id", r.PathValue("id"), "student_id", r.PathValue("student"))
+	writeJSON(w, http.StatusOK, map[string]any{"code": code, "expires_at": expires})
+}
+
+func (h *ClassesHandler) CloseCourse(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFrom(r.Context())
+	purge, err := h.store.CloseCourse(user.ID, r.PathValue("id"))
+	if err != nil {
+		writeStoreErr(w, err, "cerrar el periodo")
+		return
+	}
+	slog.Info("course closed", "user_id", user.ID, "course_id", r.PathValue("id"), "purge_at", purge)
+	writeJSON(w, http.StatusOK, map[string]any{"purge_at": purge})
+}
+
+func (h *ClassesHandler) ReopenCourse(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFrom(r.Context())
+	if err := h.store.ReopenCourse(user.ID, r.PathValue("id")); err != nil {
+		writeStoreErr(w, err, "reabrir el periodo")
+		return
+	}
+	slog.Info("course reopened", "user_id", user.ID, "course_id", r.PathValue("id"))
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *ClassesHandler) AddMonitor(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email string `json:"email"`

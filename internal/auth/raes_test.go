@@ -59,40 +59,40 @@ func TestRAELevelsAndMatrix(t *testing.T) {
 	ana1, ana2, beto1, caro1 := submit(ana), submit(ana), submit(beto), submit(caro)
 
 	g45, g32, g50, g20 := 4.5, 3.2, 5.0, 2.0
-	rev, err := s.SaveAIDraft(prof.ID, ana1, "propuesta", &g45, "razón", "alta", map[string]string{r1.ID: "medio", r2.ID: "alto"})
+	rev, err := s.SaveAIDraft(prof.ID, ana1, AIDraft{Feedback: "propuesta", Grade: &g45, Reason: "razón", Confidence: "alta", Levels: map[string]string{r1.ID: "medio", r2.ID: "alto"}})
 	mustNoErr(t, err)
 	if len(rev.RAEs) != 2 || rev.RAEs[0].AILevel != "medio" || rev.RAEs[0].Level != "medio" {
 		t.Fatalf("la IA no precargó los niveles: %+v", rev.RAEs)
 	}
-	rev, err = s.SaveTeacherReview(prof.ID, ana1, "bien", &g45, false, map[string]string{r1.ID: "alto", foreign.ID: "bajo"})
+	rev, err = s.SaveTeacherReview(prof.ID, ana1, "bien", &g45, false, map[string]string{r1.ID: "alto", foreign.ID: "bajo"}, nil)
 	mustNoErr(t, err)
 	if rev.RAEs[0].Level != "alto" || rev.RAEs[0].AILevel != "medio" || len(rev.RAEs) != 2 {
 		t.Fatalf("niveles del profesor: %+v", rev.RAEs)
 	}
-	rev, err = s.SaveAIDraft(prof.ID, ana1, "otra", &g45, "razón", "alta", map[string]string{r1.ID: "bajo"})
+	rev, err = s.SaveAIDraft(prof.ID, ana1, AIDraft{Feedback: "otra", Grade: &g45, Reason: "razón", Confidence: "alta", Levels: map[string]string{r1.ID: "bajo"}})
 	mustNoErr(t, err)
 	if rev.RAEs[0].Level != "alto" || rev.RAEs[0].AILevel != "bajo" {
 		t.Fatalf("la IA pisó el nivel del profesor: %+v", rev.RAEs)
 	}
-	rev, err = s.SaveAIDraft(prof.ID, ana1, "otra", &g45, "razón", "alta", map[string]string{r1.ID: "", r2.ID: ""})
+	rev, err = s.SaveAIDraft(prof.ID, ana1, AIDraft{Feedback: "otra", Grade: &g45, Reason: "razón", Confidence: "alta", Levels: map[string]string{r1.ID: "", r2.ID: ""}})
 	mustNoErr(t, err)
 	if rev.RAEs[0].AILevel != "" || rev.RAEs[0].Level != "alto" || rev.RAEs[1].AILevel != "" || rev.RAEs[1].Level != "alto" {
 		t.Fatalf("un RAE que ya no aplica debe quedar sin propuesta de la IA, sin tocar el nivel del profesor: %+v", rev.RAEs)
 	}
-	if _, err := s.SaveTeacherReview(prof.ID, ana1, "bien", &g45, false, map[string]string{r1.ID: "excelente"}); err == nil {
+	if _, err := s.SaveTeacherReview(prof.ID, ana1, "bien", &g45, false, map[string]string{r1.ID: "excelente"}, nil); err == nil {
 		t.Fatal("aceptó un nivel inválido")
 	}
 
 	if mine := s.StudentSubmissions(ana.ID, 10); mine[1].Review != nil {
 		t.Fatal("el estudiante ve una revisión sin devolver")
 	}
-	_, err = s.SaveTeacherReview(prof.ID, ana1, "bien", &g45, true, nil)
+	_, err = s.SaveTeacherReview(prof.ID, ana1, "bien", &g45, true, nil, nil)
 	mustNoErr(t, err)
-	_, err = s.SaveTeacherReview(prof.ID, ana2, "regular", &g32, true, map[string]string{r1.ID: "medio", r2.ID: "bajo"})
+	_, err = s.SaveTeacherReview(prof.ID, ana2, "regular", &g32, true, map[string]string{r1.ID: "medio", r2.ID: "bajo"}, nil)
 	mustNoErr(t, err)
-	_, err = s.SaveTeacherReview(prof.ID, beto1, "excelente", &g50, true, map[string]string{r1.ID: "alto"})
+	_, err = s.SaveTeacherReview(prof.ID, beto1, "excelente", &g50, true, map[string]string{r1.ID: "alto"}, nil)
 	mustNoErr(t, err)
-	_, err = s.SaveTeacherReview(prof.ID, caro1, "borrador", &g20, false, map[string]string{r1.ID: "bajo"})
+	_, err = s.SaveTeacherReview(prof.ID, caro1, "borrador", &g20, false, map[string]string{r1.ID: "bajo"}, nil)
 	mustNoErr(t, err)
 
 	mine := s.StudentSubmissions(ana.ID, 10)

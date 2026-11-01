@@ -25,7 +25,7 @@ func TestStudentHistory(t *testing.T) {
 	}
 	_, err = s.JoinGroup(beto.ID, g1.JoinCode)
 	mustNoErr(t, err)
-	a, err := s.CreateAssignment(prof.ID, g1.ID, "Taller 1", "Suma", "", nil, LatePolicy{AllowLate: true}, nil)
+	a, err := s.CreateAssignment(prof.ID, g1.ID, "Taller 1", "Suma", "", nil, AssignmentPolicy{AllowLate: true}, nil)
 	mustNoErr(t, err)
 
 	add := func(u *User, g *Group, kind, assignment, code string) string {
@@ -40,9 +40,9 @@ func TestStudentHistory(t *testing.T) {
 	betoSub := add(beto, g1, KindOfficial, a.ID, "int main(){}")
 
 	g45 := 4.5
-	_, err = s.SaveTeacherReview(prof.ID, off1, "bien", &g45, true, nil)
+	_, err = s.SaveTeacherReview(prof.ID, off1, "bien", &g45, true, nil, nil)
 	mustNoErr(t, err)
-	_, err = s.SaveTeacherReview(prof.ID, off2, "borrador", &g45, false, nil)
+	_, err = s.SaveTeacherReview(prof.ID, off2, "borrador", &g45, false, nil, nil)
 	mustNoErr(t, err)
 
 	h, err := s.History(ana.ID)

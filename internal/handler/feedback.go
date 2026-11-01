@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/marlon/edu-trace/internal/ai"
@@ -20,11 +22,12 @@ type FeedbackHandler struct {
 	ollama *ai.OllamaClient
 	modelName string
 	store *auth.Store
+	limit *auth.LoginLimiter
 }
 
 // NewFeedbackHandler creates a handler backed by the given Ollama client.
-func NewFeedbackHandler(ollama *ai.OllamaClient, modelName string, store *auth.Store) *FeedbackHandler {
-	return &FeedbackHandler{ollama: ollama, modelName: modelName, store: store}
+func NewFeedbackHandler(ollama *ai.OllamaClient, modelName string, store *auth.Store, limit *auth.LoginLimiter) *FeedbackHandler {
+	return &FeedbackHandler{ollama: ollama, modelName: modelName, store: store, limit: limit}
 }
 
 func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -57,13 +60,21 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "":
 		req.Mode = ai.ModeFormal
 	case ai.ModeFormal, ai.ModeInformal:
+	case ai.ModeHint:
+		if req.Level < 1 || req.Level > ai.MaxHintLevel {
+			writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "el nivel de la pista va de 1 a 3"})
+			return
+		}
+		if len(req.Previous) > ai.MaxHintLevel-1 {
+			req.Previous = req.Previous[:ai.MaxHintLevel-1]
+		}
 	default:
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "tipo de retroalimentación inválido"})
 		return
 	}
 
 	user := auth.UserFrom(r.Context())
-	if !aiAllowed(w, h.store, user, req.AssignmentID) {
+	if !aiAllowed(w, h.store, h.limit, user, req.AssignmentID) {
 		return
 	}
 
@@ -76,6 +87,8 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		statement, rubric = st, rb
+	} else if req.ExerciseID != "" {
+		statement = exerciseStatement(req.ExerciseID)
 	}
 
 	h.store.RecordFeedback(user.ID)
@@ -87,6 +100,14 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"compiled", req.Success,
 	)
 
+	if req.Mode == ai.ModeHint {
+		stats := streamSSE(w, h.modelName, func(onToken, _ func(string)) error {
+			return h.ollama.StreamHint(r.Context(), req, statement, onToken)
+		})
+		h.store.RecordAIRequest(stats.record(h.ollama, auth.AIKindHint, h.store.AssignmentGroup(req.AssignmentID), user.Role))
+		return
+	}
+
 	var checks ai.Checks
 	stats := streamSSE(w, h.modelName, func(onToken, onReplace func(string)) error {
 		c, err := h.ollama.StreamFeedback(r.Context(), req, statement, rubric, onToken, onReplace)
@@ -97,7 +118,7 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if req.Mode == ai.ModeInformal {
 		kind = auth.AIKindInformal
 	}
-	rec := stats.record(kind, h.store.AssignmentGroup(req.AssignmentID), user.Role)
+	rec := stats.record(h.ollama, kind, h.store.AssignmentGroup(req.AssignmentID), user.Role)
 	if stats.err == nil {
 		rec.SectionsOK, rec.QualityOK = &checks.SectionsOK, &checks.QualityOK
 	}
@@ -106,19 +127,39 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 const supervisedMessage = "En tu clase la retroalimentación de la IA pasa primero por tu profesor: envía tu código y la verás en «Mis entregas» después de su revisión y aprobación."
 
-func aiAllowed(w http.ResponseWriter, store *auth.Store, user *auth.User, assignmentID string) bool {
+func evaluationMessage(e *auth.OpenEvaluation) string {
+	return "Hay una evaluación en curso («" + e.Title + "»): la IA y el chat están desactivados hasta el " +
+		e.Until.In(time.Local).Format("02/01/2006 a las 15:04") + "."
+}
+
+func aiAllowed(w http.ResponseWriter, store *auth.Store, limit *auth.LoginLimiter, user *auth.User, assignmentID string) bool {
 	if user.Role != auth.RoleStudent {
 		return true
 	}
-	ok, err := store.StudentAIAllowed(user.ID, assignmentID)
+	block, err := store.StudentAIBlock(user.ID, assignmentID)
 	if err != nil {
 		writeStoreErr(w, err, "consultar el modo de la IA")
 		return false
 	}
-	if !ok {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": supervisedMessage, "code": auth.AIModeSupervised})
+	switch {
+	case block == nil:
+		if limit == nil {
+			return true
+		}
+		wait, ok := limit.Take(user.ID)
+		if ok {
+			return true
+		}
+		w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(wait.Seconds()))))
+		writeJSON(w, http.StatusTooManyRequests, map[string]string{"code": "limite",
+			"error": fmt.Sprintf("Llegaste al límite de %d pedidos a la IA por hora. Podrás pedir otro en %d min; mientras tanto, revisa los mensajes del compilador y los casos de prueba.",
+				limit.Max(), int(math.Ceil(wait.Minutes())))})
+	case block.Code == auth.AIBlockEvaluation:
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": evaluationMessage(block.Evaluation), "code": block.Code})
+	default:
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": supervisedMessage, "code": block.Code})
 	}
-	return ok
+	return false
 }
 
 type streamStats struct {
@@ -127,8 +168,9 @@ type streamStats struct {
 	err error
 }
 
-func (st streamStats) record(kind, groupID string, role auth.Role) auth.AIRequest {
-	rec := auth.AIRequest{Kind: kind, GroupID: groupID, Role: role, FirstMs: st.firstMs, TotalMs: st.totalMs, OK: st.err == nil}
+func (st streamStats) record(o *ai.OllamaClient, kind, groupID string, role auth.Role) auth.AIRequest {
+	rec := auth.AIRequest{Kind: kind, GroupID: groupID, Role: role, FirstMs: st.firstMs, TotalMs: st.totalMs, OK: st.err == nil,
+		Model: o.Model(), PromptVersion: o.PromptVersion()}
 	if st.err != nil {
 		rec.Error = auth.JobError(st.err)
 	}

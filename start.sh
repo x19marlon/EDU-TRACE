@@ -39,7 +39,7 @@ echo -e "\n${BLUE}Verificando dependencias del sistema${NC}"
 MISSING_PKGS=()
 if ! command -v g++ &> /dev/null; then MISSING_PKGS+=("g++"); fi
 if ! command -v bwrap &> /dev/null; then MISSING_PKGS+=("bubblewrap"); fi
-if ! command -v prlimit &> /dev/null; then MISSING_PKGS+=("util-linux"); fi
+if ! command -v prlimit &> /dev/null || ! command -v choom &> /dev/null; then MISSING_PKGS+=("util-linux"); fi
 if ! command -v curl &> /dev/null; then MISSING_PKGS+=("curl"); fi
 if ! command -v fuser &> /dev/null; then MISSING_PKGS+=("psmisc"); fi
 
@@ -51,11 +51,11 @@ if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
         sudo apt update && sudo apt install -y "${MISSING_PKGS[@]}"
     fi
 else
-    echo -e "${GREEN}✓ Paquetes del sistema listos${NC}"
+    echo -e "${GREEN} Paquetes del sistema listos${NC}"
 fi
 
 # 2. Go 1.24
-echo -e "\n${BLUE}Verificando Go (>= 1.24)${NC}"
+echo -e "\n${BLUE}Verificando Go (>=1.24)${NC}"
 LOCAL_GO_DIR="$HOME/.local/go1.24"
 if [ -x "$LOCAL_GO_DIR/bin/go" ]; then
     export PATH="$LOCAL_GO_DIR/bin:$PATH"
@@ -102,11 +102,13 @@ if ! NODE_ERR=$(node -v 2>&1); then
 fi
 echo -e "${GREEN}✓ Node $NODE_ERR y npm $(npm -v)${NC}"
 
-if [ ! -d "web/node_modules" ]; then
-    echo -e "${YELLOW}Instalando dependencias de web/${NC}"
-    (cd web && npm install)
+LOCK_SUM="$(sha256sum web/package-lock.json | cut -c1-16)"
+if [ ! -d "web/node_modules" ] || [ "$(cat web/node_modules/.edutrace-lock 2>/dev/null)" != "$LOCK_SUM" ]; then
+    echo -e "${YELLOW}Instalando las dependencias de web/ (cambió package-lock.json)${NC}"
+    (cd web && npm install --no-audit --no-fund)
+    echo "$LOCK_SUM" > web/node_modules/.edutrace-lock
 else
-    echo -e "${GREEN}✓ Dependencias de web/ instaladas${NC}"
+    echo -e "${GREEN}✓ Dependencias de web/ al día${NC}"
 fi
 
 # 4. Ollama y modelo
@@ -150,19 +152,24 @@ if [ "$SANDBOX" = "bwrap" ]; then
         echo -e "${GREEN}✓ Sandbox bwrap disponible${NC}"
     else
         export SANDBOX="none"
-        echo -e "${RED}⚠ bwrap no puede crear el sandbox (user namespaces restringidos, típico de Ubuntu 24.04).${NC}"
-        echo -e "${RED}  Se usa SANDBOX=none: el código de los estudiantes se ejecuta SIN aislamiento. Solo para desarrollo.${NC}"
+        echo -e "${RED} bwrap no puede crear el sandbox requerido${NC}"
+        echo -e "${RED} Se usa SANDBOX=none: el código de los estudiantes se ejecuta sin aislamiento. Solo para desarrollo confirmado.${NC}"
     fi
 fi
 
+DEV_FIRMA="$( { cat web/package-lock.json web/next.config.mjs web/tailwind.config.ts web/tsconfig.json web/postcss.config.mjs 2>/dev/null; node -v; echo "$PORT"; } | sha256sum | cut -c1-16)"
 if [ "$1" = "--limpio" ]; then
-    echo -e "${YELLOW}Borrando la caché de Next (web/.next)${NC}"
-    rm -rf web/.next
+    echo -e "${YELLOW}Borrando la caché de Next (web/.next y web/.next-dev)${NC}"
+    rm -rf web/.next web/.next-dev
+elif [ "$(cat web/.next-dev.firma 2>/dev/null)" != "$DEV_FIRMA" ]; then
+    echo -e "${YELLOW}Cambiaron las dependencias o la configuración: se reconstruye la caché de desarrollo (web/.next-dev)${NC}"
+    rm -rf web/.next-dev
 fi
+echo "$DEV_FIRMA" > web/.next-dev.firma
 
 mkdir -p bin
 go build -o bin/server ./cmd/server
-echo -e "${GREEN}✓ Backend compilado en bin/server${NC}"
+echo -e "${GREEN} Backend compilado en bin/server${NC}"
 
 cleanup() {
     echo -e "\n${YELLOW}Deteniendo servicios${NC}"
@@ -187,10 +194,9 @@ done
 
 (cd web && NEXT_PUBLIC_API_URL="http://localhost:$PORT" npm run dev -- -p "$WEB_PORT") &
 
-echo -e "\n${GREEN}EDU-TRACE iniciado${NC}"
-echo -e "${GREEN}  Abre en tu navegador: http://localhost:$WEB_PORT${NC}"
-echo -e "  Backend: http://$HOST:$PORT · Ollama: $OLLAMA_BASE_URL ($MODEL_TAG) · Sandbox: $SANDBOX"
-echo -e "  Credenciales de prueba: CREDENCIALES.txt"
+echo -e "\n${GREEN}Edutrace inicializado!!${NC}"
+echo -e "${GREEN}Abre en tu navegador: http://localhost:$WEB_PORT${NC}"
+echo -e "Backend: http://$HOST:$PORT · Ollama: $OLLAMA_BASE_URL ($MODEL_TAG) · Sandbox: $SANDBOX"
 echo -e "Presiona Ctrl+C para detener todo."
 
 wait

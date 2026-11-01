@@ -7,6 +7,7 @@ export interface CompileResult {
   run_time_ms: number;
   error?: string;
   tests?: TestResult[];
+  explanations?: { line?: number; message: string; explanation: string }[];
 }
 
 export type TestMatch = "contiene" | "exacta";
@@ -29,6 +30,7 @@ export interface TestResult {
   expected?: string;
   output?: string;
   error?: string;
+  own?: boolean;
 }
 
 export type AIMode = "supervisada" | "inmediata";
@@ -65,6 +67,7 @@ export interface User {
   activity: Activity;
   has_recovery?: boolean;
   consent_at?: string;
+  consent_outdated?: boolean;
 }
 
 export type SessionUser = User & { recovery_code?: string };
@@ -92,6 +95,17 @@ export interface CourseSummary {
   name: string;
   groups: GroupSummary[];
   raes: RAE[];
+  closed_at?: string;
+  purge_at?: string;
+  owner: boolean;
+  teachers: CourseTeacher[];
+}
+
+export interface CourseTeacher {
+  id: string;
+  name: string;
+  email: string;
+  owner: boolean;
 }
 
 export interface StudentPoint {
@@ -133,6 +147,8 @@ export interface GroupDetail {
   students: GroupStudent[];
   monitors: GroupMonitor[];
   ai_mode: AIMode;
+  closed_at?: string;
+  purge_at?: string;
 }
 
 export interface MonitorGroup {
@@ -294,9 +310,21 @@ export interface Assignment {
   allow_late: boolean;
   late_until?: string;
   late_penalty?: number;
+  evaluation: boolean;
   created_at: string;
   files: AssignmentFile[];
   tests: TestCase[];
+  criteria: Criterion[];
+}
+
+export interface Criterion {
+  id: string;
+  name: string;
+  points: number;
+}
+
+export interface ReviewCriterion extends Criterion {
+  score?: number;
 }
 
 export interface StudentAssignment extends Assignment {
@@ -310,6 +338,13 @@ export interface StudentGroup {
   course_name: string;
   teacher_name: string;
   ai_mode: AIMode;
+  evaluation?: OpenEvaluation;
+  closed_at?: string;
+}
+
+export interface OpenEvaluation {
+  title: string;
+  until: string;
 }
 
 export interface Review {
@@ -329,6 +364,9 @@ export interface Review {
   origin?: FeedbackOrigin;
   review_ms: number;
   ai_minutes?: number;
+  ai_model?: string;
+  ai_prompt?: string;
+  criteria: ReviewCriterion[];
   ai_job?: JobState;
   ai_available: boolean;
 }
@@ -374,6 +412,7 @@ export interface StudentReview {
   origin?: FeedbackOrigin;
   teacher_name?: string;
   understood?: Understood;
+  criteria?: ReviewCriterion[];
 }
 export interface StudentSubmission extends SubmissionMeta {
   group_name: string;
@@ -411,7 +450,10 @@ async function postJSON<T>(path: string, body: unknown): Promise<T> {
 
 export async function getMe(): Promise<User | null> {
   const response = await apiFetch("/api/auth/me");
-  if (response.status === 401) return null;
+  if (response.status === 401) {
+    await response.body?.cancel();
+    return null;
+  }
   if (!response.ok) await throwForStatus(response);
   return response.json();
 }
@@ -524,6 +566,48 @@ export const retryDrafts = (groupId: string) =>
 export const setThresholds = (courseId: string, t: Thresholds) =>
   sendJSON<Thresholds>("PUT", `/api/teacher/courses/${enc(courseId)}/thresholds`, t);
 export const getAIStatus = () => getJSON<AIStatus>("/api/teacher/ai-status");
+export const issueResetCode = (groupId: string, studentId: string) =>
+  postJSON<{ code: string; expires_at: string }>(`/api/teacher/groups/${enc(groupId)}/students/${enc(studentId)}/reset-code`, {});
+export const closeCourse = (courseId: string) =>
+  postJSON<{ purge_at?: string }>(`/api/teacher/courses/${enc(courseId)}/close`, {});
+export async function reopenCourse(courseId: string): Promise<void> {
+  const response = await apiFetch(`/api/teacher/courses/${enc(courseId)}/reopen`, { method: "POST" });
+  if (!response.ok) await throwForStatus(response);
+}
+
+export interface AppNotification {
+  id: number;
+  kind: string;
+  title: string;
+  link?: string;
+  created_at: string;
+  read_at?: string;
+}
+
+export interface NotificationList {
+  items: AppNotification[];
+  unread: number;
+  email: boolean;
+  email_available: boolean;
+}
+
+export const getNotifications = () => getJSON<NotificationList>("/api/notifications");
+export async function markNotificationsRead(ids: number[] = []): Promise<void> {
+  const response = await apiFetch("/api/notifications/read", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+  if (!response.ok) await throwForStatus(response);
+}
+export async function setEmailNotifications(enabled: boolean): Promise<void> {
+  const response = await apiFetch("/api/notifications/email", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+  if (!response.ok) await throwForStatus(response);
+}
 export const discardReviewDraft = (submissionId: string, elapsedMs: number) =>
   postJSON<Review>(`/api/teacher/submissions/${enc(submissionId)}/review/discard`, { elapsed_ms: elapsedMs });
 export function sendReviewTime(submissionId: string, elapsedMs: number): void {
@@ -638,6 +722,7 @@ export interface GroupMetrics {
     chats: number;
   };
   decisions: { ia: number; ia_editada: number; docente: number; descartadas: number };
+  models: { model: string; prompt: string; sin_cambios: number; editadas: number; descartadas: number }[];
   comprehension: {
     revisiones: RatingCount;
     inmediata: RatingCount;
@@ -720,7 +805,14 @@ export const generateReviewDraft = (submissionId: string) =>
   postJSON<Review>(`/api/teacher/submissions/${encodeURIComponent(submissionId)}/review/draft`, {});
 export async function saveReview(
   submissionId: string,
-  data: { feedback: string; grade: number | null; return: boolean; rae_levels?: Record<string, RAELevel | "">; elapsed_ms?: number }
+  data: {
+    feedback: string;
+    grade: number | null;
+    return: boolean;
+    rae_levels?: Record<string, RAELevel | "">;
+    criteria_scores?: Record<string, number>;
+    elapsed_ms?: number;
+  }
 ): Promise<Review> {
   const response = await apiFetch(`/api/teacher/submissions/${encodeURIComponent(submissionId)}/review`, {
     method: "PUT",
@@ -781,17 +873,21 @@ export const assignmentFileUrl = (assignmentId: string, fileId: string) =>
 export function compileCode(
   code: string,
   stdin: string = "",
-  context?: { group_id: string; assignment_id?: string }
+  context?: { group_id?: string; assignment_id?: string; exercise_id?: string; own_tests?: TestCase[] }
 ): Promise<CompileResult> {
   return postJSON("/api/compile", { code, stdin, ...context });
 }
 
 
 export type FeedbackMode = "formal" | "informal";
+export type AIRequestMode = FeedbackMode | "pista";
 
 export interface FeedbackContext {
-  mode: FeedbackMode;
+  mode: AIRequestMode;
   assignment_id?: string;
+  exercise_id?: string;
+  level?: number;
+  previous?: string[];
   code: string;
   compiled: boolean;
   success?: boolean;
@@ -883,6 +979,7 @@ export interface ChatMessage {
 
 export interface ChatContext {
   assignment_id?: string;
+  exercise_id?: string;
   code?: string;
   stdin?: string;
   messages: ChatMessage[];
@@ -901,3 +998,76 @@ export async function streamChat(
   if (!response.ok) await throwForStatus(response);
   return readSSE(response, onToken);
 }
+
+export const addCoTeacher = (courseId: string, email: string) =>
+  postJSON<CourseTeacher>(`/api/teacher/courses/${enc(courseId)}/teachers`, { email });
+export const removeCoTeacher = (courseId: string, teacherId: string) =>
+  deleteReq(`/api/teacher/courses/${enc(courseId)}/teachers/${enc(teacherId)}`);
+export const cloneCourse = (courseId: string, name: string, closeOld: boolean) =>
+  postJSON<{ id: string }>(`/api/teacher/courses/${enc(courseId)}/clone`, { name, close_old: closeOld });
+
+export interface StudentAlert {
+  student_id: string;
+  name: string;
+  reasons: string[];
+}
+export const getStudentAlerts = (groupId: string) => getJSON<StudentAlert[]>(`/api/teacher/groups/${enc(groupId)}/alerts`);
+
+export interface SimilarPair {
+  a: { student_id: string; name: string; submission_id: string };
+  b: { student_id: string; name: string; submission_id: string };
+  score: number;
+}
+export const getSimilarity = (groupId: string, assignmentId: string) =>
+  getJSON<{ compared: number; pairs: SimilarPair[] }>(`/api/teacher/groups/${enc(groupId)}/similarity?assignment=${enc(assignmentId)}`);
+
+export interface StudentReport {
+  name: string;
+  email: string;
+  course_name: string;
+  group_name: string;
+  generated_at: string;
+  assignments: {
+    title: string;
+    due_at?: string;
+    submitted_at?: string;
+    late_seconds?: number;
+    submissions: number;
+    tests_passed: number;
+    tests_total: number;
+    grade?: number;
+    returned_at?: string;
+    origin?: FeedbackOrigin;
+    criteria?: ReviewCriterion[];
+  }[];
+  raes: { code: string; description: string; level?: RAELevel }[];
+  average?: number;
+  attempts: number;
+  officials: number;
+  last_activity?: string;
+  questions: number;
+  alerts: string[];
+}
+export const getStudentReport = (groupId: string, studentId: string) =>
+  getJSON<StudentReport>(`/api/teacher/groups/${enc(groupId)}/students/${enc(studentId)}/report`);
+
+export interface ProgressGroup {
+  group_id: string;
+  group_name: string;
+  course_name: string;
+  points: { title: string; returned_at: string; grade?: number; tests_passed: number; tests_total: number; levels: Record<string, RAELevel> }[];
+  raes: { code: string; description: string; latest?: RAELevel }[];
+  average?: number;
+}
+export const getMyProgress = () => getJSON<{ groups: ProgressGroup[]; practice: { solved: number; total: number } }>("/api/student/progress");
+
+export interface Exercise {
+  id: string;
+  title: string;
+  topic: string;
+  level: number;
+  statement: string;
+  tests: TestCase[];
+  result?: { attempts: number; best_passed: number; total: number; solved_at?: string; last_at: string };
+}
+export const listExercises = () => getJSON<Exercise[]>("/api/practice");

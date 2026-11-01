@@ -51,7 +51,6 @@ export default function UserMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Cuenta de ${user.name}`}
         className="flex items-center gap-2 rounded-full bg-white py-1 pl-1 pr-3 shadow-soft
           hover:bg-lavender-50 transition-colors"
       >
@@ -59,6 +58,7 @@ export default function UserMenu() {
         <span className="hidden sm:block text-sm font-semibold text-ink max-w-[10rem] truncate">
           {user.name.split(" ")[0]}
         </span>
+        <span className="sr-only">: menú de la cuenta de {user.name}</span>
         <svg className="h-4 w-4 text-ink-faint" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
           <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" />
         </svg>

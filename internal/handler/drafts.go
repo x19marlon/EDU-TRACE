@@ -87,7 +87,8 @@ func (q *DraftQueue) process(ctx context.Context) bool {
 	start := time.Now()
 	_, err = q.reviews.generate(jobCtx, job.TeacherID, job.SubmissionID, true)
 	q.store.RecordAIRequest(auth.AIRequest{Kind: auth.AIKindAutoDraft, GroupID: q.store.SubmissionGroup(job.SubmissionID),
-		Role: auth.SystemActorRole, TotalMs: time.Since(start).Milliseconds(), OK: err == nil, Error: errText(err)})
+		Role: auth.SystemActorRole, TotalMs: time.Since(start).Milliseconds(), OK: err == nil, Error: errText(err),
+		Model: q.reviews.ollama.Model(), PromptVersion: q.reviews.ollama.PromptVersion()})
 	if ctx.Err() != nil {
 		q.store.FinishJob(job.SubmissionID, auth.JobPending, "", false)
 		return false

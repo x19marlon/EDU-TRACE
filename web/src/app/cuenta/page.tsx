@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
@@ -8,7 +8,15 @@ import AppShell from "@/components/AppShell";
 import RecoveryCodeDialog from "@/components/RecoveryCodeDialog";
 import { Avatar, Card } from "@/components/ui";
 import { useAuth } from "@/components/AuthProvider";
-import { changePassword, deleteAccount, exportMyData, newRecoveryCode, updateProfile } from "@/lib/api";
+import {
+  changePassword,
+  deleteAccount,
+  exportMyData,
+  getNotifications,
+  newRecoveryCode,
+  setEmailNotifications,
+  updateProfile,
+} from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { ROLE_LABELS } from "@/lib/role";
 
@@ -157,6 +165,59 @@ function RecoverySection() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+function EmailNotices() {
+  const [state, setState] = useState<{ email: boolean; available: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getNotifications()
+      .then((list) => setState({ email: list.email, available: list.email_available }))
+      .catch((err) => setError(err instanceof Error ? err.message : "No se pudo cargar tu preferencia"));
+  }, []);
+
+  const toggle = async (email: boolean) => {
+    if (!state) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await setEmailNotifications(email);
+      setState({ ...state, email });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar tu preferencia");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 text-sm">
+      <p className="text-ink-soft">
+        La campana de arriba te avisa de las novedades: revisiones devueltas o actualizadas, preguntas nuevas o respondidas y
+        comentarios de monitores. Si no abres un aviso en 2 minutos, te llega también por correo.
+      </p>
+      {state && (
+        <label className="flex items-start gap-3 rounded-2xl bg-lavender-50/60 px-4 py-3">
+          <input
+            type="checkbox"
+            checked={state.email}
+            disabled={busy}
+            onChange={(e) => toggle(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-lavender-600"
+          />
+          <span>
+            <span className="font-semibold text-ink">Recibir los avisos también por correo</span>
+            {!state.available && (
+              <span className="block text-ink-soft">El servidor todavía no tiene configurado el envío de correos: por ahora solo verás la campana.</span>
+            )}
+          </span>
+        </label>
+      )}
+      {error && <p className="rounded-2xl bg-peach-50 px-4 py-2 font-semibold text-peach-700">{error}</p>}
     </div>
   );
 }
@@ -328,6 +389,9 @@ function AccountView() {
           crear una nueva. Cada código sirve una sola vez.
         </p>
         <RecoverySection />
+      </Card>
+      <Card title="Avisos" className="rise-in scroll-mt-24" id="avisos">
+        <EmailNotices />
       </Card>
       <Card title="Mis datos" className="rise-in">
         <MyData />

@@ -1,0 +1,11 @@
+[Unit]
+Description=Respaldo de los datos de EduTrace
+
+[Service]
+Type=oneshot
+User=edutrace
+WorkingDirectory=/opt/edutrace
+EnvironmentFile=/opt/edutrace/.env
+ExecStart=/opt/edutrace/scripts/respaldar.sh
+Nice=10
+IOSchedulingClass=idle

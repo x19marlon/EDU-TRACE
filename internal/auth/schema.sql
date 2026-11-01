@@ -10,7 +10,10 @@ CREATE TABLE IF NOT EXISTS users (
   last_active_at TEXT,
   recovery_hash TEXT NOT NULL DEFAULT '',
   consent_at TEXT,
-  consent_version TEXT NOT NULL DEFAULT ''
+  consent_version TEXT NOT NULL DEFAULT '',
+  email_notifications INTEGER NOT NULL DEFAULT 1,
+  reset_hash TEXT NOT NULL DEFAULT '',
+  reset_expires_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -26,7 +29,8 @@ CREATE TABLE IF NOT EXISTS courses (
   created_at TEXT NOT NULL,
   review_minutes_max REAL,
   batch_hours_max REAL,
-  feedback_hours_max REAL
+  feedback_hours_max REAL,
+  closed_at TEXT
 );
 CREATE INDEX IF NOT EXISTS courses_teacher ON courses(teacher_id);
 
@@ -59,7 +63,8 @@ CREATE TABLE IF NOT EXISTS assignments (
   created_at TEXT NOT NULL,
   allow_late INTEGER NOT NULL DEFAULT 1,
   late_until TEXT,
-  late_penalty REAL
+  late_penalty REAL,
+  evaluation INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS assignment_files (   
@@ -111,7 +116,9 @@ CREATE TABLE IF NOT EXISTS reviews (
   ai_discarded_at TEXT,
   feedback_origin TEXT NOT NULL DEFAULT '',
   review_ms INTEGER NOT NULL DEFAULT 0,
-  ai_minutes INTEGER
+  ai_minutes INTEGER,
+  ai_model TEXT NOT NULL DEFAULT '',
+  ai_prompt TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS group_monitors (
@@ -222,7 +229,9 @@ CREATE TABLE IF NOT EXISTS ai_requests (
   ok INTEGER NOT NULL,
   sections_ok INTEGER,
   error TEXT NOT NULL DEFAULT '',
-  quality_ok INTEGER
+  quality_ok INTEGER,
+  model TEXT NOT NULL DEFAULT '',
+  prompt_version TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS ai_requests_group ON ai_requests(group_id, at);
 
@@ -252,3 +261,54 @@ CREATE TABLE IF NOT EXISTS feedback_ratings (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS feedback_ratings_submission ON feedback_ratings(submission_id, student_id) WHERE submission_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS feedback_ratings_group ON feedback_ratings(group_id);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL,
+  link TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  read_at TEXT,
+  emailed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS notifications_user ON notifications(user_id, id);
+CREATE INDEX IF NOT EXISTS notifications_pending ON notifications(emailed_at, created_at);
+
+CREATE TABLE IF NOT EXISTS course_teachers (
+  course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  teacher_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  added_at TEXT NOT NULL,
+  PRIMARY KEY (course_id, teacher_id)
+);
+CREATE INDEX IF NOT EXISTS course_teachers_teacher ON course_teachers(teacher_id);
+CREATE VIEW IF NOT EXISTS course_staff AS
+  SELECT id AS course_id, teacher_id FROM courses
+  UNION SELECT course_id, teacher_id FROM course_teachers;
+
+CREATE TABLE IF NOT EXISTS assignment_criteria (
+  id TEXT PRIMARY KEY,
+  assignment_id TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  points REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS assignment_criteria_assignment ON assignment_criteria(assignment_id, position);
+
+CREATE TABLE IF NOT EXISTS review_criteria (
+  submission_id TEXT NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  criterion_id TEXT NOT NULL REFERENCES assignment_criteria(id) ON DELETE CASCADE,
+  score REAL NOT NULL,
+  PRIMARY KEY (submission_id, criterion_id)
+);
+
+CREATE TABLE IF NOT EXISTS practice_results (
+  student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  exercise_id TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  best_passed INTEGER NOT NULL DEFAULT 0,
+  total INTEGER NOT NULL DEFAULT 0,
+  solved_at TEXT,
+  last_at TEXT NOT NULL,
+  PRIMARY KEY (student_id, exercise_id)
+);

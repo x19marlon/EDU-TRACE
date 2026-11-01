@@ -89,7 +89,7 @@ func (s *Store) annotationTarget(u *User, submissionID string) (int, error) {
 		err = s.db.QueryRow(`SELECT s.lines FROM submissions s
 			JOIN class_groups g ON g.id = s.group_id
 			JOIN courses c ON c.id = g.course_id
-			WHERE s.id = ? AND c.teacher_id = ?`, submissionID, u.ID).Scan(&lines)
+			WHERE s.id = ? AND c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`, submissionID, u.ID).Scan(&lines)
 	case RoleMonitor:
 		err = s.db.QueryRow(`SELECT s.lines FROM submissions s
 			JOIN group_monitors gm ON gm.group_id = s.group_id
@@ -211,7 +211,7 @@ func (s *Store) DeleteAnnotation(u *User, annotationID string) error {
 			SELECT s.id FROM submissions s
 			JOIN class_groups g ON g.id = s.group_id
 			JOIN courses c ON c.id = g.course_id
-			WHERE c.teacher_id = ?)`, annotationID, u.ID))
+			WHERE c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?))`, annotationID, u.ID))
 	case RoleMonitor:
 		return affected(s.db.Exec(`DELETE FROM code_annotations WHERE id = ? AND author_id = ?`, annotationID, u.ID))
 	}
@@ -239,5 +239,8 @@ func (s *Store) SendMonitorAnnotations(monitor *User, submissionID string) (int6
 	if n > 1 {
 		detail = fmt.Sprintf("Envió %d marcas al estudiante", n)
 	}
-	return n, now, logAudit(s.db, monitor.ID, AuditAnnotationsSent, "", submissionID, detail)
+	if err := logAudit(s.db, monitor.ID, AuditAnnotationsSent, "", submissionID, detail); err != nil {
+		return n, now, err
+	}
+	return n, now, notifyStudent(s.db, submissionID, NoticeAnnotations, "Un monitor marcó el código de")
 }

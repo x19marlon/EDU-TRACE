@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo, { Wordmark } from "@/components/Logo";
 import UserMenu from "@/components/UserMenu";
+import NotificationBell from "@/components/NotificationBell";
 import { useAuth } from "@/components/AuthProvider";
 import { Role } from "@/lib/api";
 
@@ -42,6 +43,27 @@ const NAV: NavItem[] = [
     icon: (
       <svg {...iconProps}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/practica",
+    label: "Práctica",
+    roles: ["student"],
+    icon: (
+      <svg {...iconProps}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
+      </svg>
+    ),
+  },
+  {
+    href: "/progreso",
+    label: "Progreso",
+    tabLabel: "Mi progreso",
+    roles: ["student"],
+    icon: (
+      <svg {...iconProps}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
       </svg>
     ),
   },
@@ -113,26 +135,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Barra superior */}
         <header className="relative z-30 flex items-center justify-between gap-3 px-4 sm:px-6 py-4">
-          <Link href="/" className="md:hidden flex items-center gap-2">
+          <Link href="/" aria-label="EduTrace, inicio" className="hidden min-[440px]:flex md:hidden items-center gap-2">
             <Logo className="h-8 w-8" />
           </Link>
-          <nav className="flex items-center gap-1 rounded-full bg-white p-1 shadow-soft">
+          <nav aria-label="Secciones" className="flex min-w-0 items-center gap-1 rounded-full bg-white p-1 shadow-soft">
             {items.map((item) => {
               const active = isActive(item.href);
+              const compact = items.length > 2;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+                  aria-current={active ? "page" : undefined}
+                  className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition-colors lg:px-4 ${
                     active ? "bg-lavender-100 text-lavender-700" : "text-ink-soft hover:text-ink"
                   }`}
                 >
-                  {item.tabLabel ?? item.label}
+                  {compact && <span className="md:hidden">{item.icon}</span>}
+                  <span className={compact ? "sr-only md:not-sr-only" : ""}>{item.tabLabel ?? item.label}</span>
                 </Link>
               );
             })}
           </nav>
-          <UserMenu />
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <UserMenu />
+          </div>
         </header>
 
         <main className="relative z-10 flex-1 px-4 sm:px-6 pb-6">{children}</main>

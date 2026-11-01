@@ -9,10 +9,11 @@ interface ChatPanelProps {
   code: string;
   stdin: string;
   assignmentId?: string;
+  exerciseId?: string;
   disabledReason?: string;
 }
 
-export default function ChatPanel({ code, stdin, assignmentId, disabledReason }: ChatPanelProps) {
+export default function ChatPanel({ code, stdin, assignmentId, exerciseId, disabledReason }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +48,7 @@ export default function ChatPanel({ code, stdin, assignmentId, disabledReason }:
       await streamChat(
         {
           assignment_id: assignmentId,
+          exercise_id: exerciseId,
           code,
           stdin,
           messages: updatedMessages,

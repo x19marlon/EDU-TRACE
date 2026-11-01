@@ -146,16 +146,10 @@ func (h *ReviewsHandler) generate(ctx context.Context, teacherID, id string, aut
 	if auto {
 		save = h.store.SaveAutoAIDraft
 	}
-	rev, err := save(teacherID, id, sug.Feedback, grade, sug.Reason, sug.Confidence, levels)
+	rev, err := save(teacherID, id, auth.AIDraft{Feedback: sug.Feedback, Grade: grade, Reason: sug.Reason, Confidence: sug.Confidence,
+		Levels: levels, Minutes: sug.Minutes, Model: h.ollama.Model(), Prompt: h.ollama.PromptVersion()})
 	if err != nil {
 		return nil, err
-	}
-	if err := h.store.SetAIMinutes(teacherID, id, sug.Minutes); err != nil {
-		slog.Error("estimación de tiempo de revisión", "submission_id", id, "error", err)
-	} else if sug.Minutes > 0 {
-		rev.AIMinutes = &sug.Minutes
-	} else {
-		rev.AIMinutes = nil
 	}
 	slog.Info("review draft created", "submission_id", id, "auto", auto, "ai_grade", sug.Grade, "confidence", sug.Confidence, "minutes", sug.Minutes, "sections_fixed", sug.SectionsFixed)
 	return rev, nil
@@ -229,6 +223,7 @@ func (h *ReviewsHandler) Save(w http.ResponseWriter, r *http.Request) {
 		Grade *float64 `json:"grade"`
 		Return bool `json:"return"`
 		RAELevels map[string]string `json:"rae_levels"`
+		Scores map[string]float64 `json:"criteria_scores"`
 		ElapsedMs int64 `json:"elapsed_ms"`
 	}
 	if !decodeJSONLimit(w, r, &req, 256*1024) {
@@ -262,7 +257,11 @@ func (h *ReviewsHandler) Save(w http.ResponseWriter, r *http.Request) {
 	}
 
 	teacher := auth.UserFrom(r.Context())
-	rev, err := h.store.SaveTeacherReview(teacher.ID, r.PathValue("id"), feedback, grade, req.Return, req.RAELevels)
+	rev, err := h.store.SaveTeacherReview(teacher.ID, r.PathValue("id"), feedback, grade, req.Return, req.RAELevels, req.Scores)
+	if errors.Is(err, auth.ErrInvalidScore) {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: err.Error()})
+		return
+	}
 	if err != nil {
 		writeStoreErr(w, err, "guardar la revisión")
 		return

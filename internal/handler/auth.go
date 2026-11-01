@@ -40,10 +40,17 @@ type publicUser struct {
 	Activity auth.Activity `json:"activity"`
 	HasRecovery bool `json:"has_recovery"`
 	ConsentAt *time.Time `json:"consent_at,omitempty"`
+	ConsentOutdated bool `json:"consent_outdated,omitempty"`
 }
 
 func toPublic(u *auth.User) publicUser {
-	return publicUser{ID: u.ID, Name: u.Name, Email: u.Email, Role: u.Role, Activity: u.Activity, HasRecovery: u.RecoveryHash != "", ConsentAt: u.ConsentAt}
+	p := publicUser{ID: u.ID, Name: u.Name, Email: u.Email, Role: u.Role, Activity: u.Activity, HasRecovery: u.RecoveryHash != ""}
+	if u.ConsentCurrent() {
+		p.ConsentAt = u.ConsentAt
+	} else if u.ConsentAt != nil {
+		p.ConsentOutdated = true
+	}
+	return p
 }
 
 type registerRequest struct {
@@ -153,7 +160,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("record consent failed", "user_id", u.ID, "error", err)
 	} else {
-		u.ConsentAt = &consentAt
+		u.ConsentAt, u.ConsentVersion = &consentAt, auth.PrivacyVersion
 	}
 	slog.Info("user registered", "user_id", u.ID, "role", u.Role)
 	code, err := h.store.NewRecoveryCode(u.ID)

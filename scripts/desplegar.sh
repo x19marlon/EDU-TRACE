@@ -14,11 +14,13 @@ set -a
 source .env
 set +a
 SALUD="${SALUD:-http://127.0.0.1:${PORT:-8080}/api/health}"
+WEB_SALUD="${WEB_SALUD:-http://127.0.0.1:${WEB_PORT:-3000}/login}"
 ANTERIOR="$(git rev-parse HEAD)"
 
 construir() {
   echo "2. Compilando el backend"
   go build -o bin/edutrace-server ./cmd/server
+  go build -o bin/edutrace-respaldo ./cmd/respaldo
   echo "3. Compilando el frontend"
   (cd web && npm ci --no-audit --no-fund && npm run build)
 }
@@ -26,9 +28,9 @@ construir() {
 reiniciar() {
   echo "4. Reiniciando $SERVICIOS"
   $REINICIAR $SERVICIOS
-  echo "5. Comprobando $SALUD"
+  echo "5. Comprobando $SALUD y $WEB_SALUD"
   for _ in $(seq 1 30); do
-    if curl -fsS "$SALUD" > /dev/null 2>&1; then
+    if curl -fsS "$SALUD" > /dev/null 2>&1 && curl -fsS -o /dev/null "$WEB_SALUD" 2>&1; then
       return 0
     fi
     sleep 2

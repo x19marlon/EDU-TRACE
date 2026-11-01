@@ -150,7 +150,7 @@ func (s *Store) CreateCourse(teacherID, name string) (*Course, error) {
 // CreateGroup crea una clase dentro de una materia del docente.
 func (s *Store) CreateGroup(teacherID, courseID, name string) (*Group, error) {
 	var owned int
-	if err := s.db.QueryRow(`SELECT COUNT(*) FROM courses WHERE id = ? AND teacher_id = ?`,
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM course_staff WHERE course_id = ? AND teacher_id = ?`,
 		courseID, teacherID).Scan(&owned); err != nil {
 		return nil, err
 	}
@@ -195,6 +195,10 @@ type CourseSummary struct {
 	ID string `json:"id"`
 	Name string `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
+	ClosedAt *time.Time `json:"closed_at,omitempty"`
+	PurgeAt *time.Time `json:"purge_at,omitempty"`
+	Owner bool `json:"owner"`
+	Teachers []CourseTeacher `json:"teachers"`
 	Groups []GroupSummary `json:"groups"`
 	RAEs []RAE `json:"raes"`
 }
@@ -213,18 +217,22 @@ func (s *Store) teacherCourses(teacherID string) ([]CourseSummary, error) {
 	out := []CourseSummary{}
 	index := map[string]int{}
 
-	rows, err := s.db.Query(`SELECT id, name, created_at FROM courses WHERE teacher_id = ? ORDER BY created_at`, teacherID)
+	rows, err := s.db.Query(`SELECT id, name, created_at, closed_at, teacher_id = ? FROM courses
+		WHERE id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?) ORDER BY created_at`, teacherID, teacherID)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
 		var c CourseSummary
 		var created string
-		if err := rows.Scan(&c.ID, &c.Name, &created); err != nil {
+		var closed sql.NullString
+		if err := rows.Scan(&c.ID, &c.Name, &created, &closed, &c.Owner); err != nil {
 			rows.Close()
 			return nil, err
 		}
 		c.CreatedAt, c.Groups, c.RAEs = parseTime(created), []GroupSummary{}, []RAE{}
+		c.ClosedAt = timePtr(closed)
+		c.PurgeAt = s.purgeDate(c.ClosedAt)
 		index[c.ID] = len(out)
 		out = append(out, c)
 	}
@@ -236,6 +244,17 @@ func (s *Store) teacherCourses(teacherID string) ([]CourseSummary, error) {
 	if err != nil {
 		return nil, err
 	}
+	ids := make([]string, len(out))
+	for i := range out {
+		ids[i] = out[i].ID
+	}
+	teachers, err := courseTeachers(s.db, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range out {
+		out[i].Teachers = teachers[out[i].ID]
+	}
 	for i := range out {
 		if list, ok := raes[out[i].ID]; ok {
 			out[i].RAEs = list
@@ -246,7 +265,7 @@ func (s *Store) teacherCourses(teacherID string) ([]CourseSummary, error) {
 			(SELECT COUNT(*) FROM group_students gs WHERE gs.group_id = g.id),
 			(SELECT COUNT(*) FROM submissions s WHERE s.group_id = g.id AND s.kind = 'official')
 		FROM class_groups g JOIN courses c ON c.id = g.course_id
-		WHERE c.teacher_id = ? ORDER BY g.created_at`, teacherID)
+		WHERE c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?) ORDER BY g.created_at`, teacherID)
 	if err != nil {
 		return nil, err
 	}
@@ -287,21 +306,26 @@ type GroupDetail struct {
 	Students []GroupStudent `json:"students"`
 	Monitors []GroupMonitor `json:"monitors"`
 	AIMode string `json:"ai_mode"`
+	ClosedAt *time.Time `json:"closed_at,omitempty"`
+	PurgeAt *time.Time `json:"purge_at,omitempty"`
 }
 
 // ownedGroup devuelve la clase si pertenece a una materia del docente.
 // Si no, ErrNotFound: no se revela que la clase existe.
 func (s *Store) ownedGroup(q querier, teacherID, groupID string) (*GroupDetail, error) {
 	g := &GroupDetail{ID: groupID, Students: []GroupStudent{}, Monitors: []GroupMonitor{}}
-	err := q.QueryRow(`SELECT g.name, g.join_code, c.id, c.name, g.ai_mode
+	var closed sql.NullString
+	err := q.QueryRow(`SELECT g.name, g.join_code, c.id, c.name, g.ai_mode, c.closed_at
 		FROM class_groups g JOIN courses c ON c.id = g.course_id
-		WHERE g.id = ? AND c.teacher_id = ?`, groupID, teacherID).Scan(&g.Name, &g.JoinCode, &g.CourseID, &g.CourseName, &g.AIMode)
+		WHERE g.id = ? AND c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`, groupID, teacherID).Scan(&g.Name, &g.JoinCode, &g.CourseID, &g.CourseName, &g.AIMode, &closed)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
+	g.ClosedAt = timePtr(closed)
+	g.PurgeAt = s.purgeDate(g.ClosedAt)
 	return g, nil
 }
 
@@ -407,7 +431,7 @@ func (s *Store) SubmissionForTeacher(teacherID, submissionID string) (*Submissio
 		FROM submissions s
 		JOIN class_groups g ON g.id = s.group_id
 		JOIN courses c ON c.id = g.course_id
-		WHERE s.id = ? AND c.teacher_id = ?`, submissionID, teacherID))
+		WHERE s.id = ? AND c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`, submissionID, teacherID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -426,9 +450,11 @@ type StudentGroup struct {
 	CourseName string `json:"course_name"`
 	TeacherName string `json:"teacher_name"`
 	AIMode string `json:"ai_mode"`
+	Evaluation *OpenEvaluation `json:"evaluation,omitempty"`
+	ClosedAt *time.Time `json:"closed_at,omitempty"`
 }
 
-const studentGroupSelect = `SELECT g.id, g.name, c.name, t.name, g.ai_mode
+const studentGroupSelect = `SELECT g.id, g.name, c.name, t.name, g.ai_mode, c.closed_at
 	FROM class_groups g
 	JOIN courses c ON c.id = g.course_id
 	JOIN users t ON t.id = c.teacher_id`
@@ -443,15 +469,23 @@ func (s *Store) JoinGroup(studentID, code string) (*StudentGroup, error) {
 	if err != nil {
 		return nil, err
 	}
+	if closed, err := courseClosed(s.db, groupID); err != nil || closed {
+		if err == nil {
+			err = ErrCourseClosed
+		}
+		return nil, err
+	}
 	if _, err := s.db.Exec(`INSERT INTO group_students (group_id, student_id, joined_at) VALUES (?, ?, ?)
 		ON CONFLICT DO NOTHING`, groupID, studentID, fmtTime(time.Now())); err != nil {
 		return nil, err
 	}
 	var sg StudentGroup
+	var closed sql.NullString
 	if err := s.db.QueryRow(studentGroupSelect+` WHERE g.id = ?`, groupID).
-		Scan(&sg.ID, &sg.Name, &sg.CourseName, &sg.TeacherName, &sg.AIMode); err != nil {
+		Scan(&sg.ID, &sg.Name, &sg.CourseName, &sg.TeacherName, &sg.AIMode, &closed); err != nil {
 		return nil, err
 	}
+	sg.ClosedAt = timePtr(closed)
 	return &sg, nil
 }
 
@@ -476,13 +510,24 @@ func (s *Store) studentGroups(studentID string) ([]StudentGroup, error) {
 	out := []StudentGroup{}
 	for rows.Next() {
 		var sg StudentGroup
-		if err := rows.Scan(&sg.ID, &sg.Name, &sg.CourseName, &sg.TeacherName, &sg.AIMode); err != nil {
+		var closed sql.NullString
+		if err := rows.Scan(&sg.ID, &sg.Name, &sg.CourseName, &sg.TeacherName, &sg.AIMode, &closed); err != nil {
 			return nil, err
 		}
+		sg.ClosedAt = timePtr(closed)
 		out = append(out, sg)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	for i := range out {
+		if out[i].Evaluation, err = openEvaluation(s.db, `a.group_id = ?`, out[i].ID); err != nil {
+			return nil, err
+		}
+	}
 	sort.Slice(out, func(i, j int) bool { return out[i].CourseName+out[i].Name < out[j].CourseName+out[j].Name })
-	return out, rows.Err()
+	return out, nil
 }
 
 func isEnrolled(q querier, studentID, groupID string) (bool, error) {
@@ -534,6 +579,12 @@ func (s *Store) AddSubmission(sub *Submission) error {
 	}
 	if !ok {
 		return ErrNotEnrolled
+	}
+	if closed, err := courseClosed(tx, sub.GroupID); err != nil || closed {
+		if err == nil {
+			err = ErrCourseClosed
+		}
+		return err
 	}
 	if !sub.IsAttempt() && sub.AssignmentID != "" {
 		if err := checkDeadline(tx, sub.AssignmentID, sub.GroupID, sub.CreatedAt); err != nil {
@@ -663,6 +714,9 @@ func (s *Store) studentSubmissions(studentID, kind string, limit int) ([]Student
 		out[i].Questions = questions[out[i].ID]
 		if out[i].Review != nil {
 			out[i].Review.RAEs = levels[out[i].ID]
+			if out[i].Review.Criteria, err = reviewCriteria(s.db, out[i].ID); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return out, nil

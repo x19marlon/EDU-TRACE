@@ -48,6 +48,7 @@ type User struct {
 	Activity Activity `json:"activity"`
 	RecoveryHash string `json:"-"`
 	ConsentAt *time.Time `json:"consent_at,omitempty"`
+	ConsentVersion string `json:"-"`
 }
 
 //go:embed schema.sql
@@ -59,6 +60,7 @@ type Store struct {
 	db *sql.DB
 	dir string
 	ttl time.Duration
+	retention time.Duration
 }
 
 // OpenStore abre (o crea) la base en dir/edutrace.db. Si encuentra un edutrace.json
@@ -81,7 +83,7 @@ func OpenStore(dir string, ttl time.Duration) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("crear esquema: %w", err)
 	}
-	s := &Store{db: db, dir: dir, ttl: ttl}
+	s := &Store{db: db, dir: dir, ttl: ttl, retention: DefaultRetention}
 	if err := s.upgradeSchema(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("actualizar esquema: %w", err)
@@ -95,6 +97,11 @@ func OpenStore(dir string, ttl time.Duration) (*Store, error) {
 
 // Close cierra la base de datos.
 func (s *Store) Close() error { return s.db.Close() }
+
+func (s *Store) Ping() error {
+	var one int
+	return s.db.QueryRow(`SELECT 1`).Scan(&one)
+}
 
 // ---------- Ayudas para SQL ----------
 
@@ -176,14 +183,14 @@ func hashToken(token string) string {
 
 // ---------- Usuarios y sesiones ----------
 
-const userCols = `u.id, u.name, u.email, u.role, u.password_hash, u.created_at, u.compiles, u.feedbacks, u.last_active_at, u.recovery_hash, u.consent_at`
+const userCols = `u.id, u.name, u.email, u.role, u.password_hash, u.created_at, u.compiles, u.feedbacks, u.last_active_at, u.recovery_hash, u.consent_at, u.consent_version`
 
 func scanUser(sc scanner) (*User, error) {
 	var u User
 	var created string
 	var lastActive, consent sql.NullString
 	if err := sc.Scan(&u.ID, &u.Name, &u.Email, &u.Role, &u.PasswordHash, &created,
-		&u.Activity.Compiles, &u.Activity.Feedbacks, &lastActive, &u.RecoveryHash, &consent); err != nil {
+		&u.Activity.Compiles, &u.Activity.Feedbacks, &lastActive, &u.RecoveryHash, &consent, &u.ConsentVersion); err != nil {
 		return nil, err
 	}
 	u.ConsentAt = timePtr(consent)
@@ -255,6 +262,7 @@ func (s *Store) CreateSession(userID string) (string, time.Time, error) {
 		hashToken(token), userID, fmtTime(expires)); err != nil {
 		return "", time.Time{}, err
 	}
+	_, _ = s.db.Exec(`UPDATE users SET last_active_at = ? WHERE id = ?`, fmtTime(now), userID)
 	return token, expires, nil
 }
 

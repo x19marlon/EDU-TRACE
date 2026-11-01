@@ -1,0 +1,24 @@
+[Unit]
+Description=EduTrace backend (pruebas)
+After=network-online.target ollama.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=edutrace
+WorkingDirectory=/opt/edutrace-pruebas
+EnvironmentFile=/opt/edutrace-pruebas/.env
+ExecStart=/opt/edutrace-pruebas/bin/edutrace-server
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+TasksMax=1024
+MemoryHigh=1G
+MemoryMax=2G
+OOMScoreAdjust=-500
+
+[Install]
+WantedBy=multi-user.target

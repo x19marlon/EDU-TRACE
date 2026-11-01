@@ -185,7 +185,7 @@ export default function LoginPage() {
             </h2>
             <p className="mt-1 mb-6 text-sm text-ink-soft">
               {mode === "recover"
-                ? "Escribe tu email, el código de recuperación que guardaste y una contraseña nueva."
+                ? "Escribe tu email, el código de recuperación que guardaste (o el que te entregó tu profesor) y una contraseña nueva."
                 : SUBTITLES[mode][role]}
             </p>
 
@@ -218,7 +218,8 @@ export default function LoginPage() {
                   required
                   autoComplete="off"
                   spellCheck={false}
-                  placeholder="Código de recuperación (XXXX-XXXX-XXXX)"
+                  placeholder="Código (XXXX-XXXX-XXXX)"
+                  aria-label="Código de recuperación o código de tu profesor"
                   value={recoveryCode}
                   onChange={(e) => setRecoveryCode(e.target.value.toUpperCase())}
                   className={`${inputClass} font-mono tracking-wider`}

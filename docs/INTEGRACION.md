@@ -15,7 +15,7 @@ En la clase, los botones «Exportar notas (CSV)» y «Exportar revisiones (CSV)�
 | Archivo | Una fila por | Columnas |
 |---|---|---|
 | `notas-<materia>-<clase>.csv` | Estudiante | Nombre, Dirección de correo, una columna por taller con la nota de la última entrega devuelta, Promedio |
-| `revisiones-<materia>-<clase>.csv` | Revisión devuelta | Nombre, Dirección de correo, Taller, Entregada, Retraso (horas), Casos que pasa, Nota, Nota propuesta por la IA, Devuelta, Origen del texto, Minutos de revisión, Retroalimentación |
+| `revisiones-<materia>-<clase>.csv` | Revisión devuelta | Nombre, Dirección de correo, Taller, Entregada, Retraso (horas), Casos que pasa, Nota, Nota propuesta por la IA, Devuelta, Origen del texto, Modelo de IA, Minutos de revisión, Retroalimentación |
 
 ## Integración que se va a buscar
 

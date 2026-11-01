@@ -452,7 +452,7 @@ export default function AnnotatedCode({
                 type="button"
                 disabled={busy}
                 onClick={send}
-                className="rounded-full bg-mint-600 px-4 py-1.5 text-xs font-bold text-white shadow-soft transition hover:bg-mint-700 disabled:opacity-40"
+                className="rounded-full bg-mint-700 px-4 py-1.5 text-xs font-bold text-white shadow-soft transition hover:bg-ink disabled:opacity-40"
               >
                 Enviar al estudiante ({myDrafts})
               </button>

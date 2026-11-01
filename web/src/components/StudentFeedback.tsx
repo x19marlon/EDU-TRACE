@@ -79,6 +79,21 @@ export function SubmissionFeedback({ item }: { item: StudentSubmission }) {
               ))}
             </ul>
           )}
+          {(review.criteria ?? []).length > 0 && (
+            <table className="mt-2 w-full rounded-2xl bg-white text-left text-sm">
+              <caption className="px-3 pt-2 text-left text-xs font-bold uppercase tracking-wider text-ink-soft">Rúbrica</caption>
+              <tbody>
+                {review.criteria!.map((c) => (
+                  <tr key={c.id} className="border-t border-lavender-50">
+                    <th scope="row" className="px-3 py-1.5 font-normal">{c.name}</th>
+                    <td className="px-3 py-1.5 text-right font-bold tabular-nums">
+                      {c.score !== undefined ? c.score.toFixed(1) : "—"} / {c.points.toFixed(1)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           <p className="mt-2 text-xs text-ink-faint">
             {ORIGIN_NOTE[origin]} {teacher} el {formatDateTime(review.returned_at)}.
             {review.ai_assisted && " La calificación la definió tu profesor, no la IA."} Si tienes dudas sobre esta retroalimentación,

@@ -46,16 +46,21 @@ export default function StudentAssignments({
       {selected ? (
         <div className="mt-4 grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            {selected.due_at && (
-              <div className="mb-3">
-                <DeadlineBadge assignment={selected} withDetail />
+            {(selected.due_at || selected.evaluation) && (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {selected.evaluation && (
+                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900">Evaluación · sin IA</span>
+                )}
+                {selected.due_at && <DeadlineBadge assignment={selected} withDetail />}
               </div>
             )}
             <div className="max-h-56 overflow-auto whitespace-pre-wrap rounded-2xl bg-lavender-50/70 p-4 text-sm leading-relaxed">
               {selected.statement}
             </div>
             <p className="mt-2 text-xs text-ink-faint">
-              La retroalimentación de la IA tendrá en cuenta este enunciado, y tu envío quedará asociado a este taller.
+              {selected.evaluation
+                ? "Es una evaluación: resuélvela sin IA. Tu envío quedará asociado a este taller."
+                : "La retroalimentación de la IA tendrá en cuenta este enunciado, y tu envío quedará asociado a este taller."}
             </p>
           </div>
           <div>

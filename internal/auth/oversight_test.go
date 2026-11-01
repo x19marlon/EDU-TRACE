@@ -38,7 +38,7 @@ func newClass(t *testing.T) *classFixture {
 		_, err := s.JoinGroup(u.ID, f.group.JoinCode)
 		mustNoErr(t, err)
 	}
-	f.assignment, err = s.CreateAssignment(f.prof.ID, f.group.ID, "Taller 2", "Suma de 1 a n", "", nil, LatePolicy{AllowLate: true}, nil)
+	f.assignment, err = s.CreateAssignment(f.prof.ID, f.group.ID, "Taller 2", "Suma de 1 a n", "", nil, AssignmentPolicy{AllowLate: true}, nil)
 	mustNoErr(t, err)
 	return f
 }
@@ -181,7 +181,7 @@ func TestDraftQueueJobs(t *testing.T) {
 		t.Fatal("sin revisión necesita propuesta")
 	}
 	g := 4.0
-	_, err = s.SaveAIDraft(f.prof.ID, first.ID, "propuesta", &g, "razón", "alta", nil)
+	_, err = s.SaveAIDraft(f.prof.ID, first.ID, AIDraft{Feedback: "propuesta", Grade: &g, Reason: "razón", Confidence: "alta"})
 	mustNoErr(t, err)
 	if needed, _ := s.NeedsAIDraft(first.ID); needed {
 		t.Fatal("ya tiene propuesta: no debe generarse otra")
@@ -202,7 +202,7 @@ func TestDiscardOriginAndAudit(t *testing.T) {
 		t.Fatalf("descartó sin propuesta: %v", err)
 	}
 	ai := 3.5
-	_, err := s.SaveAutoAIDraft(f.prof.ID, sub.ID, "## ¿Qué sigue?\nPrueba con 0.", &ai, "razón", "media", nil)
+	_, err := s.SaveAutoAIDraft(f.prof.ID, sub.ID, AIDraft{Feedback: "## ¿Qué sigue?\nPrueba con 0.", Grade: &ai, Reason: "razón", Confidence: "media"})
 	mustNoErr(t, err)
 	rev, err := s.DiscardAIDraft(f.prof.ID, sub.ID)
 	mustNoErr(t, err)
@@ -213,7 +213,7 @@ func TestDiscardOriginAndAudit(t *testing.T) {
 		t.Fatal("una propuesta descartada no se vuelve a generar sola")
 	}
 
-	_, err = s.SaveAIDraft(f.prof.ID, sub.ID, "Texto IA", &ai, "razón", "alta", nil)
+	_, err = s.SaveAIDraft(f.prof.ID, sub.ID, AIDraft{Feedback: "Texto IA", Grade: &ai, Reason: "razón", Confidence: "alta"})
 	mustNoErr(t, err)
 	rev, err = s.ReviewForTeacher(f.prof.ID, sub.ID)
 	mustNoErr(t, err)
@@ -221,7 +221,7 @@ func TestDiscardOriginAndAudit(t *testing.T) {
 		t.Fatalf("pedir otra propuesta reactiva la IA: %+v", rev)
 	}
 	mine := 4.0
-	_, err = s.SaveTeacherReview(f.prof.ID, sub.ID, "Texto IA con mi aporte", &mine, false, nil)
+	_, err = s.SaveTeacherReview(f.prof.ID, sub.ID, "Texto IA con mi aporte", &mine, false, nil, nil)
 	mustNoErr(t, err)
 	added, err := s.AddReviewTime(f.prof.ID, sub.ID, 90_000)
 	mustNoErr(t, err)
@@ -231,7 +231,7 @@ func TestDiscardOriginAndAudit(t *testing.T) {
 	if added, _ := s.AddReviewTime(f.prof.ID, sub.ID, 10*time.Hour.Milliseconds()); added != maxReviewMs {
 		t.Fatalf("el tiempo de una sesión se limita: %d", added)
 	}
-	rev, err = s.SaveTeacherReview(f.prof.ID, sub.ID, "Texto IA con mi aporte", &mine, true, nil)
+	rev, err = s.SaveTeacherReview(f.prof.ID, sub.ID, "Texto IA con mi aporte", &mine, true, nil, nil)
 	mustNoErr(t, err)
 	if rev.Origin != OriginAIEdited || rev.ReviewMs != 90_000+maxReviewMs {
 		t.Fatalf("origen y tiempo: %+v", rev)
@@ -240,9 +240,9 @@ func TestDiscardOriginAndAudit(t *testing.T) {
 		t.Fatalf("descartó después de devolver: %v", err)
 	}
 	late := f.submit(t, f.beto, KindOfficial, nil)
-	_, err = s.SaveTeacherReview(f.prof.ID, late.ID, "Revisada sin IA", &mine, true, nil)
+	_, err = s.SaveTeacherReview(f.prof.ID, late.ID, "Revisada sin IA", &mine, true, nil, nil)
 	mustNoErr(t, err)
-	if _, err := s.SaveAutoAIDraft(f.prof.ID, late.ID, "tarde", &ai, "", "alta", nil); !errors.Is(err, ErrAlreadyReturned) {
+	if _, err := s.SaveAutoAIDraft(f.prof.ID, late.ID, AIDraft{Feedback: "tarde", Grade: &ai, Confidence: "alta"}); !errors.Is(err, ErrAlreadyReturned) {
 		t.Fatalf("la propuesta automática no debe llegar a una revisión ya devuelta: %v", err)
 	}
 	if rev, _ := s.ReviewForTeacher(f.prof.ID, late.ID); rev.AIAt != nil {
@@ -285,15 +285,15 @@ func TestAIModeGate(t *testing.T) {
 	if f.group.AIMode != AIModeSupervised {
 		t.Fatalf("las clases nuevas deben empezar supervisadas: %q", f.group.AIMode)
 	}
-	if ok, _ := s.StudentAIAllowed(f.ana.ID, f.assignment.ID); ok {
+	if b, _ := s.StudentAIBlock(f.ana.ID, f.assignment.ID); b == nil {
 		t.Fatal("en modo supervisado el estudiante no recibe IA directa")
 	}
-	if ok, _ := s.StudentAIAllowed(f.ana.ID, ""); ok {
+	if b, _ := s.StudentAIBlock(f.ana.ID, ""); b == nil {
 		t.Fatal("tampoco en práctica libre si alguna de sus clases es supervisada")
 	}
 	loner, err := s.CreateUser("Sola", "sola@u.edu", "password123", RoleStudent)
 	mustNoErr(t, err)
-	if ok, _ := s.StudentAIAllowed(loner.ID, ""); !ok {
+	if b, _ := s.StudentAIBlock(loner.ID, ""); b != nil {
 		t.Fatal("sin clases puede practicar con IA")
 	}
 	if err := s.SetGroupAIMode(f.prof.ID, f.group.ID, "libre"); !errors.Is(err, ErrInvalidAIMode) {
@@ -303,7 +303,7 @@ func TestAIModeGate(t *testing.T) {
 		t.Fatalf("otro profesor cambió el modo: %v", err)
 	}
 	mustNoErr(t, s.SetGroupAIMode(f.prof.ID, f.group.ID, AIModeImmediate))
-	if ok, _ := s.StudentAIAllowed(f.ana.ID, f.assignment.ID); !ok {
+	if b, _ := s.StudentAIBlock(f.ana.ID, f.assignment.ID); b != nil {
 		t.Fatal("en modo inmediato el estudiante recibe IA")
 	}
 	if groups := s.StudentGroups(f.ana.ID); groups[0].AIMode != AIModeImmediate {
@@ -338,16 +338,16 @@ func TestGroupMetrics(t *testing.T) {
 	slow := f.submit(t, f.beto, KindOfficial, nil)
 	f.submit(t, f.beto, KindOfficial, nil)
 	g := 4.0
-	_, err := s.SaveAIDraft(f.prof.ID, quick.ID, "IA", &g, "", "alta", nil)
+	_, err := s.SaveAIDraft(f.prof.ID, quick.ID, AIDraft{Feedback: "IA", Grade: &g, Confidence: "alta"})
 	mustNoErr(t, err)
-	approved, err := s.SaveTeacherReview(f.prof.ID, quick.ID, "IA", &g, true, nil)
+	approved, err := s.SaveTeacherReview(f.prof.ID, quick.ID, "IA", &g, true, nil, nil)
 	mustNoErr(t, err)
 	if approved.GradeSource() != "ai_confirmed" {
 		t.Fatalf("devolver con la nota de la IA la confirma: %q", approved.GradeSource())
 	}
 	_, err = s.AddReviewTime(f.prof.ID, quick.ID, 5*60*1000)
 	mustNoErr(t, err)
-	_, err = s.SaveTeacherReview(f.prof.ID, slow.ID, "Escrita por mí", &g, true, nil)
+	_, err = s.SaveTeacherReview(f.prof.ID, slow.ID, "Escrita por mí", &g, true, nil, nil)
 	mustNoErr(t, err)
 	_, err = s.AddReviewTime(f.prof.ID, slow.ID, 15*60*1000)
 	mustNoErr(t, err)
@@ -398,7 +398,7 @@ func TestPersonalData(t *testing.T) {
 	mustNoErr(t, s.UpdateName(f.ana.ID, "  Ana María "))
 	sub := f.submit(t, f.ana, KindOfficial, nil)
 	g := 4.0
-	_, err = s.SaveTeacherReview(f.prof.ID, sub.ID, "Bien", &g, true, nil)
+	_, err = s.SaveTeacherReview(f.prof.ID, sub.ID, "Bien", &g, true, nil, nil)
 	mustNoErr(t, err)
 
 	data, err := s.ExportData(u)

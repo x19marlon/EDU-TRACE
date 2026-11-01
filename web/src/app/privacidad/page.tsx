@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: "Política de datos · EduTrace",
 };
 
-const VERSION = "2026-10";
+const VERSION = "2026-11";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -53,6 +53,8 @@ export default function PrivacyPage() {
             <li>De tu trabajo: el código que compilas y envías, la entrada y la salida de tus programas, los mensajes del compilador y el resultado de los casos de prueba.</li>
             <li>De tu proceso: la retroalimentación que recibes, la revisión y la nota de tu profesor, los comentarios y marcas de los monitores, tus preguntas sobre la retroalimentación con sus respuestas, si dijiste haberla entendido y el registro de quién revisó y aprobó cada retroalimentación. Tu profesor ve las respuestas a «¿Entendiste esta retroalimentación?» resumidas y sin tu nombre.</li>
             <li>De uso: cuántas veces compilas o pides retroalimentación, tu última actividad y cuánto tarda la IA en responder. Estos tiempos se guardan sin tu nombre.</li>
+            <li>De la práctica: qué ejercicios intentaste, cuántas veces y cuántos casos pasaste. Tus casos de prueba propios se guardan solo en tu navegador.</li>
+            <li>Avisos: las novedades que te mostramos en la campana (por ejemplo, «tu profesor devolvió la revisión») y si los leíste o te los enviamos por correo.</li>
           </ul>
         </Section>
 
@@ -61,6 +63,7 @@ export default function PrivacyPage() {
             <li>Darte retroalimentación formativa sobre tu código y permitir que tu profesor la revise, la edite y la apruebe.</li>
             <li>Que tu profesor evalúe tus entregas y acompañe tu proceso de aprendizaje en la asignatura.</li>
             <li>Medir, de forma agregada, si la retroalimentación llega a tiempo y si la plataforma funciona bien.</li>
+            <li>Avisarte en la plataforma y, si lo permites, por correo, cuando hay novedades en tus entregas o preguntas. El correo solo dice qué pasó y en qué taller; nunca incluye tu código, tu nota ni el texto de la retroalimentación. Puedes desactivarlo en «Mi cuenta» → «Avisos».</li>
           </ul>
           <p>No usamos tus datos para publicidad, no los vendemos y no los compartimos con terceros.</p>
         </Section>
@@ -70,13 +73,17 @@ export default function PrivacyPage() {
             <li>El modelo de IA funciona en el mismo servidor de EduTrace. Ningún dato se envía a servicios de IA externos.</li>
             <li>Al modelo solo le llegan el código, la entrada y la salida del programa, los mensajes del compilador, el enunciado del taller y los resultados de los casos de prueba. Nunca tu nombre, tu email ni tus notas anteriores.</li>
             <li>La IA no califica ni decide. En el modo supervisado, que es el predeterminado, ninguna retroalimentación generada por IA te llega sin que tu profesor la apruebe. Siempre se indica cuándo participó la IA.</li>
+            <li>Cada propuesta de la IA guarda qué modelo y qué versión de las instrucciones la generó, para que tu profesor pueda comparar su calidad.</li>
+            <li>Durante una evaluación (parcial o quiz) que tu profesor marque así, la IA y el chat se desactivan para tu clase hasta la fecha límite.</li>
           </ul>
         </Section>
 
         <Section title="Quién puede ver tus datos">
           <p>
-            Tú; el profesor de cada clase en la que estás inscrito; y los monitores que ese profesor asigne a tu clase, que ven tus
-            entregas para retroalimentarte pero no califican. Nadie más tiene acceso desde la plataforma.
+            Tú; el profesor de cada clase en la que estás inscrito y los profesores con quienes comparte la materia; y los monitores
+            que asignen a tu clase, que ven tus entregas para retroalimentarte pero no califican. Tus profesores pueden ver alertas sobre
+            tu avance (por ejemplo, talleres sin entregar) y generar un reporte de seguimiento para una tutoría contigo. Nadie más tiene
+            acceso desde la plataforma.
           </p>
         </Section>
 
@@ -91,11 +98,24 @@ export default function PrivacyPage() {
         </Section>
 
         <Section title="Conservación y seguridad">
-          <p>
-            Los datos se conservan mientras tengas la cuenta y tu profesor mantenga la clase. Las contraseñas se guardan con hash, la
-            sesión usa una cookie que el navegador no expone a scripts, el código de los estudiantes se ejecuta en un entorno aislado sin
-            red, y cada consulta comprueba en la base de datos que tengas permiso para ver lo que pides.
-          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            <li>
+              Cuando tu profesor cierra el periodo de una materia, recibes un aviso con la fecha en que se borrarán sus datos. En ese
+              momento se borran automáticamente las entregas, revisiones, preguntas y registros de esa materia (por defecto, 180 días
+              después del cierre). Antes puedes descargarlos desde «Mi cuenta».
+            </li>
+            <li>Si tu cuenta queda sin clases y sin actividad durante ese mismo plazo, también se borra.</li>
+            <li>Los avisos se borran a los 90 días y los tiempos de la IA, que no tienen tu nombre, al año.</li>
+            <li>
+              Si olvidas tu contraseña y no tienes tu código de recuperación, tu profesor puede generarte un código de un solo uso que
+              vence en 24 horas. Recibirás un aviso cada vez que lo haga.
+            </li>
+            <li>
+              Las contraseñas se guardan con hash, la conexión va cifrada (HTTPS), la sesión usa una cookie que el navegador no expone a
+              scripts, el código de los estudiantes se ejecuta en un entorno aislado sin red y con límites de procesos, memoria y disco,
+              y cada consulta comprueba en la base de datos que tengas permiso para ver lo que pides.
+            </li>
+          </ul>
         </Section>
 
         <Section title="Menores de edad">

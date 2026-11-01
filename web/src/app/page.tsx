@@ -7,22 +7,27 @@ import FeedbackPanel from "@/components/FeedbackPanel";
 import ChatPanel from "@/components/ChatPanel";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/AppShell";
-import { Avatar, Card, Spinner } from "@/components/ui";
+import { Avatar, Card, SmallButton, Spinner } from "@/components/ui";
 import { useAuth } from "@/components/AuthProvider";
 import StudentClasses from "@/components/StudentClasses";
 import StudentAssignments from "@/components/StudentAssignments";
 import { useNow } from "@/components/Deadline";
-import { deadlineState } from "@/lib/format";
+import { deadlineState, formatDateTime } from "@/lib/format";
 import MySubmissions from "@/components/MySubmissions";
 
+import { TestsEditor } from "@/components/TeacherAssignments";
 import {
+  AIRequestMode,
   compileCode,
   streamFeedback,
   CompileResult,
+  Exercise,
   FeedbackContext,
   FeedbackMeta,
   FeedbackMode,
+  listExercises,
   listMyAssignments,
+  TestCase,
   listMyGroups,
   StudentAssignment,
   StudentGroup,
@@ -182,7 +187,7 @@ function CompilerPage() {
     listMyGroups()
       .then((gs) => {
         setGroups(gs);
-        setGroupId((cur) => cur ?? gs[0]?.id ?? null);
+        setGroupId((cur) => cur ?? gs.find((g) => !g.closed_at)?.id ?? null);
       })
       .catch(() => setGroups([]));
     loadAssignments();
@@ -196,7 +201,46 @@ function CompilerPage() {
     }
   }, [groupId, assignments, assignmentId]);
 
-  const [activeTab, setActiveTab] = useState<"output" | FeedbackMode | "chat">("output");
+  const [activeTab, setActiveTab] = useState<"output" | FeedbackMode | "chat" | "pista">("output");
+
+  const [exercise, setExercise] = useState<Exercise | null>(null);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("ejercicio");
+    if (!id) return;
+    listExercises()
+      .then((list) => setExercise(list.find((e) => e.id === id) ?? null))
+      .catch(() => setExercise(null));
+  }, []);
+  const leaveExercise = () => {
+    setExercise(null);
+    window.history.replaceState(null, "", "/");
+  };
+  const contextAssignment = exercise ? null : assignmentId;
+
+  const testsKey = user ? `edutrace:casos:${user.id}:${exercise?.id ?? contextAssignment ?? "libre"}` : null;
+  const [ownTests, setOwnTests] = useState<TestCase[]>([]);
+  useEffect(() => {
+    if (!testsKey) return;
+    try {
+      setOwnTests(JSON.parse(localStorage.getItem(testsKey) ?? "[]"));
+    } catch {
+      setOwnTests([]);
+    }
+  }, [testsKey]);
+  const saveOwnTests = (tests: TestCase[]) => {
+    setOwnTests(tests);
+    try {
+      if (testsKey) localStorage.setItem(testsKey, JSON.stringify(tests));
+    } catch {}
+  };
+
+  const [hints, setHints] = useState<{ code: string; items: string[]; loading: boolean; error: string | null }>({
+    code: "",
+    items: [],
+    loading: false,
+    error: null,
+  });
+  const hintText = useRef("");
 
   // Contadores del saludo: parten de la sesión y se actualizan localmente.
   const [stats, setStats] = useState({
@@ -213,7 +257,12 @@ function CompilerPage() {
 
     try {
       // Con una clase elegida, la compilación queda como intento visible para el profesor.
-      const context = isStudent && groupId ? { group_id: groupId, assignment_id: assignmentId ?? undefined } : undefined;
+      const own = ownTests
+        .filter((t) => t.expected.trim())
+        .map((t) => ({ id: "", name: t.name, stdin: t.stdin, expected: t.expected, match: t.match, hidden: false }));
+      const context = exercise
+        ? { exercise_id: exercise.id, own_tests: own }
+        : { ...(isStudent && groupId ? { group_id: groupId, assignment_id: assignmentId ?? undefined } : {}), own_tests: own };
       const result = await compileCode(code, stdin, context);
       setCompileResult(result);
       setCompiledRun({ code, stdin });
@@ -225,7 +274,51 @@ function CompilerPage() {
     } finally {
       setIsCompiling(false);
     }
-  }, [code, stdin, setUser, isStudent, groupId, assignmentId]);
+  }, [code, stdin, setUser, isStudent, groupId, assignmentId, exercise, ownTests]);
+
+  const aiContext = (mode: AIRequestMode): FeedbackContext => {
+    const upToDate = compileResult !== null && compiledRun?.code === code;
+    const base = {
+      mode,
+      code,
+      assignment_id: (isStudent && contextAssignment) || undefined,
+      exercise_id: exercise?.id,
+      tests: undefined as CompileResult["tests"],
+    };
+    return upToDate && compileResult
+      ? {
+          ...base,
+          compiled: true,
+          success: compileResult.success,
+          compiler_output: compileResult.compiler_output,
+          stdin: compiledRun.stdin,
+          program_output: compileResult.program_output,
+          exit_code: compileResult.exit_code,
+          run_error: compileResult.error ?? "",
+          tests: compileResult.tests?.filter((t) => !t.own),
+        }
+      : { ...base, compiled: false };
+  };
+
+  const handleHint = async () => {
+    const previous = hints.code === code && !hints.error ? hints.items : [];
+    if (previous.length >= 3) return;
+    setActiveTab("pista");
+    hintText.current = "";
+    setHints({ code, items: [...previous, ""], loading: true, error: null });
+    try {
+      await streamFeedback({ ...aiContext("pista"), level: previous.length + 1, previous }, (token) => {
+        hintText.current += token;
+        setHints((h) => ({ ...h, items: [...previous, hintText.current] }));
+      });
+      setStats((s) => ({ ...s, feedbacks: s.feedbacks + 1 }));
+    } catch (err) {
+      if (err instanceof UnauthorizedError) setUser(null);
+      setHints((h) => ({ ...h, items: previous, error: networkMessage(err, "No se pudo pedir la pista") }));
+    } finally {
+      setHints((h) => ({ ...h, loading: false }));
+    }
+  };
 
   const handleFeedback = async (mode: FeedbackMode) => {
     feedbackText.current[mode] = "";
@@ -233,23 +326,7 @@ function CompilerPage() {
     setActiveTab(mode);
 
     try {
-      const upToDate = compileResult !== null && compiledRun?.code === code;
-      const base = { mode, code, assignment_id: (isStudent && assignmentId) || undefined };
-      const context: FeedbackContext =
-        upToDate && compileResult
-          ? {
-              ...base,
-              compiled: true,
-              success: compileResult.success,
-              compiler_output: compileResult.compiler_output,
-              stdin: compiledRun.stdin,
-              program_output: compileResult.program_output,
-              exit_code: compileResult.exit_code,
-              run_error: compileResult.error ?? "",
-              tests: compileResult.tests,
-            }
-          : { ...base, compiled: false };
-
+      const context = aiContext(mode);
       const meta = await streamFeedback(
         context,
         (token) => {
@@ -319,9 +396,20 @@ function CompilerPage() {
 
   if (!user) return null;
   const firstName = user.name.split(" ")[0];
-  const currentGroup = groups.find((g) => g.id === groupId);
+  const openGroups = groups.filter((g) => !g.closed_at);
+  const currentGroup = openGroups.find((g) => g.id === groupId);
+  const exam = isStudent
+    ? openGroups.map((g) => g.evaluation).find((e) => e && new Date(e.until).getTime() > now)
+    : undefined;
+  const examNote = exam
+    ? `Hay una evaluación en curso («${exam.title}»): la IA y el chat están desactivados hasta el ${formatDateTime(exam.until)}.`
+    : "";
   const aiAllowed =
-    !isStudent || (assignmentId ? currentGroup?.ai_mode === "inmediata" : groups.every((g) => g.ai_mode === "inmediata"));
+    !isStudent ||
+    (!exam && (contextAssignment ? currentGroup?.ai_mode === "inmediata" : openGroups.every((g) => g.ai_mode === "inmediata")));
+  const anyAILoading = anyFeedbackLoading || hints.loading;
+  const hintsLeft = hints.code === code && !hints.error ? 3 - hints.items.length : 3;
+  const aiNote = examNote || SUPERVISED_NOTE;
   const selectedAssignment = groupAssignments.find((a) => a.id === assignmentId);
   const deadline = selectedAssignment ? deadlineState(selectedAssignment, now) : null;
   const closed = deadline !== null && !deadline.canSubmit;
@@ -353,10 +441,15 @@ function CompilerPage() {
             conexión.
           </p>
         )}
+        {exam && (
+          <p role="status" className="mt-4 rounded-2xl bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900">
+            {examNote} Puedes compilar, probar tu código con los casos y enviarlo.
+          </p>
+        )}
         {isStudent && (
           <div className="mt-4">
             <StudentClasses
-              groups={groups}
+              groups={openGroups}
               selectedId={groupId}
               onSelect={setGroupId}
               onJoined={(g) => {
@@ -379,8 +472,42 @@ function CompilerPage() {
         )}
       </section>
       {isStudent && <MySubmissions refreshKey={sentCount} />}
-      {isStudent && groupAssignments.length > 0 && (
-        <StudentAssignments assignments={groupAssignments} selectedId={assignmentId} onSelect={setAssignmentId} />
+      {exercise ? (
+        <Card
+          className="rise-in"
+          title={
+            <span className="flex flex-wrap items-center gap-2">
+              Práctica: {exercise.title}
+              <span className="rounded-full bg-mint-100 px-2.5 py-0.5 text-[11px] font-bold text-mint-700">{exercise.topic}</span>
+            </span>
+          }
+          action={<SmallButton onClick={leaveExercise}>Salir de la práctica</SmallButton>}
+        >
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="whitespace-pre-wrap rounded-2xl bg-lavender-50/70 p-4 text-sm leading-relaxed lg:col-span-2">{exercise.statement}</div>
+            <div className="space-y-2 text-sm">
+              <p className="font-semibold">Casos con los que se corrige</p>
+              <ul className="space-y-1">
+                {exercise.tests.map((t) => (
+                  <li key={t.id} className="rounded-xl bg-white px-3 py-1.5 ring-1 ring-lavender-100">
+                    <span className="font-semibold">{t.name}</span>
+                    {t.hidden ? (
+                      <span className="block text-xs text-ink-soft">Oculto: solo sabrás si pasa.</span>
+                    ) : (
+                      <span className="block font-mono text-xs text-ink-soft">
+                        entrada {JSON.stringify(t.stdin)} → {JSON.stringify(t.expected)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-ink-soft">La práctica no se envía a tu profesor: compila y mira cuántos casos pasas.</p>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        isStudent &&
+        groupAssignments.length > 0 && <StudentAssignments assignments={groupAssignments} selectedId={assignmentId} onSelect={setAssignmentId} />
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
@@ -404,8 +531,8 @@ function CompilerPage() {
                   <button
                     key={mode}
                     onClick={() => handleFeedback(mode)}
-                    disabled={anyFeedbackLoading || !code.trim() || !aiAllowed}
-                    title={aiAllowed ? `Pedir retroalimentación ${mode}` : SUPERVISED_NOTE}
+                    disabled={anyAILoading || !code.trim() || !aiAllowed}
+                    title={aiAllowed ? `Pedir retroalimentación ${mode}` : aiNote}
                     aria-label={`Pedir retroalimentación ${mode}`}
                     className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold transition disabled:opacity-50 ${
                       mode === "formal"
@@ -417,6 +544,16 @@ function CompilerPage() {
                     {MODE_LABEL[mode]}
                   </button>
                 ))}
+                <button
+                  onClick={handleHint}
+                  disabled={anyAILoading || !code.trim() || !aiAllowed || hintsLeft === 0}
+                  title={aiAllowed ? "Pedir una pista, de la más general a la más concreta" : aiNote}
+                  aria-label="Pedir una pista"
+                  className="flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-sm font-bold text-amber-900 transition hover:bg-amber-200 disabled:opacity-50"
+                >
+                  {hints.loading && <Spinner className="h-3.5 w-3.5 border-current" />}
+                  Pista
+                </button>
               </div>
               <button
                 onClick={handleCompile}
@@ -433,7 +570,7 @@ function CompilerPage() {
                 )}
                 {isCompiling ? "Compilando..." : "Compilar"}
               </button>
-              {isStudent && (
+              {isStudent && !exercise && (
                 <button
                   onClick={handleSend}
                   disabled={sending || !groupId || !code.trim() || closed}
@@ -484,6 +621,17 @@ function CompilerPage() {
             />
           </section>
 
+          {isStudent && (
+            <details className="rise-in rounded-3xl bg-white p-4 shadow-soft" open={ownTests.length > 0}>
+              <summary className="cursor-pointer text-sm font-bold">
+                Mis casos de prueba{ownTests.length > 0 ? ` (${ownTests.length})` : ""}
+              </summary>
+              <div className="mt-3">
+                <TestsEditor tests={ownTests} onChange={saveOwnTests} student />
+              </div>
+            </details>
+          )}
+
           {/* Resultado / Retroalimentación formal / informal / Chat con IA */}
           <Card className="rise-in flex-1 min-h-[420px] overflow-hidden" bodyClassName="">
             <div className="flex flex-wrap gap-1 p-2 pb-0">
@@ -493,6 +641,7 @@ function CompilerPage() {
                   ["chat", "Tutor Chat IA"],
                   ["formal", "Formal"],
                   ["informal", "Informal"],
+                  ["pista", "Pistas"],
                 ] as const
               ).map(([tab, label]) => (
                 <button
@@ -506,19 +655,62 @@ function CompilerPage() {
                   {tab === "chat" && (
                     <span className="flex h-1.5 w-1.5 rounded-full bg-mint-500" aria-label="en línea" />
                   )}
-                  {tab !== "output" && tab !== "chat" && feedback[tab].loading && (
+                  {(tab === "formal" || tab === "informal") && feedback[tab].loading && (
                     <Spinner className="h-3 w-3 border-lavender-500" />
                   )}
-                  {tab !== "output" && tab !== "chat" && !feedback[tab].loading && feedback[tab].text && (
+                  {(tab === "formal" || tab === "informal") && !feedback[tab].loading && feedback[tab].text && (
                     <span className="h-1.5 w-1.5 rounded-full bg-current" aria-label="con respuesta" />
                   )}
                 </button>
               ))}
             </div>
             {activeTab === "output" ? (
-              <OutputPanel result={compileResult} isLoading={isCompiling} error={compileError} />
+              <OutputPanel
+                result={compileResult}
+                isLoading={isCompiling}
+                error={compileError}
+                testsTitle={exercise ? "Casos del ejercicio" : undefined}
+              />
             ) : activeTab === "chat" ? (
-              <ChatPanel code={code} stdin={stdin} assignmentId={assignmentId ?? undefined} disabledReason={aiAllowed ? undefined : SUPERVISED_NOTE} />
+              <ChatPanel
+                code={code}
+                stdin={stdin}
+                assignmentId={contextAssignment ?? undefined}
+                exerciseId={exercise?.id}
+                disabledReason={aiAllowed ? undefined : aiNote}
+              />
+            ) : activeTab === "pista" ? (
+              <div className="space-y-3 p-5" aria-live="polite">
+                <p className="text-xs text-ink-soft">
+                  Cada pista es más concreta que la anterior, hasta 3 por versión de tu código. Ninguna te da la solución. Si cambias el
+                  código, empiezas de nuevo por la más general.
+                </p>
+                {hints.items.length === 0 && !hints.loading && (
+                  <p className="text-sm text-ink-soft">Pide una pista con el botón «Pista» cuando no sepas cómo seguir.</p>
+                )}
+                <ol className="space-y-2">
+                  {hints.items.map((text, i) => (
+                    <li key={i} className="rounded-2xl bg-amber-50 p-3 text-sm leading-relaxed">
+                      <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-amber-900">
+                        Pista {i + 1} · {["general", "más concreta", "muy concreta"][i]}
+                      </span>
+                      {text || <Spinner className="h-4 w-4 border-amber-700" />}
+                    </li>
+                  ))}
+                </ol>
+                {hints.error && <p className="rounded-2xl bg-peach-50 px-3 py-2 text-sm text-peach-700">{hints.error}</p>}
+                {hints.items.length > 0 && !hints.loading && hintsLeft > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleHint}
+                    disabled={anyAILoading || !aiAllowed}
+                    className="rounded-full bg-amber-100 px-4 py-1.5 text-sm font-bold text-amber-900 hover:bg-amber-200 disabled:opacity-50"
+                  >
+                    {hints.code === code ? "Otra pista, más concreta" : "Pista para mi código nuevo"}
+                  </button>
+                )}
+                <p className="text-[11px] text-ink-soft">Generado por IA: úsalo como orientación y verifica con tus casos de prueba.</p>
+              </div>
             ) : (
               <FeedbackPanel
                 mode={activeTab}
@@ -527,11 +719,11 @@ function CompilerPage() {
                 isLoading={feedback[activeTab].loading}
                 error={feedback[activeTab].error}
                 onRequestFeedback={() => handleFeedback(activeTab)}
-                canRequestFeedback={!anyFeedbackLoading && !!code.trim() && aiAllowed}
-                disabledReason={aiAllowed ? undefined : SUPERVISED_NOTE}
+                canRequestFeedback={!anyAILoading && !!code.trim() && aiAllowed}
+                disabledReason={aiAllowed ? undefined : aiNote}
                 rating={
                   isStudent
-                    ? { kind: activeTab === "formal" ? "retro_formal" : "retro_informal", assignmentId: assignmentId ?? undefined }
+                    ? { kind: activeTab === "formal" ? "retro_formal" : "retro_informal", assignmentId: contextAssignment ?? undefined }
                     : undefined
                 }
               />

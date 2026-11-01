@@ -12,13 +12,17 @@ const MaxLatePenalty = 5.0
 
 var ErrInvalidDeadline = errors.New("la configuración de la fecha límite no es válida")
 
-type LatePolicy struct {
+type AssignmentPolicy struct {
 	AllowLate bool
 	LateUntil *time.Time
 	LatePenalty *float64
+	Evaluation bool
 }
 
-func (p LatePolicy) validate(dueAt *time.Time) error {
+func (p AssignmentPolicy) validate(dueAt *time.Time) error {
+	if p.Evaluation && dueAt == nil {
+		return fmt.Errorf("%w: un taller en modo evaluación necesita fecha límite, porque la IA queda desactivada hasta esa fecha", ErrInvalidDeadline)
+	}
 	if p.LateUntil != nil && (dueAt == nil || !p.AllowLate || !p.LateUntil.After(*dueAt)) {
 		return fmt.Errorf("%w: el cierre de entregas tardías debe ser posterior a la fecha límite", ErrInvalidDeadline)
 	}

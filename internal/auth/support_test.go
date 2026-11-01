@@ -120,7 +120,7 @@ func TestQuestionsAndRatings(t *testing.T) {
 		t.Fatalf("valoró una revisión sin devolver: %v", err)
 	}
 	g := 4.0
-	_, err = s.SaveTeacherReview(f.prof.ID, sub.ID, "Bien", &g, true, nil)
+	_, err = s.SaveTeacherReview(f.prof.ID, sub.ID, "Bien", &g, true, nil, nil)
 	mustNoErr(t, err)
 	if err := s.RateReview(f.ana.ID, sub.ID, "quizas", ""); !errors.Is(err, ErrInvalidRating) {
 		t.Fatalf("aceptó una respuesta inválida: %v", err)
@@ -162,21 +162,21 @@ func TestQuestionsAndRatings(t *testing.T) {
 func TestExports(t *testing.T) {
 	f := newClass(t)
 	s := f.s
-	second, err := s.CreateAssignment(f.prof.ID, f.group.ID, "Taller 3", "Mayor de tres", "", nil, LatePolicy{AllowLate: true}, nil)
+	second, err := s.CreateAssignment(f.prof.ID, f.group.ID, "Taller 3", "Mayor de tres", "", nil, AssignmentPolicy{AllowLate: true}, nil)
 	mustNoErr(t, err)
 	g1, g2, g3 := 3.0, 4.5, 5.0
 	old := f.submit(t, f.ana, KindOfficial, nil)
-	_, err = s.SaveTeacherReview(f.prof.ID, old.ID, "Primera", &g1, true, nil)
+	_, err = s.SaveTeacherReview(f.prof.ID, old.ID, "Primera", &g1, true, nil, nil)
 	mustNoErr(t, err)
 	last := f.submit(t, f.ana, KindOfficial, nil)
-	_, err = s.SaveTeacherReview(f.prof.ID, last.ID, "Segunda", &g2, true, nil)
+	_, err = s.SaveTeacherReview(f.prof.ID, last.ID, "Segunda", &g2, true, nil, nil)
 	mustNoErr(t, err)
 	other := &Submission{SubmissionMeta: SubmissionMeta{Kind: KindOfficial, GroupID: f.group.ID, AssignmentID: second.ID, StudentID: f.ana.ID, Success: true}, Code: "y"}
 	mustNoErr(t, s.AddSubmission(other))
-	_, err = s.SaveTeacherReview(f.prof.ID, other.ID, "=HYPERLINK(\"x\")", &g3, true, nil)
+	_, err = s.SaveTeacherReview(f.prof.ID, other.ID, "=HYPERLINK(\"x\")", &g3, true, nil, nil)
 	mustNoErr(t, err)
 	draft := f.submit(t, f.beto, KindOfficial, nil)
-	_, err = s.SaveTeacherReview(f.prof.ID, draft.ID, "Borrador", &g3, false, nil)
+	_, err = s.SaveTeacherReview(f.prof.ID, draft.ID, "Borrador", &g3, false, nil, nil)
 	mustNoErr(t, err)
 
 	if _, err := s.GradeSheet(f.otro.ID, f.group.ID); !errors.Is(err, ErrNotFound) {
@@ -239,17 +239,15 @@ func TestReviewPlan(t *testing.T) {
 	mustNoErr(t, s.AddSubmission(broken))
 
 	g := 4.0
-	_, err = s.SaveAIDraft(f.prof.ID, ana.ID, "IA", &g, "", "alta", nil)
+	_, err = s.SaveAIDraft(f.prof.ID, ana.ID, AIDraft{Feedback: "IA", Grade: &g, Confidence: "alta", Minutes: 4})
 	mustNoErr(t, err)
-	mustNoErr(t, s.SetAIMinutes(f.prof.ID, ana.ID, 4))
-	_, err = s.SaveAIDraft(f.prof.ID, beto.ID, "IA", &g, "", "media", nil)
+	_, err = s.SaveAIDraft(f.prof.ID, beto.ID, AIDraft{Feedback: "IA", Grade: &g, Confidence: "media", Minutes: 9, Model: "llama3.1:8b", Prompt: "abcd1234"})
 	mustNoErr(t, err)
-	mustNoErr(t, s.SetAIMinutes(f.prof.ID, beto.ID, 9))
-	if err := s.SetAIMinutes(f.otro.ID, beto.ID, 1); !errors.Is(err, ErrNotFound) {
+	if _, err := s.SaveAIDraft(f.otro.ID, beto.ID, AIDraft{Feedback: "x", Minutes: 1}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("otro profesor cambió la estimación: %v", err)
 	}
-	if rev, _ := s.ReviewForTeacher(f.prof.ID, beto.ID); rev.AIMinutes == nil || *rev.AIMinutes != 9 {
-		t.Fatalf("estimación guardada: %+v", rev.AIMinutes)
+	if rev, _ := s.ReviewForTeacher(f.prof.ID, beto.ID); rev.AIMinutes == nil || *rev.AIMinutes != 9 || rev.AIModel != "llama3.1:8b" || rev.AIPrompt != "abcd1234" {
+		t.Fatalf("estimación y origen guardados: %+v", rev)
 	}
 
 	if _, err := s.ReviewPlan(f.otro.ID, f.group.ID); !errors.Is(err, ErrNotFound) {
@@ -268,7 +266,7 @@ func TestReviewPlan(t *testing.T) {
 		t.Fatalf("minutos (IA 4 + IA 9 + 6 estimados para la que no compila): %+v", e)
 	}
 
-	_, err = s.SaveTeacherReview(f.prof.ID, ana.ID, "IA", &g, true, nil)
+	_, err = s.SaveTeacherReview(f.prof.ID, ana.ID, "IA", &g, true, nil, nil)
 	mustNoErr(t, err)
 	_, err = s.AddReviewTime(f.prof.ID, ana.ID, 6*60000)
 	mustNoErr(t, err)
@@ -297,7 +295,7 @@ func TestReviewPlan(t *testing.T) {
 func TestComprehensionGoal(t *testing.T) {
 	f := newClass(t)
 	s := f.s
-	second, err := s.CreateAssignment(f.prof.ID, f.group.ID, "Taller 3", "Mayor de tres", "", nil, LatePolicy{AllowLate: true}, nil)
+	second, err := s.CreateAssignment(f.prof.ID, f.group.ID, "Taller 3", "Mayor de tres", "", nil, AssignmentPolicy{AllowLate: true}, nil)
 	mustNoErr(t, err)
 	rate := func(assignment string, understood string, n int) {
 		for i := 0; i < n; i++ {
@@ -337,7 +335,7 @@ func TestComprehensionGoal(t *testing.T) {
 
 	g := 4.0
 	sub := f.submit(t, f.beto, KindOfficial, nil)
-	_, err = s.SaveTeacherReview(f.prof.ID, sub.ID, "Bien", &g, true, nil)
+	_, err = s.SaveTeacherReview(f.prof.ID, sub.ID, "Bien", &g, true, nil, nil)
 	mustNoErr(t, err)
 	mustNoErr(t, s.RateReview(f.beto.ID, sub.ID, "si", ""))
 	m, err = s.GroupMetrics(f.prof.ID, f.group.ID)
@@ -352,7 +350,7 @@ func TestComprehensionGoal(t *testing.T) {
 func TestAssignmentAudit(t *testing.T) {
 	f := newClass(t)
 	s := f.s
-	_, err := s.UpdateAssignment(f.prof.ID, f.assignment.ID, "Taller 2: suma", "Suma de 1 a n", "", nil, LatePolicy{AllowLate: true}, nil, nil)
+	_, err := s.UpdateAssignment(f.prof.ID, f.assignment.ID, "Taller 2: suma", "Suma de 1 a n", "", nil, AssignmentPolicy{AllowLate: true}, nil, nil)
 	mustNoErr(t, err)
 	tests := []model.TestCase{{Name: "A", Expected: "1", Match: model.MatchContains}, {Name: "B", Expected: "2", Match: model.MatchContains, Hidden: true}}
 	_, err = s.SetAssignmentTests(f.prof.ID, f.assignment.ID, tests)

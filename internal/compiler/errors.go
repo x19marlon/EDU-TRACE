@@ -3,7 +3,10 @@ package compiler
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
+
+	"github.com/marlon/edu-trace/internal/model"
 )
 
 // Prefijo "main.cpp:7:15: " que g++ antepone a cada diagnóstico.
@@ -99,4 +102,35 @@ func DescribeRuntime(runError string, exitCode int) (string, string) {
 	default:
 		return fmt.Sprintf("Terminó con código de salida %d", exitCode), "main devolvió un valor distinto de 0 o el programa se detuvo con un error."
 	}
+}
+
+var diagLine = regexp.MustCompile(`^[^:\s]+:(\d+):\d+:\s*(?:fatal )?error:\s*(.+)$`)
+
+const maxExplanations = 5
+
+func Explain(result *model.CompileResult) []model.ErrorExplanation {
+	var out []model.ErrorExplanation
+	seen := map[string]bool{}
+	for _, line := range strings.Split(result.CompilerOutput, "\n") {
+		m := diagLine.FindStringSubmatch(strings.TrimSpace(line))
+		if m == nil {
+			continue
+		}
+		text := ExplainError(NormalizeError(m[2]))
+		key := m[1] + text
+		if text == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		n, _ := strconv.Atoi(m[1])
+		out = append(out, model.ErrorExplanation{Line: n, Message: strings.ToValidUTF8(m[2], ""), Explanation: text})
+		if len(out) == maxExplanations {
+			break
+		}
+	}
+	if result.Success && (result.ExitCode != 0 || result.Error != "") {
+		title, text := DescribeRuntime(result.Error, result.ExitCode)
+		out = append(out, model.ErrorExplanation{Message: title, Explanation: text})
+	}
+	return out
 }

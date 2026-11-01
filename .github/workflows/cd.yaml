@@ -18,12 +18,56 @@ concurrency:
   group: despliegue
   cancel-in-progress: false
 
+env:
+  COMMIT: ${{ inputs.commit || github.event.workflow_run.head_sha || github.sha }}
+  STAGING_SERVICES: edutrace-pruebas-backend edutrace-pruebas-web
+
 jobs:
-  ssh:
-    name: Desplegar por SSH
+  pruebas-ssh:
+    name: Pruebas por SSH
     if: >-
-      vars.DEPLOY_MODE == 'ssh' &&
-      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+      vars.DEPLOY_MODE == 'ssh' && vars.STAGING_PATH != '' &&
+      (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-24.04
+    environment: pruebas
+    steps:
+      - name: Preparar la llave SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Desplegar en pruebas
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          STAGING_PATH: ${{ vars.STAGING_PATH }}
+        run: ssh -i ~/.ssh/id_deploy -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "cd '$STAGING_PATH' && SERVICIOS='$STAGING_SERVICES' ./scripts/desplegar.sh '$COMMIT'"
+
+  pruebas-servidor:
+    name: Pruebas con el runner del servidor
+    if: >-
+      vars.DEPLOY_MODE == 'self-hosted' && vars.STAGING_PATH != '' &&
+      (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: [self-hosted, edutrace]
+    environment: pruebas
+    steps:
+      - name: Desplegar en pruebas
+        env:
+          STAGING_PATH: ${{ vars.STAGING_PATH }}
+        run: cd "$STAGING_PATH" && SERVICIOS="$STAGING_SERVICES" ./scripts/desplegar.sh "$COMMIT"
+
+  ssh:
+    name: Producción por SSH
+    needs: pruebas-ssh
+    if: >-
+      always() && vars.DEPLOY_MODE == 'ssh' &&
+      (needs.pruebas-ssh.result == 'success' || needs.pruebas-ssh.result == 'skipped') &&
+      (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
     runs-on: ubuntu-24.04
     environment: produccion
     steps:
@@ -37,24 +81,24 @@ jobs:
           chmod 600 ~/.ssh/id_deploy
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
 
-      - name: Desplegar
+      - name: Desplegar en producción
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/edutrace' }}
-          COMMIT: ${{ inputs.commit || github.event.workflow_run.head_sha || github.sha }}
         run: ssh -i ~/.ssh/id_deploy -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && ./scripts/desplegar.sh '$COMMIT'"
 
   servidor:
-    name: Desplegar con el runner del servidor
+    name: Producción con el runner del servidor
+    needs: pruebas-servidor
     if: >-
-      vars.DEPLOY_MODE == 'self-hosted' &&
-      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+      always() && vars.DEPLOY_MODE == 'self-hosted' &&
+      (needs.pruebas-servidor.result == 'success' || needs.pruebas-servidor.result == 'skipped') &&
+      (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
     runs-on: [self-hosted, edutrace]
     environment: produccion
     steps:
-      - name: Desplegar
+      - name: Desplegar en producción
         env:
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/edutrace' }}
-          COMMIT: ${{ inputs.commit || github.event.workflow_run.head_sha || github.sha }}
         run: cd "$DEPLOY_PATH" && ./scripts/desplegar.sh "$COMMIT"

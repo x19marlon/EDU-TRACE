@@ -6,6 +6,7 @@ interface OutputPanelProps {
   result: CompileResult | null;
   isLoading: boolean;
   error: string | null;
+  testsTitle?: string;
 }
 
 function Pill({ tone, children }: { tone: "mint" | "peach" | "amber"; children: React.ReactNode }) {
@@ -17,7 +18,7 @@ function Pill({ tone, children }: { tone: "mint" | "peach" | "amber"; children: 
   return <span className={`rounded-full px-3 py-1 text-xs font-bold ${tones[tone]}`}>{children}</span>;
 }
 
-export default function OutputPanel({ result, isLoading, error }: OutputPanelProps) {
+export default function OutputPanel({ result, isLoading, error, testsTitle }: OutputPanelProps) {
   if (isLoading) {
     return (
       <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-3 p-6">
@@ -63,6 +64,23 @@ export default function OutputPanel({ result, isLoading, error }: OutputPanelPro
         )}
       </div>
 
+      {(result.explanations?.length ?? 0) > 0 && (
+        <div className="mb-4 rounded-2xl bg-amber-50 p-4">
+          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-900">Qué significa</h3>
+          <ul className="space-y-2 text-sm text-ink">
+            {result.explanations!.map((e, i) => (
+              <li key={i}>
+                <span className="font-semibold">
+                  {e.line ? `Línea ${e.line}: ` : ""}
+                  {e.explanation}
+                </span>
+                <span className="block font-mono text-xs text-ink-soft">{e.message}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {result.compiler_output && (
         <div className="mb-4">
           <h3 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-ink-soft">Salida del compilador</h3>
@@ -81,9 +99,15 @@ export default function OutputPanel({ result, isLoading, error }: OutputPanelPro
         </div>
       )}
 
-      {result.tests && result.tests.length > 0 && (
+      {result.tests && result.tests.some((t) => !t.own) && (
         <div className="mb-4">
-          <TestResults results={result.tests} />
+          <TestResults results={result.tests.filter((t) => !t.own)} title={testsTitle} />
+        </div>
+      )}
+
+      {result.tests && result.tests.some((t) => t.own) && (
+        <div className="mb-4">
+          <TestResults results={result.tests.filter((t) => t.own)} title="Tus casos de prueba" />
         </div>
       )}
 

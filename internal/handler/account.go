@@ -119,7 +119,7 @@ func (h *AuthHandler) Consent(w http.ResponseWriter, r *http.Request) {
 		writeStoreErr(w, err, "registrar tu autorización")
 		return
 	}
-	user.ConsentAt = &at
+	user.ConsentAt, user.ConsentVersion = &at, auth.PrivacyVersion
 	slog.Info("privacy consent recorded", "user_id", user.ID, "version", auth.PrivacyVersion)
 	writeJSON(w, http.StatusOK, toPublic(user))
 }

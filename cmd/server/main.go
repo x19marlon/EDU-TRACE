@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/marlon/edu-trace/internal/compiler"
 	"github.com/marlon/edu-trace/internal/config"
 	"github.com/marlon/edu-trace/internal/handler"
+	"github.com/marlon/edu-trace/internal/mail"
 )
 
 func main() {
@@ -26,6 +28,11 @@ func main() {
 	}
 	if cfg.Sandbox == "none" {
 		slog.Warn("SANDBOX=none: el código de los estudiantes se ejecuta SIN aislamiento, úsalo solo en desarrollo")
+	} else if !compiler.TmpLimited() {
+		slog.Warn("esta versión de bubblewrap no limita el tamaño de /tmp en el sandbox; actualízala a 0.8 o superior")
+	}
+	if !cfg.CookieSecure && strings.HasPrefix(cfg.PublicURL, "https://") {
+		slog.Warn("PUBLIC_URL usa HTTPS pero COOKIE_SECURE no es true: la cookie de sesión podría viajar sin cifrar")
 	}
 
 	store, err := auth.OpenStore(cfg.DataDir, cfg.SessionTTL)
@@ -36,6 +43,7 @@ func main() {
 	if cfg.TeacherCode == "" {
 		slog.Warn("TEACHER_CODE vacío: el registro de cuentas docentes está deshabilitado")
 	}
+	store.SetRetention(time.Duration(cfg.RetentionDays) * 24 * time.Hour)
 
 	comp := compiler.New(cfg)
 
@@ -52,8 +60,15 @@ func main() {
 	workerCtx, stopWorker := context.WithCancel(context.Background())
 	defer stopWorker()
 	go drafts.Run(workerCtx)
+	mailCfg := mail.Config{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Password: cfg.SMTPPassword, From: cfg.SMTPFrom}
+	go handler.NewMailer(store, mailCfg, cfg.PublicURL).Run(workerCtx)
+	if cfg.RetentionDays > 0 {
+		go purgeLoop(workerCtx, store)
+	} else {
+		slog.Warn("RETENTION_DAYS=0: los datos de los periodos cerrados no se borran automáticamente")
+	}
 
-	router := handler.NewRouter(cfg, comp, ollama, store, drafts)
+	router := handler.NewRouter(cfg, comp, ollama, store, drafts, mailCfg.Enabled())
 
 	srv := &http.Server{
 		Addr: net.JoinHostPort(cfg.Host, cfg.Port),
@@ -97,4 +112,23 @@ func main() {
 		slog.Error("close store", "error", err)
 	}
 	slog.Info("server stopped")
+}
+
+func purgeLoop(ctx context.Context, store *auth.Store) {
+	ticker := time.NewTicker(6 * time.Hour)
+	defer ticker.Stop()
+	for {
+		report, err := store.Purge(time.Now())
+		if err != nil {
+			slog.Error("borrado de datos vencidos", "error", err)
+		} else if !report.Empty() {
+			slog.Info("datos vencidos borrados", "materias", report.Courses, "cuentas", report.Accounts,
+				"avisos", report.Notifications, "registros_ia", report.AIRequests, "sesiones", report.Sessions)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
 }

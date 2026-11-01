@@ -164,7 +164,7 @@ func (s *Store) TeacherQueue(teacherID string) (*QueueOverview, error) {
 		JOIN submissions s ON s.id = j.submission_id
 		JOIN class_groups g ON g.id = s.group_id
 		JOIN courses c ON c.id = g.course_id
-		WHERE c.teacher_id = ?`, teacherID).Scan(&out.Pending, &out.Running)
+		WHERE c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`, teacherID).Scan(&out.Pending, &out.Running)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (s *Store) TeacherQueue(teacherID string) (*QueueOverview, error) {
 		JOIN submissions s ON s.id = j.submission_id
 		JOIN class_groups g ON g.id = s.group_id
 		JOIN courses c ON c.id = g.course_id
-		WHERE c.teacher_id = ? AND j.status = 'error' AND j.attempts >= ?
+		WHERE c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?) AND j.status = 'error' AND j.attempts >= ?
 		GROUP BY g.id ORDER BY MAX(j.finished_at) DESC`, teacherID, MaxJobAttempts)
 	if err != nil {
 		return nil, err
@@ -211,4 +211,17 @@ func JobError(err error) string {
 		msg = strings.ToValidUTF8(msg[:300], "")
 	}
 	return msg
+}
+
+func (s *Store) QueueStalled(now time.Time, after time.Duration) (bool, error) {
+	var oldest, last sql.NullString
+	if err := s.db.QueryRow(`SELECT (SELECT MIN(enqueued_at) FROM ai_jobs WHERE status IN ('pendiente', 'procesando')),
+		(SELECT MAX(finished_at) FROM ai_jobs)`).Scan(&oldest, &last); err != nil {
+		return false, err
+	}
+	cutoff := now.Add(-after)
+	if !oldest.Valid || parseTime(oldest.String).After(cutoff) {
+		return false, nil
+	}
+	return !last.Valid || parseTime(last.String).Before(cutoff), nil
 }

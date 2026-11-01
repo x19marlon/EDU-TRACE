@@ -5,6 +5,8 @@ on:
     branches: [main, develop]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "0 11 * * 1"
 
 permissions:
   contents: read
@@ -24,7 +26,8 @@ jobs:
       - name: Instalar Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: "1.26.x"
+          check-latest: true
 
       - name: Compilar
         run: go build ./...
@@ -34,6 +37,9 @@ jobs:
 
       - name: Pruebas
         run: go test -count=1 ./...
+
+      - name: Vulnerabilidades conocidas (Go)
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
   frontend:
     name: Frontend (Next.js)
@@ -55,6 +61,9 @@ jobs:
       - name: Instalar dependencias
         run: npm ci --no-audit --no-fund
 
+      - name: Vulnerabilidades conocidas (npm)
+        run: npm audit --audit-level=high
+
       - name: Tipos
         run: npx tsc --noEmit
 
@@ -65,3 +74,71 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8080
+
+  accesibilidad:
+    name: Accesibilidad (WCAG 2.1 AA)
+    runs-on: ubuntu-24.04
+    needs: [backend, frontend]
+    env:
+      E2E_API: http://localhost:8080
+      E2E_WEB: http://localhost:3000
+      E2E_TEACHER_CODE: codigo-de-ci
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v5
+
+      - name: Instalar Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.x"
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Iniciar el backend
+        run: |
+          go build -o bin/edutrace-server ./cmd/server
+          nohup bin/edutrace-server > "$RUNNER_TEMP/backend.log" 2>&1 &
+        env:
+          HOST: "::"
+          PORT: "8080"
+          DATA_DIR: ${{ runner.temp }}/datos
+          TEACHER_CODE: codigo-de-ci
+          SANDBOX: none
+          ALLOWED_ORIGINS: http://localhost:3000
+          OLLAMA_BASE_URL: http://127.0.0.1:9
+
+      - name: Compilar e iniciar el frontend
+        working-directory: web
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          nohup npx next start -p 3000 > "$RUNNER_TEMP/frontend.log" 2>&1 &
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8080
+
+      - name: Instalar Chromium
+        working-directory: web
+        run: npx playwright install --with-deps --only-shell chromium
+
+      - name: Esperar a los servidores
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/api/health > /dev/null && curl -fsS -o /dev/null http://localhost:3000/login; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
+
+      - name: Revisar con axe
+        working-directory: web
+        run: npm run test:a11y
+
+      - name: Registros de los servidores
+        if: failure()
+        run: tail -n 80 "$RUNNER_TEMP/backend.log" "$RUNNER_TEMP/frontend.log"

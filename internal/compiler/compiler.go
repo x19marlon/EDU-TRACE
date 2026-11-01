@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -17,11 +18,18 @@ import (
 // Compiler handles C++ compilation and execution.
 type Compiler struct {
 	cfg *config.Config
+	slots chan struct{}
 }
+
+const slotWait = 60 * time.Second
 
 // New creates a Compiler with the given configuration.
 func New(cfg *config.Config) *Compiler {
-	return &Compiler{cfg: cfg}
+	n := cfg.MaxSandboxes
+	if n <= 0 {
+		n = runtime.NumCPU()
+	}
+	return &Compiler{cfg: cfg, slots: make(chan struct{}, n)}
 }
 
 // Compile compiles and runs C++ source code in a temporary sandbox.
@@ -31,6 +39,19 @@ func (c *Compiler) Compile(ctx context.Context, sourceCode string, stdin string)
 
 func (c *Compiler) CompileAndTest(ctx context.Context, sourceCode string, stdin string, tests []model.TestCase) *model.CompileResult {
 	result := &model.CompileResult{}
+
+	wait := time.NewTimer(slotWait)
+	defer wait.Stop()
+	select {
+	case c.slots <- struct{}{}:
+		defer func() { <-c.slots }()
+	case <-wait.C:
+		result.Error = "el servidor está ocupado compilando otros programas, intenta de nuevo en un minuto"
+		return result
+	case <-ctx.Done():
+		result.Error = "se canceló la compilación"
+		return result
+	}
 
 	// Create isolated temp directory.
 	tmpDir, err := os.MkdirTemp("", "edutrace-*")
@@ -82,6 +103,7 @@ func (c *Compiler) CompileAndTest(ctx context.Context, sourceCode string, stdin 
 		for _, t := range tests {
 			result.Tests = append(result.Tests, testResult(t, runOutcome{}, "el programa no compiló"))
 		}
+		result.Explanations = Explain(result)
 		return result
 	}
 
@@ -91,6 +113,7 @@ func (c *Compiler) CompileAndTest(ctx context.Context, sourceCode string, stdin 
 	run := c.run(ctx, tmpDir, stdin)
 	result.ProgramOutput, result.ExitCode, result.Error, result.RunTimeMs = run.output, run.exitCode, run.err, run.ms
 	result.Tests = c.runTests(ctx, tmpDir, tests)
+	result.Explanations = Explain(result)
 	return result
 }
 
@@ -167,7 +190,7 @@ func (c *Compiler) runTests(ctx context.Context, tmpDir string, tests []model.Te
 }
 
 func testResult(t model.TestCase, out runOutcome, skipped string) model.TestResult {
-	r := model.TestResult{TestID: t.ID, Name: t.Name, Hidden: t.Hidden, Stdin: t.Stdin, Expected: t.Expected}
+	r := model.TestResult{TestID: t.ID, Name: t.Name, Hidden: t.Hidden, Stdin: t.Stdin, Expected: t.Expected, Own: t.Own}
 	switch {
 	case skipped != "":
 		r.Error = skipped

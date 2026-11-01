@@ -35,6 +35,7 @@ type ReviewExport struct {
 	AIGrade *float64
 	ReviewMs int64
 	Feedback string
+	AIModel string
 }
 
 func (s *Store) GradeSheet(teacherID, groupID string) (*GradeSheet, error) {
@@ -95,7 +96,8 @@ func (s *Store) ReviewsExport(teacherID, groupID string) ([]ReviewExport, error)
 		return nil, err
 	}
 	rows, err := s.db.Query(`SELECT `+metaCols+`, u.name, u.email, COALESCE(a.title, ''),
-			r.grade, r.returned_at, r.feedback_origin, r.ai_grade, r.review_ms, r.feedback
+			r.grade, r.returned_at, r.feedback_origin, r.ai_grade, r.review_ms, r.feedback,
+			CASE WHEN r.feedback_origin IN ('ia', 'ia_editada') THEN r.ai_model ELSE '' END
 		FROM submissions s
 		JOIN users u ON u.id = s.student_id
 		JOIN reviews r ON r.submission_id = s.id AND r.status = 'returned'
@@ -111,7 +113,7 @@ func (s *Store) ReviewsExport(teacherID, groupID string) ([]ReviewExport, error)
 		var e ReviewExport
 		var grade, aiGrade sql.NullFloat64
 		var returned sql.NullString
-		m, err := scanMeta(rows, &e.StudentName, &e.Email, &e.Assignment, &grade, &returned, &e.Origin, &aiGrade, &e.ReviewMs, &e.Feedback)
+		m, err := scanMeta(rows, &e.StudentName, &e.Email, &e.Assignment, &grade, &returned, &e.Origin, &aiGrade, &e.ReviewMs, &e.Feedback, &e.AIModel)
 		if err != nil {
 			return nil, err
 		}

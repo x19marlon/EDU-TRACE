@@ -95,7 +95,7 @@ func (h *ClassesHandler) ExportReviews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows := [][]string{{"Nombre", "Dirección de correo", "Taller", "Entregada", "Retraso (horas)", "Casos que pasa", "Nota",
-		"Nota propuesta por la IA", "Devuelta", "Origen del texto", "Minutos de revisión", "Retroalimentación"}}
+		"Nota propuesta por la IA", "Devuelta", "Origen del texto", "Modelo de IA", "Minutos de revisión", "Retroalimentación"}}
 	for _, e := range list {
 		late, tests := "", ""
 		if e.LateSeconds > 0 {
@@ -106,7 +106,7 @@ func (h *ClassesHandler) ExportReviews(w http.ResponseWriter, r *http.Request) {
 		}
 		submitted := e.SubmittedAt
 		rows = append(rows, []string{e.StudentName, e.Email, e.Assignment, timeCell(&submitted), late, tests, gradeCell(e.Grade),
-			gradeCell(e.AIGrade), timeCell(e.ReturnedAt), originLabel[e.Origin], strconv.FormatFloat(float64(e.ReviewMs)/60000, 'f', 1, 64), e.Feedback})
+			gradeCell(e.AIGrade), timeCell(e.ReturnedAt), originLabel[e.Origin], e.AIModel, strconv.FormatFloat(float64(e.ReviewMs)/60000, 'f', 1, 64), e.Feedback})
 	}
 	writeCSV(w, "revisiones "+group.CourseName+" "+group.Name, rows)
 }

@@ -28,7 +28,7 @@ func TestLateSubmissions(t *testing.T) {
 	half := 0.5
 	tooMuch := 6.0
 
-	bad := []LatePolicy{
+	bad := []AssignmentPolicy{
 		{AllowLate: true, LateUntil: &earlier},
 		{AllowLate: false, LateUntil: &future},
 		{AllowLate: true, LatePenalty: &tooMuch},
@@ -39,17 +39,17 @@ func TestLateSubmissions(t *testing.T) {
 			t.Errorf("política inválida %d aceptada: %v", i, err)
 		}
 	}
-	if _, err := s.CreateAssignment(prof.ID, g.ID, "T", "S", "", nil, LatePolicy{AllowLate: true, LatePenalty: &half}, nil); !errors.Is(err, ErrInvalidDeadline) {
+	if _, err := s.CreateAssignment(prof.ID, g.ID, "T", "S", "", nil, AssignmentPolicy{AllowLate: true, LatePenalty: &half}, nil); !errors.Is(err, ErrInvalidDeadline) {
 		t.Errorf("penalización sin fecha límite aceptada: %v", err)
 	}
 
-	closed, err := s.CreateAssignment(prof.ID, g.ID, "Cerrado", "S", "", &past, LatePolicy{AllowLate: false}, nil)
+	closed, err := s.CreateAssignment(prof.ID, g.ID, "Cerrado", "S", "", &past, AssignmentPolicy{AllowLate: false}, nil)
 	mustNoErr(t, err)
-	open, err := s.CreateAssignment(prof.ID, g.ID, "Tardías", "S", "", &past, LatePolicy{AllowLate: true, LateUntil: &soon, LatePenalty: &half}, nil)
+	open, err := s.CreateAssignment(prof.ID, g.ID, "Tardías", "S", "", &past, AssignmentPolicy{AllowLate: true, LateUntil: &soon, LatePenalty: &half}, nil)
 	mustNoErr(t, err)
-	expired, err := s.CreateAssignment(prof.ID, g.ID, "Tardías vencidas", "S", "", &past, LatePolicy{AllowLate: true, LateUntil: &before}, nil)
+	expired, err := s.CreateAssignment(prof.ID, g.ID, "Tardías vencidas", "S", "", &past, AssignmentPolicy{AllowLate: true, LateUntil: &before}, nil)
 	mustNoErr(t, err)
-	onTime, err := s.CreateAssignment(prof.ID, g.ID, "A tiempo", "S", "", &future, LatePolicy{AllowLate: false}, nil)
+	onTime, err := s.CreateAssignment(prof.ID, g.ID, "A tiempo", "S", "", &future, AssignmentPolicy{AllowLate: false}, nil)
 	mustNoErr(t, err)
 	if !open.AllowLate || open.LateUntil == nil || *open.LatePenalty != 0.5 || closed.AllowLate {
 		t.Fatalf("política guardada: %+v / %+v", open, closed)
@@ -100,7 +100,7 @@ func TestLateSubmissions(t *testing.T) {
 		}
 	}
 
-	_, err = s.UpdateAssignment(prof.ID, open.ID, "Tardías", "S", "", &future, LatePolicy{AllowLate: true}, nil, nil)
+	_, err = s.UpdateAssignment(prof.ID, open.ID, "Tardías", "S", "", &future, AssignmentPolicy{AllowLate: true}, nil, nil)
 	mustNoErr(t, err)
 	sub, err := s.SubmissionForTeacher(prof.ID, late.ID)
 	mustNoErr(t, err)

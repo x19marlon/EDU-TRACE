@@ -17,7 +17,7 @@ const config: Config = {
         ink: {
           DEFAULT: "#2E2A3F",
           soft: "#6B6680",
-          faint: "#A29DB3",
+          faint: "#6B6680",
         },
         lavender: {
           50: "#F6F3FE",

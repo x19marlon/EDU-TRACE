@@ -7,7 +7,8 @@ import { useAuth } from "@/components/AuthProvider";
 import { recordConsent } from "@/lib/api";
 
 export default function ConsentGate() {
-  const { setUser, logout } = useAuth();
+  const { user, setUser, logout } = useAuth();
+  const updated = !!user?.consent_outdated;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,9 +30,16 @@ export default function ConsentGate() {
         <div className="flex items-center gap-3">
           <Logo className="h-10 w-10" />
           <h1 id="consent-title" className="text-xl font-extrabold tracking-tight">
-            Autorización de tratamiento de datos
+            {updated ? "Actualizamos la política de datos" : "Autorización de tratamiento de datos"}
           </h1>
         </div>
+        {updated && (
+          <p className="rounded-2xl bg-lavender-50 px-4 py-3 text-sm leading-relaxed text-ink">
+            Qué cambió: EduTrace ahora te avisa en la plataforma y, si lo permites, por correo cuando hay novedades en tus entregas; y
+            al cerrar el periodo de una materia sus datos se borran automáticamente después del plazo de conservación. Puedes desactivar
+            los correos en «Mi cuenta».
+          </p>
+        )}
         <p className="text-sm leading-relaxed text-ink-soft">
           Para seguir usando EduTrace necesitamos que autorices el tratamiento de tus datos personales (Ley 1581 de 2012) con fines
           académicos de la asignatura. Tus datos y tu código no salen del servidor: la IA funciona en el propio servidor y nunca recibe tu

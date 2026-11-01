@@ -95,7 +95,7 @@ export function MonitorFeedbackForm({
         <button
           type="submit"
           disabled={busy || !body.trim()}
-          className="rounded-full bg-mint-600 px-5 py-2 text-sm font-bold text-white shadow-soft transition hover:bg-mint-700 disabled:opacity-40"
+          className="rounded-full bg-mint-700 px-5 py-2 text-sm font-bold text-white shadow-soft transition hover:bg-ink disabled:opacity-40"
         >
           {busy ? "Enviando..." : "Enviar al estudiante"}
         </button>

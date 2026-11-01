@@ -8,9 +8,15 @@ Type=simple
 User=edutrace
 WorkingDirectory=/opt/edutrace/web
 Environment=NODE_ENV=production
-ExecStart=/usr/bin/env npm run start -- -p 3000
+Environment=WEB_PORT=3000
+EnvironmentFile=-/opt/edutrace/.env
+ExecStart=/usr/bin/env npm run start -- -H 127.0.0.1 -p ${WEB_PORT}
 Restart=on-failure
 RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
 
 [Install]
 WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Revisión de salud de EduTrace
+
+[Service]
+Type=oneshot
+User=edutrace
+WorkingDirectory=/opt/edutrace
+EnvironmentFile=/opt/edutrace/.env
+StateDirectory=edutrace
+ExecStart=/opt/edutrace/scripts/vigilar.sh
+SuccessExitStatus=1

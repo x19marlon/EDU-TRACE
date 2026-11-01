@@ -15,11 +15,12 @@ type ChatHandler struct {
 	ollama *ai.OllamaClient
 	modelName string
 	store *auth.Store
+	limit *auth.LoginLimiter
 }
 
 // NewChatHandler creates a new ChatHandler.
-func NewChatHandler(ollama *ai.OllamaClient, modelName string, store *auth.Store) *ChatHandler {
-	return &ChatHandler{ollama: ollama, modelName: modelName, store: store}
+func NewChatHandler(ollama *ai.OllamaClient, modelName string, store *auth.Store, limit *auth.LoginLimiter) *ChatHandler {
+	return &ChatHandler{ollama: ollama, modelName: modelName, store: store, limit: limit}
 }
 
 func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +42,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := auth.UserFrom(r.Context())
-	if !aiAllowed(w, h.store, user, req.AssignmentID) {
+	if !aiAllowed(w, h.store, h.limit, user, req.AssignmentID) {
 		return
 	}
 
@@ -51,6 +52,8 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			statement = st
 		}
+	} else if req.ExerciseID != "" {
+		statement = exerciseStatement(req.ExerciseID)
 	}
 
 	slog.Info("chat message received",
@@ -62,5 +65,5 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	stats := streamSSE(w, h.modelName, func(onToken, _ func(string)) error {
 		return h.ollama.StreamChat(r.Context(), req, statement, onToken)
 	})
-	h.store.RecordAIRequest(stats.record(auth.AIKindChat, h.store.AssignmentGroup(req.AssignmentID), user.Role))
+	h.store.RecordAIRequest(stats.record(h.ollama, auth.AIKindChat, h.store.AssignmentGroup(req.AssignmentID), user.Role))
 }

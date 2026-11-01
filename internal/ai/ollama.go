@@ -23,6 +23,7 @@ type OllamaClient struct {
 	client *http.Client
 	syllabus string
 	think bool 
+	prompt string
 }
 
 
@@ -72,6 +73,7 @@ func NewOllamaClient(cfg *config.Config) (*OllamaClient, error) {
 			Timeout: time.Duration(cfg.OllamaTimeout) * time.Second,
 		},
 		syllabus: syllabus,
+		prompt: promptVersion(syllabus),
 	}
 	o.think = o.resolveThink()
 	return o, nil

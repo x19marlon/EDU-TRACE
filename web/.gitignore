@@ -35,3 +35,9 @@ yarn-error.log*
 next-env.d.ts
 
 /data-backup-*/
+
+# playwright
+/test-results/
+/playwright-report/
+/.next-dev/
+/.next-dev.firma

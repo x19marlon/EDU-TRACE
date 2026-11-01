@@ -8,6 +8,14 @@ type CompileRequest struct {
 	// se guarda como intento para que su profesor vea el proceso.
 	GroupID string `json:"group_id"`
 	AssignmentID string `json:"assignment_id"`
+	ExerciseID string `json:"exercise_id,omitempty"`
+	OwnTests []TestCase `json:"own_tests,omitempty"`
+}
+
+type ErrorExplanation struct {
+	Line int `json:"line,omitempty"`
+	Message string `json:"message"`
+	Explanation string `json:"explanation"`
 }
 
 // CompileResult holds the outcome of compiling and running C++ code.
@@ -20,6 +28,7 @@ type CompileResult struct {
 	RunTimeMs int64 `json:"run_time_ms"`
 	Error string `json:"error,omitempty"`
 	Tests []TestResult `json:"tests,omitempty"`
+	Explanations []ErrorExplanation `json:"explanations,omitempty"`
 }
 
 const (
@@ -34,6 +43,7 @@ type TestCase struct {
 	Expected string `json:"expected"`
 	Match string `json:"match"`
 	Hidden bool `json:"hidden"`
+	Own bool `json:"own,omitempty"`
 }
 
 type TestResult struct {
@@ -45,6 +55,7 @@ type TestResult struct {
 	Expected string `json:"expected,omitempty"`
 	Output string `json:"output,omitempty"`
 	Error string `json:"error,omitempty"`
+	Own bool `json:"own,omitempty"`
 }
 
 func (r TestResult) Public() TestResult {

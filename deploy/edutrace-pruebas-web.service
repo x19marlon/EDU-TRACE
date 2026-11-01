@@ -1,0 +1,22 @@
+[Unit]
+Description=EduTrace frontend (pruebas)
+After=network-online.target edutrace-pruebas-backend.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=edutrace
+WorkingDirectory=/opt/edutrace-pruebas/web
+Environment=NODE_ENV=production
+Environment=WEB_PORT=3001
+EnvironmentFile=-/opt/edutrace-pruebas/.env
+ExecStart=/usr/bin/env npm run start -- -H 127.0.0.1 -p ${WEB_PORT}
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

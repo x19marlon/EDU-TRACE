@@ -14,7 +14,7 @@ import {
   sendReviewTime,
   SubmissionMeta,
 } from "@/lib/api";
-import { Spinner } from "@/components/ui";
+import { SmallButton, Spinner } from "@/components/ui";
 import { formatDateTime, formatDeadline, formatDuration, formatFeedback, LEVEL_STYLE, performanceBand, startedDays } from "@/lib/format";
 
 const GRADE_MAX = 5;
@@ -48,6 +48,12 @@ export const ACTION_LABEL: Record<string, string> = {
   taller_editado: "Taller editado",
   taller_eliminado: "Taller eliminado",
   casos_actualizados: "Casos de prueba actualizados",
+  codigo_restablecimiento: "Código para restablecer contraseña",
+  periodo_cerrado: "Periodo cerrado",
+  periodo_reabierto: "Periodo reabierto",
+  profesor_agregado: "Profesor agregado",
+  profesor_retirado: "Profesor retirado",
+  materia_copiada: "Materia copiada",
 };
 
 function useReviewTimer() {
@@ -172,13 +178,14 @@ export default function ReviewPanel({
   meta,
 }: {
   submissionId: string;
-  onSaved?: () => void;
+  onSaved?: (returned?: boolean) => void;
   meta?: SubmissionMeta;
 }) {
   const [review, setReview] = useState<Review | null>(null);
   const [feedback, setFeedback] = useState("");
   const [grade, setGrade] = useState("");
   const [levels, setLevels] = useState<Record<string, RAELevel | "">>({});
+  const [scores, setScores] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<"draft" | "save" | "discard" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [historyKey, setHistoryKey] = useState(0);
@@ -210,6 +217,7 @@ export default function ReviewPanel({
     setFeedback(r.feedback);
     setGrade(g);
     setLevels(Object.fromEntries((r.raes ?? []).map((x) => [x.rae_id, x.level ?? ""])));
+    setScores(Object.fromEntries((r.criteria ?? []).map((c) => [c.id, c.score === undefined ? "" : String(c.score)])));
     setHistoryKey((k) => k + 1);
   }, []);
   useEffect(() => {
@@ -284,19 +292,63 @@ export default function ReviewPanel({
       setError("Escribe la retroalimentación antes de devolverla");
       return;
     }
+    const criteriaScores: Record<string, number> = {};
+    for (const c of review?.criteria ?? []) {
+      const raw = (scores[c.id] ?? "").trim().replace(",", ".");
+      if (!raw) continue;
+      const v = Number(raw);
+      if (!Number.isFinite(v) || v < 0 || v > c.points) {
+        setError(`El puntaje de «${c.name}» debe estar entre 0 y ${c.points.toFixed(1)}`);
+        return;
+      }
+      criteriaScores[c.id] = v;
+    }
     setBusy("save");
     setError(null);
     try {
       const elapsed = timer.take();
-      apply(await saveReview(submissionId, { feedback, grade: g, return: returnIt, rae_levels: levels, elapsed_ms: elapsed }));
+      apply(
+        await saveReview(submissionId, {
+          feedback,
+          grade: g,
+          return: returnIt,
+          rae_levels: levels,
+          criteria_scores: criteriaScores,
+          elapsed_ms: elapsed,
+        })
+      );
       timer.commit(elapsed);
-      onSaved?.();
+      onSaved?.(returnIt);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar la revisión");
     } finally {
       setBusy(null);
     }
   };
+
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || busyRef.current) return;
+      if (e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        saveRef.current(false);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        saveRef.current(true);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  const criteriaTotal = (review?.criteria ?? []).reduce((n, c) => n + c.points, 0);
+  const criteriaGot = (review?.criteria ?? []).reduce((n, c) => n + (Number((scores[c.id] ?? "").replace(",", ".")) || 0), 0);
+  const criteriaComplete = (review?.criteria ?? []).length > 0 && (review?.criteria ?? []).every((c) => (scores[c.id] ?? "").trim() !== "");
+  const computedGrade = criteriaComplete && criteriaTotal > 0 ? Math.round((criteriaGot / criteriaTotal) * GRADE_MAX * 10) / 10 : null;
 
   if (!review) {
     return error ? (
@@ -385,6 +437,12 @@ export default function ReviewPanel({
             )}
           </div>
           {review.ai_reason && <p className="mt-2 text-sm text-ink-soft">{review.ai_reason}</p>}
+          {review.ai_model && (
+            <p className="mt-2 text-xs text-ink-soft">
+              Generada por <span className="font-semibold">{review.ai_model}</span>
+              {review.ai_prompt && <> · versión del prompt <span className="font-mono">{review.ai_prompt}</span></>}
+            </p>
+          )}
           {review.ai_grade === undefined && (
             <p className="mt-2 text-xs text-peach-700">Error del modelo al calcular la nota tentativa.</p>
           )}
@@ -422,6 +480,33 @@ export default function ReviewPanel({
               dangerouslySetInnerHTML={{ __html: formatFeedback(feedback) }}
             />
           </details>
+        )}
+        {(review.criteria ?? []).length > 0 && (
+          <fieldset className="space-y-1.5 rounded-2xl bg-mint-50/70 p-3">
+            <legend className="px-1 text-xs font-bold uppercase tracking-wider text-ink-soft">Rúbrica</legend>
+            {review.criteria.map((c) => (
+              <label key={c.id} className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="min-w-0 flex-1">{c.name}</span>
+                <input
+                  value={scores[c.id] ?? ""}
+                  onChange={(e) => setScores((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                  inputMode="decimal"
+                  aria-label={`Puntaje de ${c.name}, de 0 a ${c.points.toFixed(1)}`}
+                  className="w-20 rounded-full border border-mint-200 bg-white px-3 py-1 text-center text-sm font-bold tabular-nums focus:outline-none focus:ring-4 focus:ring-mint-100"
+                />
+                <span className="w-16 text-xs text-ink-soft">/ {c.points.toFixed(1)}</span>
+              </label>
+            ))}
+            <div className="flex flex-wrap items-center gap-2 pt-1 text-sm">
+              <span className="font-semibold">
+                {criteriaGot.toFixed(1)} de {criteriaTotal.toFixed(1)} puntos
+                {computedGrade !== null && ` → nota ${computedGrade.toFixed(1)}`}
+              </span>
+              {computedGrade !== null && computedGrade.toFixed(1) !== grade && (
+                <SmallButton onClick={() => setGrade(computedGrade.toFixed(1))}>Usar la nota calculada</SmallButton>
+              )}
+            </div>
+          </fieldset>
         )}
         <label className="flex items-center gap-2 text-sm font-semibold text-ink-soft">
           Nota / calificación tentativa
@@ -511,7 +596,7 @@ export default function ReviewPanel({
           <button
             onClick={() => save(true, true)}
             disabled={busy !== null}
-            className="rounded-full bg-mint-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-mint-700 disabled:opacity-50"
+            className="rounded-full bg-mint-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-ink disabled:opacity-50"
           >
             Confirmar nota de la IA ({review.ai_grade.toFixed(1)}) y devolver asignación a estudiante
           </button>
@@ -544,6 +629,13 @@ export default function ReviewPanel({
         {review.grade_source === "profesor" &&
           review.ai_grade !== undefined &&
           `Nota modificada por ti (la IA proponía ${review.ai_grade.toFixed(1)}).`}
+      </p>
+
+      <p className="text-[11px] text-ink-soft">
+        Atajos: <kbd className="rounded bg-lavender-50 px-1 font-mono">Ctrl</kbd>+<kbd className="rounded bg-lavender-50 px-1 font-mono">S</kbd> guarda
+        sin devolver · <kbd className="rounded bg-lavender-50 px-1 font-mono">Ctrl</kbd>+<kbd className="rounded bg-lavender-50 px-1 font-mono">Enter</kbd>{" "}
+        aprueba y devuelve con tu nota · <kbd className="rounded bg-lavender-50 px-1 font-mono">Alt</kbd>+<kbd className="rounded bg-lavender-50 px-1 font-mono">↓</kbd>{" "}
+        siguiente entrega por revisar.
       </p>
 
       <ReviewHistory submissionId={submissionId} refreshKey={historyKey} />

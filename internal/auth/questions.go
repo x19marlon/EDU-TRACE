@@ -64,6 +64,17 @@ func (s *Store) AskQuestion(studentID, submissionID, body string) (*Question, er
 		q.ID, q.SubmissionID, q.Body, fmtTime(q.CreatedAt)); err != nil {
 		return nil, err
 	}
+	_, _, title, err := submissionNotice(tx, submissionID)
+	if err != nil {
+		return nil, err
+	}
+	notice := "Un estudiante hizo una pregunta sobre su entrega."
+	if title != "" {
+		notice = "Un estudiante hizo una pregunta sobre " + quoted(title) + "."
+	}
+	if err := staffNotice(tx, submissionID, NoticeQuestionAsked, notice, "/docente"); err != nil {
+		return nil, err
+	}
 	return q, tx.Commit()
 }
 
@@ -79,7 +90,7 @@ func (s *Store) AnswerQuestion(u *User, questionID, answer string) (*Question, e
 		JOIN class_groups g ON g.id = s.group_id
 		JOIN courses c ON c.id = g.course_id
 		WHERE q.id = ? AND (
-			(? = 'teacher' AND c.teacher_id = ?) OR
+			(? = 'teacher' AND c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)) OR
 			(? = 'monitor' AND EXISTS (SELECT 1 FROM group_monitors gm WHERE gm.group_id = g.id AND gm.monitor_id = ?))
 		)`, questionID, u.Role, u.ID, u.Role, u.ID).Scan(&submissionID, &body)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -95,6 +106,9 @@ func (s *Store) AnswerQuestion(u *User, questionID, answer string) (*Question, e
 	}
 	detail := "Respondió la pregunta «" + truncateText(body, 80) + "»"
 	if err := logAudit(tx, u.ID, AuditQuestionAnswered, "", submissionID, detail); err != nil {
+		return nil, err
+	}
+	if err := notifyStudent(tx, submissionID, NoticeQuestionAnswered, "Respondieron tu pregunta sobre"); err != nil {
 		return nil, err
 	}
 	q, err := scanQuestion(tx.QueryRow(`SELECT `+questionCols+` FROM review_questions WHERE id = ?`, questionID))
@@ -183,7 +197,7 @@ func (s *Store) TeacherOpenQuestions(teacherID string) ([]OpenQuestion, error) {
 		JOIN class_groups g ON g.id = s.group_id
 		JOIN courses c ON c.id = g.course_id
 		LEFT JOIN assignments a ON a.id = s.assignment_id
-		WHERE c.teacher_id = ? AND q.answered_at IS NULL
+		WHERE c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?) AND q.answered_at IS NULL
 		ORDER BY q.created_at LIMIT 100`, teacherID)
 	if err != nil {
 		return nil, err

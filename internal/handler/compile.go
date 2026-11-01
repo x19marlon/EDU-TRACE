@@ -9,6 +9,7 @@ import (
 	"github.com/marlon/edu-trace/internal/auth"
 	"github.com/marlon/edu-trace/internal/compiler"
 	"github.com/marlon/edu-trace/internal/model"
+	"github.com/marlon/edu-trace/internal/practice"
 )
 
 const (
@@ -64,17 +65,45 @@ func (h *CompileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	slog.Info("compile request received", "user_id", user.ID, "code_size", len(req.Code), "has_stdin", len(req.Stdin) > 0)
 	h.store.RecordCompile(user.ID)
 
-	enrolled := user.Role == auth.RoleStudent && req.GroupID != "" && h.store.IsEnrolled(user.ID, req.GroupID)
-	if !enrolled || (req.AssignmentID != "" && !h.store.AssignmentInGroup(req.AssignmentID, req.GroupID)) {
-		req.AssignmentID = ""
-	}
-	tests, err := h.store.TestsForRun(req.AssignmentID)
+	own, err := ownTests(req.OwnTests)
 	if err != nil {
-		slog.Error("load tests failed", "assignment_id", req.AssignmentID, "error", err)
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "tus casos de prueba no son válidos: " + err.Error()})
+		return
 	}
-	result := h.compiler.CompileAndTest(r.Context(), req.Code, req.Stdin, tests)
+	var tests []model.TestCase
+	exercise, isExercise := practice.Get(req.ExerciseID)
+	enrolled := false
+	switch {
+	case req.ExerciseID != "" && !isExercise:
+		writeJSON(w, http.StatusNotFound, model.ErrorResponse{Error: "ese ejercicio no existe"})
+		return
+	case isExercise:
+		tests = exercise.Tests
+	default:
+		enrolled = user.Role == auth.RoleStudent && req.GroupID != "" && h.store.IsEnrolled(user.ID, req.GroupID)
+		if !enrolled || (req.AssignmentID != "" && !h.store.AssignmentInGroup(req.AssignmentID, req.GroupID)) {
+			req.AssignmentID = ""
+		}
+		if tests, err = h.store.TestsForRun(req.AssignmentID); err != nil {
+			slog.Error("load tests failed", "assignment_id", req.AssignmentID, "error", err)
+		}
+	}
+	result := h.compiler.CompileAndTest(r.Context(), req.Code, req.Stdin, append(tests, own...))
 	if enrolled {
-		h.saveAttempt(user, req, result)
+		official := *result
+		official.Tests = result.Tests[:len(tests)]
+		h.saveAttempt(user, req, &official)
+	}
+	if isExercise && user.Role == auth.RoleStudent {
+		passed := 0
+		for _, t := range result.Tests[:len(tests)] {
+			if t.Passed {
+				passed++
+			}
+		}
+		if err := h.store.RecordPractice(user.ID, exercise.ID, passed, len(tests)); err != nil {
+			slog.Error("guardar el resultado de la práctica", "user_id", user.ID, "exercise", exercise.ID, "error", err)
+		}
 	}
 	result.Tests = model.PublicResults(result.Tests)
 	writeJSON(w, http.StatusOK, result)
@@ -108,7 +137,7 @@ func (h *CompileHandler) saveAttempt(user *auth.User, req model.CompileRequest, 
 		ProgramOutput: result.ProgramOutput,
 		Tests: result.Tests,
 	})
-	if err != nil && !errors.Is(err, auth.ErrDuplicateAttempt) {
+	if err != nil && !errors.Is(err, auth.ErrDuplicateAttempt) && !errors.Is(err, auth.ErrCourseClosed) {
 		slog.Error("save attempt failed", "user_id", user.ID, "error", err)
 	}
 }

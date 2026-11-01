@@ -208,7 +208,7 @@ func (s *Store) SaveSubmissionTests(teacherID, submissionID string, results []mo
 	if err := tx.QueryRow(`SELECT COUNT(*) FROM submissions s
 		JOIN class_groups g ON g.id = s.group_id
 		JOIN courses c ON c.id = g.course_id
-		WHERE s.id = ? AND c.teacher_id = ?`, submissionID, teacherID).Scan(&n); err != nil {
+		WHERE s.id = ? AND c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`, submissionID, teacherID).Scan(&n); err != nil {
 		return err
 	}
 	if n == 0 {

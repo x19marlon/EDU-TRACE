@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Assignment, assignmentFileUrl, createAssignment, deleteAssignment, TestCase, TestMatch, updateAssignment } from "@/lib/api";
+import { Assignment, assignmentFileUrl, createAssignment, Criterion, deleteAssignment, TestCase, TestMatch, updateAssignment } from "@/lib/api";
 import { Card, SmallButton } from "@/components/ui";
 import { formatDeadline, formatSize } from "@/lib/format";
 import { DeadlineBadge } from "@/components/Deadline";
@@ -12,16 +12,26 @@ const MAX_TESTS = 10;
 
 const emptyTest = (): TestCase => ({ name: "", stdin: "", expected: "", match: "contiene", hidden: false });
 
-function TestsEditor({ tests, onChange }: { tests: TestCase[]; onChange: (tests: TestCase[]) => void }) {
+export function TestsEditor({
+  tests,
+  onChange,
+  student = false,
+}: {
+  tests: TestCase[];
+  onChange: (tests: TestCase[]) => void;
+  student?: boolean;
+}) {
   const update = (i: number, patch: Partial<TestCase>) => onChange(tests.map((t, j) => (j === i ? { ...t, ...patch } : t)));
   const small =
     "w-full rounded-xl border border-lavender-100 bg-white px-3 py-1.5 font-mono text-xs focus:border-lavender-300 focus:outline-none focus:ring-4 focus:ring-lavender-100";
   return (
     <div className="space-y-2 rounded-2xl bg-lavender-50/60 p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-ink-soft">Casos de prueba</span>
+        <span className="text-sm font-semibold text-ink-soft">{student ? "Mis casos de prueba" : "Casos de prueba"}</span>
         <span className="text-xs text-ink-faint">
-          (opcional) Cada envío y cada compilación del estudiante se ejecuta con estas entradas y se compara con la salida esperada.
+          {student
+            ? "Cada vez que compilas, tu programa también se prueba con estas entradas. Se guardan solo en este navegador."
+            : "(opcional) Cada envío y cada compilación del estudiante se ejecuta con estas entradas y se compara con la salida esperada."}
         </span>
       </div>
       {tests.map((t, i) => (
@@ -33,7 +43,7 @@ function TestsEditor({ tests, onChange }: { tests: TestCase[]; onChange: (tests:
               maxLength={80}
               placeholder={`Caso ${i + 1}`}
               aria-label={`Nombre del caso ${i + 1}`}
-              className="min-w-0 flex-1 rounded-full border border-lavender-100 bg-lavender-50/60 px-3 py-1.5 text-sm focus:outline-none focus:ring-4 focus:ring-lavender-100"
+              className="min-w-[9rem] flex-1 rounded-full border border-lavender-100 bg-lavender-50/60 px-3 py-1.5 text-sm focus:outline-none focus:ring-4 focus:ring-lavender-100"
             />
             <select
               value={t.match}
@@ -44,10 +54,12 @@ function TestsEditor({ tests, onChange }: { tests: TestCase[]; onChange: (tests:
               <option value="contiene">La salida contiene lo esperado</option>
               <option value="exacta">La salida es exactamente lo esperado</option>
             </select>
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
-              <input type="checkbox" checked={t.hidden} onChange={(e) => update(i, { hidden: e.target.checked })} />
-              Oculto al estudiante
-            </label>
+            {!student && (
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
+                <input type="checkbox" checked={t.hidden} onChange={(e) => update(i, { hidden: e.target.checked })} />
+                Oculto al estudiante
+              </label>
+            )}
             <button
               type="button"
               onClick={() => onChange(tests.filter((_, j) => j !== i))}
@@ -86,9 +98,59 @@ function TestsEditor({ tests, onChange }: { tests: TestCase[]; onChange: (tests:
         </button>
       )}
       <p className="text-[11px] text-ink-faint">
-        Se ignoran los espacios repetidos y las líneas vacías. «Contiene» acepta mensajes extra como «Ingrese un número:». Los casos
-        ocultos solo le muestran al estudiante si pasa o no.
+        Se ignoran los espacios repetidos y las líneas vacías. «Contiene» acepta mensajes extra como «Ingrese un número:».
+        {!student && " Los casos ocultos solo le muestran al estudiante si pasa o no."}
       </p>
+    </div>
+  );
+}
+
+function CriteriaEditor({ criteria, onChange }: { criteria: Criterion[]; onChange: (c: Criterion[]) => void }) {
+  const update = (i: number, patch: Partial<Criterion>) => onChange(criteria.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  const total = criteria.reduce((n, c) => n + (Number(c.points) || 0), 0);
+  return (
+    <div className="space-y-2 rounded-2xl bg-mint-50/70 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold text-ink-soft">Rúbrica con puntaje</span>
+        <span className="text-xs text-ink-faint">
+          (opcional) Al revisar asignas un puntaje por criterio y EduTrace calcula la nota sobre 5.0. Total: {total.toFixed(1)} puntos.
+        </span>
+      </div>
+      {criteria.map((c, i) => (
+        <div key={i} className="flex flex-wrap items-center gap-2">
+          <input
+            value={c.name}
+            onChange={(e) => update(i, { name: e.target.value })}
+            maxLength={120}
+            placeholder="Criterio, p. ej. Lee bien la entrada"
+            aria-label={`Nombre del criterio ${i + 1}`}
+            className="min-w-0 flex-1 rounded-full border border-mint-200 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-4 focus:ring-mint-100"
+          />
+          <input
+            type="number"
+            min={0.1}
+            max={100}
+            step={0.1}
+            value={Number.isFinite(c.points) ? c.points : ""}
+            onChange={(e) => update(i, { points: e.target.valueAsNumber })}
+            aria-label={`Puntos del criterio ${i + 1}`}
+            className="w-24 rounded-full border border-mint-200 bg-white px-3 py-1.5 text-center text-sm focus:outline-none focus:ring-4 focus:ring-mint-100"
+          />
+          <span className="text-xs text-ink-soft">puntos</span>
+          <button type="button" onClick={() => onChange(criteria.filter((_, j) => j !== i))} className="text-xs font-bold text-peach-700 hover:underline">
+            Quitar
+          </button>
+        </div>
+      ))}
+      {criteria.length < 10 && (
+        <button
+          type="button"
+          onClick={() => onChange([...criteria, { id: "", name: "", points: 1 }])}
+          className="rounded-full bg-white px-4 py-1.5 text-sm font-bold text-mint-700 ring-1 ring-mint-200 transition hover:bg-mint-50"
+        >
+          Agregar criterio
+        </button>
+      )}
     </div>
   );
 }
@@ -124,12 +186,19 @@ function AssignmentForm({
   );
   const [lateUntil, setLateUntil] = useState(toLocalInput(initial?.late_until));
   const [penalty, setPenalty] = useState(initial?.late_penalty !== undefined ? String(initial.late_penalty) : "");
+  const [evaluation, setEvaluation] = useState(initial?.evaluation ?? false);
   const [tests, setTests] = useState<TestCase[]>(initial?.tests ?? []);
+  const [criteria, setCriteria] = useState<Criterion[]>(initial?.criteria ?? []);
+  const criteriaError = criteria.some((c) => !c.name.trim() || !(c.points > 0 && c.points <= 100))
+    ? "Cada criterio necesita un nombre y un puntaje entre 0.1 y 100."
+    : null;
   const testsError = tests.some((t) => !t.expected.trim()) ? "Cada caso de prueba necesita su salida esperada." : null;
   const dueMs = due ? new Date(due).getTime() : null;
   const lateUntilMs = lateMode === "until" && lateUntil ? new Date(lateUntil).getTime() : null;
   const policyError =
-    lateMode === "until" && !lateUntil
+    evaluation && !due
+      ? "Un taller en modo evaluación necesita fecha límite: la IA queda apagada para la clase hasta esa fecha."
+      : lateMode === "until" && !lateUntil
       ? "Indica hasta cuándo se reciben entregas tardías."
       : dueMs !== null && lateUntilMs !== null && lateUntilMs <= dueMs
         ? "El cierre de entregas tardías debe ser posterior a la fecha límite."
@@ -171,10 +240,12 @@ function AssignmentForm({
         if (lateMode === "until" && lateUntil) form.append("late_until", new Date(lateUntil).toISOString());
         if (lateMode !== "closed" && penalty.trim()) form.append("late_penalty", penalty.trim().replace(",", "."));
       }
+      form.append("evaluation", evaluation ? "true" : "false");
       form.append(
         "tests",
         JSON.stringify(tests.map((t) => ({ name: t.name.trim(), stdin: t.stdin, expected: t.expected, match: t.match, hidden: t.hidden })))
       );
+      form.append("criteria", JSON.stringify(criteria.map((c) => ({ name: c.name.trim(), points: c.points }))));
       files.forEach((f) => form.append("files", f, f.name));
       removed.forEach((id) => form.append("remove_files", id));
       const a = initial ? await updateAssignment(initial.id, form) : await createAssignment(groupId, form);
@@ -186,7 +257,9 @@ function AssignmentForm({
         setLateMode("accept");
         setLateUntil("");
         setPenalty("");
+        setEvaluation(false);
         setTests([]);
+        setCriteria([]);
         setFiles([]);
       }
       onSaved(a);
@@ -239,6 +312,23 @@ function AssignmentForm({
         )}
       </div>
 
+      <label className="flex items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm">
+        <input
+          type="checkbox"
+          checked={evaluation}
+          onChange={(e) => setEvaluation(e.target.checked)}
+          className="mt-0.5 h-4 w-4 accent-lavender-600"
+        />
+        <span>
+          <span className="font-bold text-ink">Modo evaluación (parcial o quiz)</span>
+          <span className="block text-ink-soft">
+            Desde que guardas el taller hasta su fecha límite (o el cierre de entregas tardías), los estudiantes de la clase no
+            pueden usar la IA ni el chat en ninguna parte de EduTrace. Tú sigues recibiendo la propuesta de la IA para revisar.
+          </span>
+        </span>
+      </label>
+      {evaluation && !due && <p className="text-xs font-semibold text-peach-700">{policyError}</p>}
+
       {due && (
         <div className="space-y-3 rounded-2xl bg-lavender-50/60 p-3">
           <label className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-soft">
@@ -286,6 +376,8 @@ function AssignmentForm({
 
       <TestsEditor tests={tests} onChange={setTests} />
       {testsError && <p className="text-xs font-semibold text-peach-700">{testsError}</p>}
+      <CriteriaEditor criteria={criteria} onChange={setCriteria} />
+      {criteriaError && <p className="text-xs font-semibold text-peach-700">{criteriaError}</p>}
 
       <div>
         <input ref={fileInput} type="file" multiple className="hidden" onChange={(e) => addFiles(e.target.files)} />
@@ -346,7 +438,7 @@ function AssignmentForm({
       <div className="flex flex-wrap gap-2">
         <button
           type="submit"
-          disabled={busy || title.trim().length < 2 || !statement.trim() || (!!due && !!policyError) || !!testsError}
+          disabled={busy || title.trim().length < 2 || !statement.trim() || (!!due && !!policyError) || (evaluation && !due) || !!testsError || !!criteriaError}
           className="rounded-full bg-lavender-600 px-5 py-2.5 text-sm font-bold text-white shadow-soft transition
             hover:bg-lavender-700 disabled:opacity-40"
         >
@@ -454,6 +546,9 @@ export default function TeacherAssignments({
               <details className="group rounded-2xl bg-lavender-50/60 px-4 py-3 open:bg-lavender-50">
                 <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="min-w-0 flex-1 font-bold">{a.title}</span>
+                  {a.evaluation && (
+                    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900">Evaluación · sin IA</span>
+                  )}
                   <DeadlineBadge assignment={a} />
                   <span className="text-xs text-ink-soft">
                     {a.files.length} {a.files.length === 1 ? "archivo" : "archivos"} · {(a.tests ?? []).length}{" "}

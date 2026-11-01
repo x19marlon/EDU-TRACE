@@ -57,7 +57,7 @@ func scanRAEs(rows *sql.Rows) ([]RAE, error) {
 
 func ownsCourse(q querier, teacherID, courseID string) error {
 	var n int
-	if err := q.QueryRow(`SELECT COUNT(*) FROM courses WHERE id = ? AND teacher_id = ?`, courseID, teacherID).Scan(&n); err != nil {
+	if err := q.QueryRow(`SELECT COUNT(*) FROM course_staff WHERE course_id = ? AND teacher_id = ?`, courseID, teacherID).Scan(&n); err != nil {
 		return err
 	}
 	if n == 0 {
@@ -81,7 +81,7 @@ func (s *Store) CourseRAEs(teacherID, courseID string) ([]RAE, error) {
 func (s *Store) teacherRAEs(teacherID string) (map[string][]RAE, error) {
 	rows, err := s.db.Query(`SELECT r.id, r.course_id, r.code, r.description FROM course_raes r
 		JOIN courses c ON c.id = r.course_id
-		WHERE c.teacher_id = ? ORDER BY r.position, r.created_at`, teacherID)
+		WHERE c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?) ORDER BY r.position, r.created_at`, teacherID)
 	if err != nil {
 		return nil, err
 	}
@@ -120,13 +120,13 @@ func (s *Store) CreateRAE(teacherID, courseID, code, description string) (*RAE, 
 
 func (s *Store) UpdateRAE(teacherID, raeID, code, description string) error {
 	return affected(s.db.Exec(`UPDATE course_raes SET code = ?, description = ?
-		WHERE id = ? AND course_id IN (SELECT id FROM courses WHERE teacher_id = ?)`,
+		WHERE id = ? AND course_id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`,
 		strings.TrimSpace(code), strings.TrimSpace(description), raeID, teacherID))
 }
 
 func (s *Store) DeleteRAE(teacherID, raeID string) error {
 	return affected(s.db.Exec(`DELETE FROM course_raes
-		WHERE id = ? AND course_id IN (SELECT id FROM courses WHERE teacher_id = ?)`, raeID, teacherID))
+		WHERE id = ? AND course_id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`, raeID, teacherID))
 }
 
 func reviewRAEs(q querier, submissionID string) ([]ReviewRAE, error) {

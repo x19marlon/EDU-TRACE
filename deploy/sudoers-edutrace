@@ -1,1 +1,4 @@
 edutrace ALL=(root) NOPASSWD: /usr/bin/systemctl restart edutrace-backend edutrace-web
+edutrace ALL=(root) NOPASSWD: /usr/bin/systemctl stop edutrace-backend
+edutrace ALL=(root) NOPASSWD: /usr/bin/systemctl start edutrace-backend
+edutrace ALL=(root) NOPASSWD: /usr/bin/systemctl restart edutrace-pruebas-backend edutrace-pruebas-web

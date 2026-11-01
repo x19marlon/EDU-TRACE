@@ -143,11 +143,19 @@ func (s *Store) AddMonitorFeedback(monitorID, submissionID, body string) (*Monit
 	if f.ID, err = randomHex(12); err != nil {
 		return nil, err
 	}
-	if _, err := s.db.Exec(`INSERT INTO monitor_feedback (id, submission_id, monitor_id, body, created_at) VALUES (?, ?, ?, ?, ?)`,
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`INSERT INTO monitor_feedback (id, submission_id, monitor_id, body, created_at) VALUES (?, ?, ?, ?, ?)`,
 		f.ID, f.SubmissionID, f.MonitorID, f.Body, fmtTime(f.CreatedAt)); err != nil {
 		return nil, err
 	}
-	return f, nil
+	if err := notifyStudent(tx, submissionID, NoticeMonitorFeedback, "Un monitor comentó"); err != nil {
+		return nil, err
+	}
+	return f, tx.Commit()
 }
 
 func (s *Store) DeleteMonitorFeedback(u *User, feedbackID string) error {
@@ -159,7 +167,7 @@ func (s *Store) DeleteMonitorFeedback(u *User, feedbackID string) error {
 			SELECT s.id FROM submissions s
 			JOIN class_groups g ON g.id = s.group_id
 			JOIN courses c ON c.id = g.course_id
-			WHERE c.teacher_id = ?)`, feedbackID, u.ID))
+			WHERE c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?))`, feedbackID, u.ID))
 	}
 	return ErrNotFound
 }

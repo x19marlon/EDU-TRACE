@@ -8,7 +8,11 @@ import { Avatar, Card, InlineCreate, RenameForm, SmallButton } from "@/component
 import RaeEditor from "@/components/RaeEditor";
 import { useAuth } from "@/components/AuthProvider";
 import {
+  addCoTeacher,
   AIStatus,
+  cloneCourse,
+  closeCourse,
+  removeCoTeacher,
   createCourse,
   createGroup,
   CourseSummary,
@@ -18,8 +22,9 @@ import {
   listOpenQuestions,
   OpenQuestion,
   renameCourse,
+  reopenCourse,
 } from "@/lib/api";
-import { relativeTime } from "@/lib/format";
+import { formatDateTime, relativeTime } from "@/lib/format";
 
 function QuestionsInbox() {
   const [questions, setQuestions] = useState<OpenQuestion[]>([]);
@@ -81,6 +86,83 @@ function AIAlert() {
   );
 }
 
+function CourseTeachers({ course, onChanged }: { course: CourseSummary; onChanged: () => Promise<void> }) {
+  const { user } = useAuth();
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async (action: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      await onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cambiar los profesores");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mb-4 rounded-2xl bg-lavender-50/60 px-4 py-3 text-sm">
+      <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-ink-soft">Profesores</p>
+      <ul className="flex flex-wrap gap-1.5">
+        {(course.teachers ?? []).map((t) => (
+          <li key={t.id} className="flex items-center gap-1 rounded-full bg-white py-0.5 pl-3 pr-1 ring-1 ring-lavender-100">
+            <span className="font-semibold">{t.name}</span>
+            {t.owner && <span className="text-xs text-ink-soft">(dueño)</span>}
+            {!t.owner && (course.owner || t.id === user?.id) && (
+              <SmallButton
+                tone="danger"
+                disabled={busy}
+                onClick={() => {
+                  const self = t.id === user?.id;
+                  if (!window.confirm(self ? `¿Salir de «${course.name}»? Tus revisiones pasan al dueño de la materia.` : `¿Retirar a ${t.name} de «${course.name}»?`)) return;
+                  run(() => removeCoTeacher(course.id, t.id));
+                }}
+              >
+                {t.id === user?.id ? "Salir" : "Quitar"}
+              </SmallButton>
+            )}
+          </li>
+        ))}
+      </ul>
+      {course.owner && (
+        <form
+          className="mt-2 flex flex-wrap gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            run(async () => {
+              await addCoTeacher(course.id, email.trim());
+              setEmail("");
+            });
+          }}
+        >
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email de otro profesor"
+            aria-label="Email del profesor que compartirá la materia"
+            className="min-w-0 flex-1 rounded-full border border-lavender-100 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-4 focus:ring-lavender-100"
+          />
+          <button
+            type="submit"
+            disabled={busy || !email.trim()}
+            className="rounded-full bg-white px-4 py-1.5 text-sm font-bold text-lavender-700 ring-1 ring-lavender-200 hover:bg-lavender-50 disabled:opacity-50"
+          >
+            Compartir materia
+          </button>
+        </form>
+      )}
+      {error && <p className="mt-2 rounded-2xl bg-peach-50 px-3 py-1.5 text-sm font-semibold text-peach-700">{error}</p>}
+    </div>
+  );
+}
+
 function CourseCard({ course, onChanged }: { course: CourseSummary; onChanged: () => Promise<void> }) {
   const students = course.groups.reduce((n, g) => n + g.student_count, 0);
   const [renaming, setRenaming] = useState(false);
@@ -99,20 +181,55 @@ function CourseCard({ course, onChanged }: { course: CourseSummary; onChanged: (
     }
   };
 
+  const copy = async () => {
+    const name = window.prompt(
+      `Nombre de la copia de «${course.name}». Se copian las clases (sin estudiantes y con códigos nuevos), los talleres con sus archivos, casos y rúbricas, los RAE y los profesores. Las fechas límite quedan vacías.`,
+      `${course.name} (copia)`
+    );
+    if (name === null) return;
+    const closeOld = !course.closed_at && window.confirm(`¿Cerrar también el periodo de «${course.name}»?`);
+    setError(null);
+    try {
+      await cloneCourse(course.id, name.trim(), closeOld);
+      await onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo copiar la materia");
+    }
+  };
+
+  const togglePeriod = async () => {
+    const question = course.closed_at
+      ? `¿Reabrir el periodo de «${course.name}»? Los estudiantes podrán volver a enviar y los datos ya no se borrarán.`
+      : `¿Cerrar el periodo de «${course.name}»? Los estudiantes ya no podrán enviar ni unirse, y recibirán un aviso con la fecha en que se borrarán sus entregas. Tú podrás seguir revisando y exportando hasta esa fecha.`;
+    if (!window.confirm(question)) return;
+    setError(null);
+    try {
+      if (course.closed_at) await reopenCourse(course.id);
+      else await closeCourse(course.id);
+      await onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cambiar el periodo");
+    }
+  };
+
   return (
     <Card
       className="rise-in"
       title={course.name}
       action={
         <span className="flex flex-wrap items-center justify-end gap-1">
-          <span className="mr-1 text-xs font-semibold text-ink-faint">
+          <span className="mr-1 text-xs font-semibold text-ink-soft">
             {course.groups.length} {course.groups.length === 1 ? "clase" : "clases"} · {students}{" "}
             {students === 1 ? "estudiante" : "estudiantes"}
           </span>
           <SmallButton onClick={() => setRenaming(true)}>Renombrar</SmallButton>
-          <SmallButton tone="danger" onClick={remove}>
-            Eliminar
-          </SmallButton>
+          <SmallButton onClick={copy}>Copiar para otro periodo</SmallButton>
+          <SmallButton onClick={togglePeriod}>{course.closed_at ? "Reabrir periodo" : "Cerrar periodo"}</SmallButton>
+          {course.owner && (
+            <SmallButton tone="danger" onClick={remove}>
+              Eliminar
+            </SmallButton>
+          )}
         </span>
       }
     >
@@ -130,6 +247,13 @@ function CourseCard({ course, onChanged }: { course: CourseSummary; onChanged: (
         </div>
       )}
       {error && <p className="mb-3 rounded-2xl bg-peach-50 px-4 py-2 text-sm font-semibold text-peach-700">{error}</p>}
+      {course.closed_at && (
+        <p className="mb-3 rounded-2xl bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">
+          Periodo cerrado el {formatDateTime(course.closed_at)}.{" "}
+          {course.purge_at ? `Sus datos se borrarán el ${formatDateTime(course.purge_at)}.` : "Sus datos no se borran automáticamente."}
+        </p>
+      )}
+      <CourseTeachers course={course} onChanged={onChanged} />
       <RaeEditor courseId={course.id} raes={course.raes ?? []} onChanged={onChanged} />
       {course.groups.length === 0 ? (
         <p className="mb-3 text-sm text-ink-soft">
@@ -149,7 +273,8 @@ function CourseCard({ course, onChanged }: { course: CourseSummary; onChanged: (
                   {g.join_code}
                 </span>
                 <span className="text-xs font-semibold text-ink-soft">
-                  {g.student_count} estudiantes · {g.submission_count} entregas
+                  {g.student_count} {g.student_count === 1 ? "estudiante" : "estudiantes"} · {g.submission_count}{" "}
+                  {g.submission_count === 1 ? "entrega" : "entregas"}
                 </span>
                 <svg className="h-4 w-4 text-ink-faint" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
                   <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.17 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clipRule="evenodd" />

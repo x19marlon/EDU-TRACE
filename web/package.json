@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
+    "test:a11y": "playwright test"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.3",
@@ -15,18 +16,25 @@
     "@codemirror/view": "^6.43.13",
     "@lezer/highlight": "^1.2.5",
     "codemirror": "^6.0.2",
-    "next": "14.2.35",
-    "react": "^18",
-    "react-dom": "^18"
+    "next": "15.5.28",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.64.1",
     "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "eslint": "^8",
-    "eslint-config-next": "14.2.35",
-    "postcss": "^8",
+    "eslint-config-next": "15.5.28",
+    "postcss": "^8.5.32",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "^8.5.32"
+    }
   }
 }

@@ -121,6 +121,19 @@ func (l *LoginLimiter) Blocked(key string) bool {
 	return len(l.recentLocked(key)) >= l.max
 }
 
+func (l *LoginLimiter) Max() int { return l.max }
+
+func (l *LoginLimiter) Take(key string) (time.Duration, bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	recent := l.recentLocked(key)
+	if len(recent) >= l.max {
+		return time.Until(recent[0].Add(l.window)), false
+	}
+	l.failures[key] = append(recent, time.Now())
+	return 0, true
+}
+
 // Fail registra un intento fallido.
 func (l *LoginLimiter) Fail(key string) {
 	l.mu.Lock()

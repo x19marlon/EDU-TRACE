@@ -1,11 +1,13 @@
 package compiler
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"sync"
 )
 
 // Directorio de trabajo del programa dentro del sandbox.
@@ -18,7 +20,17 @@ const (
 	runMaxOpenFiles = 64
 	compileMemBytes = 1 << 30 // g++ necesita más memoria que el programa
 	compileFileSize = 64 << 20
+	runMaxProcs = 8
+	compileMaxProcs = 16
+	runTmpBytes = 8 << 20
+	compileTmpBytes = 64 << 20
+	sandboxOOMScore = "1000"
 )
+
+var bwrapHasSize = sync.OnceValue(func() bool {
+	out, _ := exec.Command("bwrap", "--help").CombinedOutput()
+	return bytes.Contains(out, []byte("--size"))
+})
 
 // CheckSandbox verifica que las herramientas necesarias existan y funcionen.
 func CheckSandbox(mode string) error {
@@ -29,33 +41,45 @@ func CheckSandbox(mode string) error {
 	default:
 		return fmt.Errorf("SANDBOX=%q no es válido (usa \"bwrap\" o \"none\")", mode)
 	}
-	for _, bin := range []string{"bwrap", "prlimit"} {
+	for _, bin := range []string{"bwrap", "prlimit", "choom"} {
 		if _, err := exec.LookPath(bin); err != nil {
-			return fmt.Errorf("%s no está instalado (en Arch: pacman -S bubblewrap util-linux; en Debian/Ubuntu: apt install bubblewrap)", bin)
+			return fmt.Errorf("%s no está instalado (en Arch: pacman -S bubblewrap util-linux; en Debian/Ubuntu: apt install bubblewrap util-linux)", bin)
 		}
 	}
-	out, err := exec.Command("bwrap", append(baseBwrapArgs(), "--", "/usr/bin/true")...).CombinedOutput()
+	args := append(baseBwrapArgs(runTmpBytes), "--")
+	args = append(args, prlimitArgs(runMemoryBytes, runFileBytes, 2, runMaxProcs)...)
+	out, err := exec.Command("choom", append(sandboxPrefix(), append(args, "/usr/bin/sh", "-c", "/usr/bin/true; /usr/bin/true")...)...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("bwrap no puede crear el sandbox (¿user namespaces deshabilitados?): %v: %s", err, out)
+		return fmt.Errorf("bwrap no puede crear el sandbox con sus límites (¿user namespaces deshabilitados?): %v: %s", err, out)
 	}
 	return nil
 }
 
+func TmpLimited() bool { return bwrapHasSize() }
+
+func sandboxPrefix() []string {
+	return []string{"-n", sandboxOOMScore, "--", "bwrap"}
+}
+
 // baseBwrapArgs monta /usr en solo lectura, sin red, sin acceso a /home ni a
 // otros procesos, con un /tmp vacío y sin variables de entorno del servidor.
-func baseBwrapArgs() []string {
+func baseBwrapArgs(tmpBytes int) []string {
 	args := []string{
 		"--ro-bind", "/usr", "/usr",
 		"--proc", "/proc",
 		"--dev", "/dev",
-		"--tmpfs", "/tmp",
+	}
+	if bwrapHasSize() {
+		args = append(args, "--size", strconv.Itoa(tmpBytes))
+	}
+	args = append(args, "--tmpfs", "/tmp",
 		"--unshare-all", // red, PID, IPC, UTS, usuario y cgroup propios
 		"--die-with-parent",
 		"--new-session",
 		"--clearenv",
 		"--setenv", "PATH", "/usr/bin:/bin",
 		"--setenv", "HOME", boxDir,
-	}
+	)
 	// /lib, /lib64, /bin y /sbin son symlinks a /usr en distros con usr-merge
 	// (Arch, Debian 12+, Fedora); si son directorios reales, se montan tal cual.
 	for _, p := range []string{"/lib", "/lib64", "/bin", "/sbin"} {
@@ -78,12 +102,13 @@ func baseBwrapArgs() []string {
 	return args
 }
 
-func prlimitArgs(mem, fsize int, cpuSecs int) []string {
+func prlimitArgs(mem, fsize, cpuSecs, procs int) []string {
 	return []string{
 		"prlimit",
 		"--as=" + strconv.Itoa(mem),
 		"--fsize=" + strconv.Itoa(fsize),
 		"--nofile=" + strconv.Itoa(runMaxOpenFiles),
+		"--nproc=" + strconv.Itoa(procs),
 		"--cpu=" + strconv.Itoa(cpuSecs),
 		"--core=0",
 		"--",
@@ -98,10 +123,11 @@ func (c *Compiler) compileCommand(workDir string) (string, []string) {
 		return c.cfg.GppPath, gppArgs
 	}
 	cpu := int(c.cfg.CompileTimeout.Seconds()) + 1
-	args := append(baseBwrapArgs(), "--bind", workDir, boxDir, "--chdir", boxDir, "--")
-	args = append(args, prlimitArgs(compileMemBytes, compileFileSize, cpu)...)
+	args := append(sandboxPrefix(), baseBwrapArgs(compileTmpBytes)...)
+	args = append(args, "--bind", workDir, boxDir, "--chdir", boxDir, "--")
+	args = append(args, prlimitArgs(compileMemBytes, compileFileSize, cpu, compileMaxProcs)...)
 	args = append(args, c.cfg.GppPath)
-	return "bwrap", append(args, gppArgs...)
+	return "choom", append(args, gppArgs...)
 }
 
 // runCommand devuelve el comando para ejecutar el binario compilado en workDir.
@@ -112,7 +138,8 @@ func (c *Compiler) runCommand(workDir string) (string, []string) {
 	cpu := int(c.cfg.RunTimeout.Seconds()) + 1
 	// El directorio del estudiante se monta en solo lectura: el programa solo puede
 	// escribir en su /tmp privado (tmpfs), que desaparece al terminar.
-	args := append(baseBwrapArgs(), "--ro-bind", workDir, boxDir, "--chdir", boxDir, "--")
-	args = append(args, prlimitArgs(runMemoryBytes, runFileBytes, cpu)...)
-	return "bwrap", append(args, boxDir+"/main")
+	args := append(sandboxPrefix(), baseBwrapArgs(runTmpBytes)...)
+	args = append(args, "--ro-bind", workDir, boxDir, "--chdir", boxDir, "--")
+	args = append(args, prlimitArgs(runMemoryBytes, runFileBytes, cpu, runMaxProcs)...)
+	return "choom", append(args, boxDir+"/main")
 }

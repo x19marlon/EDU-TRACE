@@ -7,13 +7,17 @@ import (
 	"time"
 )
 
-const PrivacyVersion = "2026-10"
+const PrivacyVersion = "2026-11"
 
-var ErrOwnsCourses = errors.New("primero elimina tus materias: al borrar la cuenta se borrarían las entregas de tus estudiantes")
+var ErrOwnsCourses = errors.New("primero elimina tus materias y sal de las que compartes con otros profesores: al borrar la cuenta se borrarían las entregas de tus estudiantes")
 
 func (s *Store) RecordConsent(userID string) (time.Time, error) {
 	now := time.Now().UTC()
 	return now, affected(s.db.Exec(`UPDATE users SET consent_at = ?, consent_version = ? WHERE id = ?`, fmtTime(now), PrivacyVersion, userID))
+}
+
+func (u *User) ConsentCurrent() bool {
+	return u.ConsentAt != nil && u.ConsentVersion == PrivacyVersion
 }
 
 func (s *Store) UpdateName(userID, name string) error {
@@ -38,24 +42,28 @@ func (s *Store) DeleteAccount(userID, password string) error {
 		return ErrInvalidCredentials
 	}
 	var courses int
-	if err := tx.QueryRow(`SELECT COUNT(*) FROM courses WHERE teacher_id = ?`, userID).Scan(&courses); err != nil {
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM course_staff WHERE teacher_id = ?`, userID).Scan(&courses); err != nil {
 		return err
 	}
 	if courses > 0 {
 		return ErrOwnsCourses
 	}
+	if err := deleteUser(tx, userID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func deleteUser(q querier, userID string) error {
 	for _, stmt := range []string{
 		`UPDATE audit_log SET actor_name = 'Cuenta eliminada' WHERE actor_id = ?`,
 		`UPDATE review_questions SET answered_by_name = 'Cuenta eliminada' WHERE answered_by = ?`,
 	} {
-		if _, err := tx.Exec(stmt, userID); err != nil {
+		if _, err := q.Exec(stmt, userID); err != nil {
 			return err
 		}
 	}
-	if err := affected(tx.Exec(`DELETE FROM users WHERE id = ?`, userID)); err != nil {
-		return err
-	}
-	return tx.Commit()
+	return affected(q.Exec(`DELETE FROM users WHERE id = ?`, userID))
 }
 
 type ExportProfile struct {
@@ -97,6 +105,7 @@ type DataExport struct {
 	Submissions []ExportSubmission `json:"entregas_e_intentos,omitempty"`
 	Ratings []ExportRating `json:"valoraciones,omitempty"`
 	MonitorFeedback []MonitorFeedback `json:"retroalimentacion_escrita,omitempty"`
+	Notifications []Notification `json:"avisos,omitempty"`
 }
 
 func (s *Store) ExportData(u *User) (*DataExport, error) {
@@ -119,7 +128,7 @@ func (s *Store) ExportData(u *User) (*DataExport, error) {
 		UNION ALL SELECT c.name, g.name, 'monitor' FROM group_monitors gm
 			JOIN class_groups g ON g.id = gm.group_id JOIN courses c ON c.id = g.course_id WHERE gm.monitor_id = ?
 		UNION ALL SELECT c.name, g.name, 'profesor' FROM class_groups g
-			JOIN courses c ON c.id = g.course_id WHERE c.teacher_id = ?`, u.ID, u.ID, u.ID)
+			JOIN courses c ON c.id = g.course_id WHERE c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)`, u.ID, u.ID, u.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +173,30 @@ func (s *Store) ExportData(u *User) (*DataExport, error) {
 			return nil, err
 		}
 	}
+	if out.Notifications, err = exportNotifications(s.db, u.ID); err != nil {
+		return nil, err
+	}
 	return out, nil
+}
+
+func exportNotifications(q querier, userID string) ([]Notification, error) {
+	rows, err := q.Query(`SELECT id, kind, title, link, created_at, read_at FROM notifications WHERE user_id = ? ORDER BY id`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Notification
+	for rows.Next() {
+		var n Notification
+		var created string
+		var read sql.NullString
+		if err := rows.Scan(&n.ID, &n.Kind, &n.Title, &n.Link, &created, &read); err != nil {
+			return nil, err
+		}
+		n.CreatedAt, n.ReadAt = parseTime(created), timePtr(read)
+		out = append(out, n)
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) exportSubmissions(u *User) ([]ExportSubmission, error) {

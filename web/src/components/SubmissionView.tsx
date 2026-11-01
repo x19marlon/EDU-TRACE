@@ -126,7 +126,7 @@ export function SubmissionDetail({
   id: string;
   studentName: string;
   assignmentTitle?: string;
-  onReviewSaved?: () => void;
+  onReviewSaved?: (returned?: boolean) => void;
   mode?: "teacher" | "monitor";
   onNotesChanged?: () => void;
 }) {

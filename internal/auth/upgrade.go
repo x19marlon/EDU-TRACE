@@ -36,6 +36,15 @@ var addedColumns = []struct{ table, column, ddl string }{
 	{"ai_requests", "quality_ok", `ALTER TABLE ai_requests ADD COLUMN quality_ok INTEGER`},
 	{"reviews", "ai_minutes", `ALTER TABLE reviews ADD COLUMN ai_minutes INTEGER`},
 	{"feedback_ratings", "assignment_id", `ALTER TABLE feedback_ratings ADD COLUMN assignment_id TEXT REFERENCES assignments(id) ON DELETE SET NULL`},
+	{"users", "email_notifications", `ALTER TABLE users ADD COLUMN email_notifications INTEGER NOT NULL DEFAULT 1`},
+	{"users", "reset_hash", `ALTER TABLE users ADD COLUMN reset_hash TEXT NOT NULL DEFAULT ''`},
+	{"users", "reset_expires_at", `ALTER TABLE users ADD COLUMN reset_expires_at TEXT`},
+	{"courses", "closed_at", `ALTER TABLE courses ADD COLUMN closed_at TEXT`},
+	{"assignments", "evaluation", `ALTER TABLE assignments ADD COLUMN evaluation INTEGER NOT NULL DEFAULT 0`},
+	{"reviews", "ai_model", `ALTER TABLE reviews ADD COLUMN ai_model TEXT NOT NULL DEFAULT ''`},
+	{"reviews", "ai_prompt", `ALTER TABLE reviews ADD COLUMN ai_prompt TEXT NOT NULL DEFAULT ''`},
+	{"ai_requests", "model", `ALTER TABLE ai_requests ADD COLUMN model TEXT NOT NULL DEFAULT ''`},
+	{"ai_requests", "prompt_version", `ALTER TABLE ai_requests ADD COLUMN prompt_version TEXT NOT NULL DEFAULT ''`},
 }
 
 func (s *Store) upgradeSchema() error {

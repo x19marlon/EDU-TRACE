@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"strings"
 	"testing"
@@ -99,5 +100,76 @@ func TestNormalizeAndExplainErrors(t *testing.T) {
 	}
 	if msg, _ := DescribeRuntime("se agotó el tiempo de ejecución", -1); !strings.Contains(msg, "tiempo") {
 		t.Errorf("tiempo: %q", msg)
+	}
+}
+
+func TestSandboxLimits(t *testing.T) {
+	if _, err := exec.LookPath("g++"); err != nil {
+		t.Skip("g++ no está instalado")
+	}
+	if err := CheckSandbox("bwrap"); err != nil {
+		t.Skipf("sin sandbox: %v", err)
+	}
+	c := New(&config.Config{GppPath: "g++", Sandbox: "bwrap", CompileTimeout: 30 * time.Second, RunTimeout: 5 * time.Second, MaxOutputSize: 10240, MaxSandboxes: 2})
+	code := `#include <csignal>
+#include <cstdio>
+#include <sys/wait.h>
+#include <unistd.h>
+int main() {
+    signal(SIGXFSZ, SIG_IGN);
+    int hijos = 0;
+    for (int i = 0; i < 200; i++) {
+        pid_t p = fork();
+        if (p == 0) { sleep(1); _exit(0); }
+        if (p < 0) break;
+        hijos++;
+    }
+    while (wait(nullptr) > 0) {}
+    static char buf[65536];
+    long total = 0;
+    for (int f = 0; f < 32; f++) {
+        char name[32];
+        snprintf(name, sizeof name, "/tmp/f%d", f);
+        FILE* out = fopen(name, "w");
+        if (!out) break;
+        for (int i = 0; i < 16; i++) {
+            size_t n = fwrite(buf, 1, sizeof buf, out);
+            total += n;
+            if (n < sizeof buf) break;
+        }
+        fclose(out);
+    }
+    printf("%d %ld\n", hijos, total);
+}`
+	res := c.CompileAndTest(context.Background(), code, "", nil)
+	if !res.Success {
+		t.Fatalf("no compiló o no corrió: %+v", res)
+	}
+	var hijos int
+	var total int64
+	if _, err := fmt.Sscan(res.ProgramOutput, &hijos, &total); err != nil {
+		t.Fatalf("salida %q: %v", res.ProgramOutput, err)
+	}
+	t.Logf("procesos hijos: %d, bytes en /tmp: %d", hijos, total)
+	if hijos >= runMaxProcs {
+		t.Errorf("creó %d procesos; el límite es %d", hijos, runMaxProcs)
+	}
+	if TmpLimited() && total > runTmpBytes {
+		t.Errorf("escribió %d bytes en /tmp; el límite es %d", total, runTmpBytes)
+	}
+}
+
+func TestExplain(t *testing.T) {
+	res := &model.CompileResult{CompilerOutput: "main.cpp: In function 'int main()':\nmain.cpp:5:5: error: 'cout' was not declared in this scope\nmain.cpp:5:5: error: 'cout' was not declared in this scope\nmain.cpp:7:1: error: expected ';' before '}' token\nmain.cpp:9:3: error: algo que no conocemos"}
+	got := Explain(res)
+	if len(got) != 2 || got[0].Line != 5 || !strings.Contains(got[0].Explanation, "#include <iostream>") || got[1].Line != 7 {
+		t.Fatalf("explicaciones: %+v", got)
+	}
+	run := Explain(&model.CompileResult{Success: true, ExitCode: 136})
+	if len(run) != 1 || run[0].Message != "División entera por cero" {
+		t.Fatalf("error al ejecutar: %+v", run)
+	}
+	if len(Explain(&model.CompileResult{Success: true})) != 0 {
+		t.Fatal("un programa que funciona no necesita explicaciones")
 	}
 }

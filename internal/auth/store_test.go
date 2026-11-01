@@ -176,13 +176,13 @@ func TestStoreFlow(t *testing.T) {
 		t.Fatalf("revisión vacía: %+v", r)
 	}
 	g40 := 4.0
-	r, err = s.SaveAIDraft(prof.ID, official.ID, "borrador IA", &g40, "razón", "media", nil)
+	r, err = s.SaveAIDraft(prof.ID, official.ID, AIDraft{Feedback: "borrador IA", Grade: &g40, Reason: "razón", Confidence: "media"})
 	mustNoErr(t, err)
 	if r.Feedback != "borrador IA" || r.Grade == nil || *r.Grade != 4 || r.AIAt == nil || r.GradeSource() != "" {
 		t.Fatalf("propuesta IA: %+v", r)
 	}
 	g35 := 3.5
-	r, err = s.SaveTeacherReview(prof.ID, official.ID, "mi texto", &g35, false, nil)
+	r, err = s.SaveTeacherReview(prof.ID, official.ID, "mi texto", &g35, false, nil, nil)
 	mustNoErr(t, err)
 	if r.Status != ReviewDraft || *r.AIGrade != 4 || r.GradeSource() != "profesor" {
 		t.Fatalf("guardar sin devolver: %+v", r)
@@ -194,7 +194,7 @@ func TestStoreFlow(t *testing.T) {
 	if len(states) != 1 || states[official.ID].Status != ReviewDraft || *states[official.ID].Grade != 3.5 {
 		t.Fatalf("estados: %+v", states)
 	}
-	r, err = s.SaveTeacherReview(prof.ID, official.ID, "mi texto final", &g35, true, nil)
+	r, err = s.SaveTeacherReview(prof.ID, official.ID, "mi texto final", &g35, true, nil, nil)
 	mustNoErr(t, err)
 	if r.Status != ReviewReturned || r.ReturnedAt == nil {
 		t.Fatalf("devolver: %+v", r)
@@ -211,10 +211,10 @@ func TestStoreFlow(t *testing.T) {
 
 	// Talleres
 	due := time.Now().Add(48 * time.Hour)
-	a, err := s.CreateAssignment(prof.ID, g.ID, "Taller 1", "Enunciado", "Compila (1.0)", &due, LatePolicy{AllowLate: true},
+	a, err := s.CreateAssignment(prof.ID, g.ID, "Taller 1", "Enunciado", "Compila (1.0)", &due, AssignmentPolicy{AllowLate: true},
 		[]FileUpload{{Name: "../datos.txt", ContentType: "text/plain", Body: strings.NewReader("1 2 3")}})
 	mustNoErr(t, err)
-	if _, err := s.CreateAssignment(otro.ID, g.ID, "X", "Y", "", nil, LatePolicy{AllowLate: true}, nil); !errors.Is(err, ErrNotFound) {
+	if _, err := s.CreateAssignment(otro.ID, g.ID, "X", "Y", "", nil, AssignmentPolicy{AllowLate: true}, nil); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("otro profesor crea taller: %v", err)
 	}
 	list, err := s.GroupAssignments(prof.ID, g.ID)

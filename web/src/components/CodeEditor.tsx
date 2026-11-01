@@ -17,7 +17,7 @@ const pastelTheme = EditorView.theme({
   ".cm-gutters": {
     fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
     backgroundColor: "#F6F3FE",
-    color: "#A29DB3",
+    color: "#706B85",
     border: "none",
   },
   ".cm-activeLine": { backgroundColor: "#F6F3FE80" },
@@ -33,9 +33,9 @@ const pastelHighlight = HighlightStyle.define([
   { tag: [t.keyword, t.controlKeyword, t.modifier], color: "#7154CC", fontWeight: "600" },
   { tag: [t.typeName, t.standard(t.typeName)], color: "#2D7258" },
   { tag: [t.string, t.character], color: "#A4522C" },
-  { tag: [t.number, t.bool, t.null], color: "#C9683A" },
-  { tag: [t.comment, t.lineComment, t.blockComment], color: "#A29DB3", fontStyle: "italic" },
-  { tag: [t.processingInstruction, t.meta], color: "#3A8F6F" },
+  { tag: [t.number, t.bool, t.null], color: "#A9572F" },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: "#706B85", fontStyle: "italic" },
+  { tag: [t.processingInstruction, t.meta], color: "#2D7A5D" },
   { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#5C42AE" },
   { tag: [t.operator, t.punctuation], color: "#6B6680" },
   { tag: t.variableName, color: "#2E2A3F" },
@@ -45,9 +45,10 @@ interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
   readOnly?: boolean;
+  label?: string;
 }
 
-export default function CodeEditor({ value, onChange, readOnly = false }: CodeEditorProps) {
+export default function CodeEditor({ value, onChange, readOnly = false, label = "Editor de código C++" }: CodeEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 
@@ -62,6 +63,7 @@ export default function CodeEditor({ value, onChange, readOnly = false }: CodeEd
         pastelTheme,
         syntaxHighlighting(pastelHighlight),
         EditorView.editable.of(!readOnly),
+        EditorView.contentAttributes.of({ "aria-label": label }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChange(update.state.doc.toString());

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
@@ -13,12 +13,15 @@ import RaeScatter from "@/components/RaeScatter";
 import ClassOversight from "@/components/ClassOversight";
 import ClassErrors, { ExportButtons } from "@/components/ClassErrors";
 import ReviewTimeCard from "@/components/ReviewTimeCard";
+import StudentAlerts from "@/components/StudentAlerts";
+import SimilarityCard from "@/components/SimilarityCard";
 import { ReviewPill, StatusPill, SubmissionDetail } from "@/components/SubmissionView";
 import { LatePill } from "@/components/Deadline";
 import {
   Assignment,
   deleteGroup,
   getGroup,
+  issueResetCode,
   regenerateJoinCode,
   removeStudent,
   renameGroup,
@@ -68,6 +71,20 @@ function CopyCode({ code }: { code: string }) {
   );
 }
 
+function ResetCodeNotice({ name, code, expiresAt, onClose }: { name: string; code: string; expiresAt: string; onClose: () => void }) {
+  return (
+    <div role="status" className="m-1 space-y-2 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
+      <p className="font-bold">Código para que {name} restablezca su contraseña</p>
+      <p className="font-mono text-xl font-extrabold tracking-[0.2em]">{code}</p>
+      <p>
+        Entrégaselo en persona. Sirve una sola vez y vence el {formatDateTime(expiresAt)}. En la pantalla de ingreso debe elegir
+        «¿Olvidaste tu contraseña?» y escribir su email, este código y una contraseña nueva.
+      </p>
+      <SmallButton onClick={onClose}>Ya lo entregué</SmallButton>
+    </div>
+  );
+}
+
 function GroupView() {
   const { id } = useParams<{ id: string }>();
   const [group, setGroup] = useState<GroupDetail | null>(null);
@@ -80,6 +97,7 @@ function GroupView() {
   const [managing, setManaging] = useState(false);
   const [matrixKey, setMatrixKey] = useState(0);
   const [adminError, setAdminError] = useState<string | null>(null);
+  const [resetCode, setResetCode] = useState<{ name: string; code: string; expiresAt: string } | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -103,6 +121,37 @@ function GroupView() {
     () => submissions?.filter((s) => !studentId || s.student_id === studentId) ?? [],
     [submissions, studentId]
   );
+  const [autoNext, setAutoNext] = useState(true);
+  const pendingAfter = useCallback(
+    (fromId: string | null, list: SubmissionMeta[]) => {
+      const start = fromId ? list.findIndex((m) => m.id === fromId) : -1;
+      for (let k = 1; k <= list.length; k++) {
+        const m = list[(start + k + list.length) % list.length];
+        if (m.id !== fromId && m.review_state?.status !== "returned") return m.id;
+      }
+      return null;
+    },
+    []
+  );
+  const navRef = useRef({ visible, submissionId, studentId });
+  navRef.current = { visible, submissionId, studentId };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+      const { visible: list, submissionId: current, studentId: student } = navRef.current;
+      if (student || list.length === 0) return;
+      e.preventDefault();
+      if (e.key === "ArrowDown") {
+        const next = pendingAfter(current, list);
+        if (next) setSubmissionId(next);
+      } else {
+        const i = current ? list.findIndex((m) => m.id === current) : 0;
+        setSubmissionId(list[(i - 1 + list.length) % list.length].id);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [pendingAfter]);
 
   if (error)
     return (
@@ -156,6 +205,19 @@ function GroupView() {
     }, "No se pudo quitar al estudiante");
   };
 
+  const resetPassword = (s: GroupStudent) => {
+    if (
+      !window.confirm(
+        `¿Generar un código para que ${s.name} restablezca su contraseña? Hazlo solo si te lo pidió en persona: con el código cualquiera puede entrar a su cuenta. El estudiante recibirá un aviso.`
+      )
+    )
+      return;
+    run(async () => {
+      const { code, expires_at } = await issueResetCode(group.id, s.id);
+      setResetCode({ name: s.name, code, expiresAt: expires_at });
+    }, "No se pudo generar el código");
+  };
+
   const total = group.students.length;
   const active = group.students.filter(isActive).length;
   const withSubmission = group.students.filter((s) => s.submission_count > 0).length;
@@ -171,9 +233,19 @@ function GroupView() {
         <span className="text-ink">{group.name}</span>
       </nav>
 
+      {group.closed_at && (
+        <p role="status" className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+          El periodo de esta materia se cerró el {formatDateTime(group.closed_at)}: los estudiantes ya no pueden enviar ni unirse.
+          {group.purge_at
+            ? ` Los datos de la clase se borrarán el ${formatDateTime(group.purge_at)}; exporta antes las notas y las revisiones.`
+            : " Los datos no se borran automáticamente."}{" "}
+          Puedes reabrirlo desde «Mis materias».
+        </p>
+      )}
+
       <section className="rise-in flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-white p-5 sm:p-6 shadow-soft">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold uppercase tracking-wider text-lavender-600">{group.course_name}</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-lavender-700">{group.course_name}</p>
           {renaming ? (
             <div className="my-1 flex">
               <RenameForm
@@ -241,6 +313,27 @@ function GroupView() {
 
       <ClassErrors groupId={group.id} refreshKey={matrixKey} />
 
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <StudentAlerts
+          groupId={group.id}
+          refreshKey={matrixKey}
+          onSelect={(sid) => {
+            setStudentId(sid);
+            setSubmissionId(null);
+            document.getElementById("estudiantes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+        />
+        <SimilarityCard
+          groupId={group.id}
+          assignments={assignments}
+          onOpen={(sid) => {
+            setStudentId(null);
+            setSubmissionId(sid);
+            document.getElementById("estudiantes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+        />
+      </div>
+
       <RaeScatter
         groupId={group.id}
         refreshKey={matrixKey}
@@ -281,6 +374,7 @@ function GroupView() {
             </span>
           }
         >
+          {resetCode && <ResetCodeNotice {...resetCode} onClose={() => setResetCode(null)} />}
           {total === 0 ? (
             <p className="p-3 text-sm text-ink-soft">Nadie se ha unido todavía. Comparte el código {group.join_code}.</p>
           ) : (
@@ -318,10 +412,21 @@ function GroupView() {
                       title={isActive(s) ? "Activo esta semana" : lastSeen(s) ? "Sin actividad reciente" : "Aún no empieza"}
                     />
                   </button>
+                  {(managing || studentId === s.id) && (
+                    <Link
+                      href={`/docente/clases/${group.id}/reporte/${s.id}`}
+                      className="shrink-0 rounded-full px-3 py-1 text-xs font-bold text-lavender-700 hover:bg-lavender-50"
+                    >
+                      Reporte
+                    </Link>
+                  )}
                   {managing && (
-                    <SmallButton tone="danger" onClick={() => kick(s)}>
-                      Quitar
-                    </SmallButton>
+                    <>
+                      <SmallButton onClick={() => resetPassword(s)}>Contraseña</SmallButton>
+                      <SmallButton tone="danger" onClick={() => kick(s)}>
+                        Quitar
+                      </SmallButton>
+                    </>
                   )}
                 </li>
               ))}
@@ -342,7 +447,24 @@ function GroupView() {
         <Card
           title="Entregas oficiales recientes"
           className="rise-in lg:col-span-3"
-          action={<span className="text-xs font-semibold text-ink-faint">{visible.length}</span>}
+          action={
+            <span className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
+                <input type="checkbox" checked={autoNext} onChange={(e) => setAutoNext(e.target.checked)} />
+                Al devolver, pasar a la siguiente
+              </label>
+              <SmallButton
+                onClick={() => {
+                  const next = pendingAfter(submissionId, visible);
+                  if (next) setSubmissionId(next);
+                }}
+                disabled={!visible.some((m) => m.id !== submissionId && m.review_state?.status !== "returned")}
+              >
+                Siguiente por revisar
+              </SmallButton>
+              <span className="text-xs font-semibold text-ink-faint">{visible.length}</span>
+            </span>
+          }
         >
           {visible.length === 0 ? (
             <p className="text-sm text-ink-soft">
@@ -382,9 +504,12 @@ function GroupView() {
                 <div className="border-t border-lavender-100 pt-4">
                   <SubmissionDetail
                     id={submissionId}
-                    onReviewSaved={() => {
+                    onReviewSaved={(returned) => {
+                      const current = submissionId;
+                      const next = returned && autoNext ? pendingAfter(current, visible) : null;
                       listGroupSubmissions(id).then(setSubmissions).catch(() => {});
                       setMatrixKey((k) => k + 1);
+                      if (next) setSubmissionId(next);
                     }}
                     studentName={names.get(visible.find((m) => m.id === submissionId)?.student_id ?? "") ?? "Estudiante"}
                     assignmentTitle={(() => {
