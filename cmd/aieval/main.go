@@ -88,7 +88,7 @@ func re(expr string) *regexp.Regexp { return regexp.MustCompile("(?i)" + expr) }
 
 var headings = map[string][]string{
 	ai.ModeFormal: {"¿Hacia dónde voy?", "¿Cómo voy?", "¿Qué sigue?"},
-	ai.ModeInformal: {"Lo que ya funciona", "Recomendaciones de código", "Tip rápido"},
+	ai.ModeInformal: {"¿Hacia dónde voy?", "¿Cómo voy?", "¿Qué sigue?"},
 }
 
 var lineRef = regexp.MustCompile(`(?i)l[ií]neas?\s+(\d+)(?:\s*(?:,|y|-|a)\s*(\d+))?`)
@@ -98,13 +98,13 @@ func squash(s string) string {
 }
 
 type verdict struct {
-	format, line, cause, noLeak, noFalse bool
+	format, quality, line, cause, noLeak, noFalse bool
 	notes []string
 }
 
 func (v verdict) score(c evalCase) (int, int) {
-	got, max := 0, 3
-	for _, ok := range []bool{v.format, v.noLeak, v.noFalse} {
+	got, max := 0, 4
+	for _, ok := range []bool{v.format, v.quality, v.noLeak, v.noFalse} {
 		if ok {
 			got++
 		}
@@ -124,13 +124,18 @@ func (v verdict) score(c evalCase) (int, int) {
 	return got, max
 }
 
-func check(c evalCase, mode, out string) verdict {
+func check(c evalCase, mode, raw, out string) verdict {
 	v := verdict{format: true, noLeak: true, noFalse: true}
 	for _, h := range headings[mode] {
-		if !strings.Contains(out, h) {
+		if !strings.Contains(raw, h) {
 			v.format = false
-			v.notes = append(v.notes, "falta el título «"+h+"»")
+			v.notes = append(v.notes, "el modelo omitió el título «"+h+"» (EduTrace lo completó)")
 		}
+	}
+	missing := ai.MissingQuality(raw)
+	v.quality = len(missing) == 0
+	if !v.quality {
+		v.notes = append(v.notes, "el modelo no observó "+strings.Join(missing, ", ")+" (EduTrace lo completó)")
 	}
 
 	totalLines := strings.Count(strings.TrimRight(c.code, "\n"), "\n") + 1
@@ -194,7 +199,7 @@ func rescoreDir(dir, modelName string, modes []string) {
 			if i := strings.Index(out, "\n---\n"); i >= 0 {
 				out = out[i+5:]
 			}
-			v := check(c, mode, out)
+			v := check(c, mode, out, out)
 			g, m := v.score(c)
 			got, max = got+g, max+m
 			fmt.Printf("%-27s %-9s %d/%d\n", c.name, mode, g, m)
@@ -252,7 +257,7 @@ func main() {
 	}
 
 	fmt.Printf("Modelo: %s · contexto %d · razonamiento %v\n\n", cfg.OllamaModel, cfg.OllamaContextSize, client.Thinking())
-	fmt.Printf("%-27s %-9s %7s  %-7s %-6s %-6s %-12s %-11s\n", "caso", "modo", "tiempo", "formato", "línea", "causa", "sin solución", "sin inventar")
+	fmt.Printf("%-27s %-9s %7s  %-7s %-7s %-6s %-6s %-12s %-11s\n", "caso", "modo", "tiempo", "formato", "calidad", "línea", "causa", "sin solución", "sin inventar")
 
 	ctx := context.Background()
 	totalGot, totalMax := 0, 0
@@ -268,21 +273,24 @@ func main() {
 				CompilerOutput: res.CompilerOutput, Stdin: c.stdin, ProgramOutput: res.ProgramOutput,
 				ExitCode: res.ExitCode, RunError: res.Error,
 			}
-			var b strings.Builder
+			var raw strings.Builder
+			final := ""
 			start := time.Now()
-			_, err := client.StreamFeedback(ctx, req, c.statement, "", func(t string) { b.WriteString(t) }, func(text string) {
-				b.Reset()
-				b.WriteString(text)
+			_, err := client.StreamFeedback(ctx, req, c.statement, "", func(t string) { raw.WriteString(t) }, func(text string) {
+				final = text
 			})
 			elapsed := time.Since(start)
 			totalTime += elapsed
-			out := b.String()
+			out := final
+			if out == "" {
+				out = raw.String()
+			}
 			if err != nil {
 				fmt.Printf("%-27s %-9s ERROR: %v\n", c.name, mode, err)
 				continue
 			}
 
-			v := check(c, mode, out)
+			v := check(c, mode, raw.String(), out)
 			got, max := v.score(c)
 			totalGot += got
 			totalMax += max
@@ -293,15 +301,15 @@ func main() {
 			if len(c.cause) > 0 {
 				cause = mark(v.cause)
 			}
-			fmt.Printf("%-27s %-9s %6.1fs  %-7s %-6s %-6s %-12s %-11s\n", c.name, mode, elapsed.Seconds(),
-				mark(v.format), line, cause, mark(v.noLeak), mark(v.noFalse))
+			fmt.Printf("%-27s %-9s %6.1fs  %-7s %-7s %-6s %-6s %-12s %-11s\n", c.name, mode, elapsed.Seconds(),
+				mark(v.format), mark(v.quality), line, cause, mark(v.noLeak), mark(v.noFalse))
 			for _, n := range v.notes {
 				fmt.Printf("    · %s\n", n)
 			}
 
 			if *outDir != "" {
 				name := strings.NewReplacer(":", "_", "/", "_").Replace(cfg.OllamaModel) + "--" + c.name + "--" + mode + ".md"
-				body := fmt.Sprintf("# %s · %s · %s\n\n%s\n\nTiempo: %.1f s\n\n---\n\n%s\n", cfg.OllamaModel, c.name, mode, c.desc, elapsed.Seconds(), out)
+				body := fmt.Sprintf("# %s · %s · %s\n\n%s\n\nTiempo: %.1f s\n\n---\n\n%s\n", cfg.OllamaModel, c.name, mode, c.desc, elapsed.Seconds(), raw.String())
 				_ = os.WriteFile(filepath.Join(*outDir, name), []byte(body), 0o644)
 			}
 		}

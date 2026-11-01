@@ -150,7 +150,14 @@ func (h *ReviewsHandler) generate(ctx context.Context, teacherID, id string, aut
 	if err != nil {
 		return nil, err
 	}
-	slog.Info("review draft created", "submission_id", id, "auto", auto, "ai_grade", sug.Grade, "confidence", sug.Confidence, "sections_fixed", sug.SectionsFixed)
+	if err := h.store.SetAIMinutes(teacherID, id, sug.Minutes); err != nil {
+		slog.Error("estimación de tiempo de revisión", "submission_id", id, "error", err)
+	} else if sug.Minutes > 0 {
+		rev.AIMinutes = &sug.Minutes
+	} else {
+		rev.AIMinutes = nil
+	}
+	slog.Info("review draft created", "submission_id", id, "auto", auto, "ai_grade", sug.Grade, "confidence", sug.Confidence, "minutes", sug.Minutes, "sections_fixed", sug.SectionsFixed)
 	return rev, nil
 }
 
@@ -191,6 +198,20 @@ func (h *ReviewsHandler) addTime(teacherID string, rev *auth.Review, ms int64) {
 		slog.Error("tiempo de revisión", "submission_id", rev.SubmissionID, "error", err)
 	}
 	rev.ReviewMs += added
+}
+
+func (h *ReviewsHandler) AddTime(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ElapsedMs int64 `json:"elapsed_ms"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if _, err := h.store.AddReviewTime(auth.UserFrom(r.Context()).ID, r.PathValue("id"), req.ElapsedMs); err != nil {
+		writeStoreErr(w, err, "guardar el tiempo de revisión")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *ReviewsHandler) Audit(w http.ResponseWriter, r *http.Request) {

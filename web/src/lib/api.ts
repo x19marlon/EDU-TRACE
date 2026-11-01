@@ -328,8 +328,31 @@ export interface Review {
   ai_discarded_at?: string;
   origin?: FeedbackOrigin;
   review_ms: number;
+  ai_minutes?: number;
   ai_job?: JobState;
   ai_available: boolean;
+}
+
+export interface ReviewEstimate {
+  assignment_id: string;
+  title: string;
+  due_at?: string;
+  students: number;
+  returned: number;
+  pending: number;
+  with_ai: number;
+  not_compiling: number;
+  failing_tests: number;
+  all_passing: number;
+  total_minutes: number;
+  per_submission: number;
+}
+
+export interface ReviewPlan {
+  assignments: ReviewEstimate[];
+  measured: number;
+  measured_minutes?: number;
+  estimated_minutes?: number;
 }
 
 export type FeedbackOrigin = "ia" | "ia_editada" | "docente";
@@ -503,8 +526,19 @@ export const setThresholds = (courseId: string, t: Thresholds) =>
 export const getAIStatus = () => getJSON<AIStatus>("/api/teacher/ai-status");
 export const discardReviewDraft = (submissionId: string, elapsedMs: number) =>
   postJSON<Review>(`/api/teacher/submissions/${enc(submissionId)}/review/discard`, { elapsed_ms: elapsedMs });
+export function sendReviewTime(submissionId: string, elapsedMs: number): void {
+  fetch(`${API_BASE}/api/teacher/submissions/${enc(submissionId)}/review/time`, {
+    method: "POST",
+    keepalive: true,
+    credentials: "include",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({ elapsed_ms: elapsedMs }),
+  }).catch(() => {});
+}
+
 export const getSubmissionAudit = (submissionId: string) =>
   getJSON<AuditEntry[]>(`/api/teacher/submissions/${enc(submissionId)}/audit`);
+export const getReviewPlan = (groupId: string) => getJSON<ReviewPlan>(`/api/teacher/groups/${enc(groupId)}/review-plan`);
 export const getFrequentErrors = (groupId: string, wholeCourse: boolean) =>
   getJSON<ErrorReport>(`/api/teacher/groups/${enc(groupId)}/errors${wholeCourse ? "?alcance=materia" : ""}`);
 export const listOpenQuestions = () => getJSON<OpenQuestion[]>("/api/teacher/questions");
@@ -584,6 +618,8 @@ export interface GroupMetrics {
   ai_mode: AIMode;
   thresholds: Thresholds;
   review_time: Stat;
+  review_estimate: Stat;
+  over_estimate: number;
   turnaround: Stat;
   pending_reviews: number;
   pending_over: number;
@@ -606,6 +642,9 @@ export interface GroupMetrics {
     revisiones: RatingCount;
     inmediata: RatingCount;
     comentarios: { at: string; kind: RatingKind; understood: Understood; comment: string }[];
+    meta: { min_si: number; max_no: number; min_respuestas: number };
+    por_taller: (RatingCount & { assignment_id: string; title: string; total: number; suficientes: boolean; cumple: boolean })[];
+    veredicto: "cumple" | "no_cumple" | "pocas_respuestas";
   };
 }
 

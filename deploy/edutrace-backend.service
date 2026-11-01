@@ -1,0 +1,16 @@
+[Unit]
+Description=EduTrace backend
+After=network-online.target ollama.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=edutrace
+WorkingDirectory=/opt/edutrace
+EnvironmentFile=/opt/edutrace/.env
+ExecStart=/opt/edutrace/bin/edutrace-server
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

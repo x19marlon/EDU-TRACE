@@ -101,6 +101,15 @@ func (h *ClassesHandler) RerunTests(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result.Tests)
 }
 
+func (h *ClassesHandler) ReviewPlan(w http.ResponseWriter, r *http.Request) {
+	plan, err := h.store.ReviewPlan(auth.UserFrom(r.Context()).ID, r.PathValue("id"))
+	if err != nil {
+		writeStoreErr(w, err, "estimar el tiempo de revisión")
+		return
+	}
+	writeJSON(w, http.StatusOK, plan)
+}
+
 func (h *ClassesHandler) FrequentErrors(w http.ResponseWriter, r *http.Request) {
 	report, err := h.store.FrequentErrors(auth.UserFrom(r.Context()).ID, r.PathValue("id"), r.URL.Query().Get("alcance") == "materia")
 	if err != nil {

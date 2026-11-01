@@ -1,0 +1,16 @@
+[Unit]
+Description=EduTrace frontend
+After=network-online.target edutrace-backend.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=edutrace
+WorkingDirectory=/opt/edutrace/web
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/env npm run start -- -p 3000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,1 @@
+edutrace ALL=(root) NOPASSWD: /usr/bin/systemctl restart edutrace-backend edutrace-web

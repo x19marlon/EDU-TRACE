@@ -318,6 +318,9 @@ func (s *Store) UpdateAssignment(teacherID, assignmentID, title, statement, rubr
 	if err != nil {
 		return fail(err)
 	}
+	if err := logAudit(tx, teacherID, AuditAssignmentUpdated, a.GroupID, "", quoted(a.Title)); err != nil {
+		return fail(err)
+	}
 	if err := tx.Commit(); err != nil {
 		return fail(err)
 	}
@@ -335,9 +338,29 @@ func (s *Store) UpdateAssignment(teacherID, assignmentID, title, statement, rubr
 }
 
 func (s *Store) DeleteAssignment(teacherID, assignmentID string) error {
-	if err := affected(s.db.Exec(`DELETE FROM assignments WHERE id = ? AND group_id IN (
-		SELECT g.id FROM class_groups g JOIN courses c ON c.id = g.course_id WHERE c.teacher_id = ?)`,
-		assignmentID, teacherID)); err != nil {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var groupID, title string
+	err = tx.QueryRow(`SELECT a.group_id, a.title FROM assignments a
+		JOIN class_groups g ON g.id = a.group_id
+		JOIN courses c ON c.id = g.course_id
+		WHERE a.id = ? AND c.teacher_id = ?`, assignmentID, teacherID).Scan(&groupID, &title)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM assignments WHERE id = ?`, assignmentID); err != nil {
+		return err
+	}
+	if err := logAudit(tx, teacherID, AuditAssignmentDeleted, groupID, "", quoted(title)); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
 		return err
 	}
 	s.removeAssignmentDirs([]string{assignmentID})

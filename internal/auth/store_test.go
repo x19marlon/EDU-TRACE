@@ -178,7 +178,7 @@ func TestStoreFlow(t *testing.T) {
 	g40 := 4.0
 	r, err = s.SaveAIDraft(prof.ID, official.ID, "borrador IA", &g40, "razón", "media", nil)
 	mustNoErr(t, err)
-	if r.Feedback != "borrador IA" || r.Grade == nil || *r.Grade != 4 || r.AIAt == nil || r.GradeSource() != "ai_confirmed" {
+	if r.Feedback != "borrador IA" || r.Grade == nil || *r.Grade != 4 || r.AIAt == nil || r.GradeSource() != "" {
 		t.Fatalf("propuesta IA: %+v", r)
 	}
 	g35 := 3.5

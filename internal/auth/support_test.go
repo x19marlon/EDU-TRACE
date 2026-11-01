@@ -200,3 +200,182 @@ func TestExports(t *testing.T) {
 		t.Fatalf("revisiones: %+v", reviews)
 	}
 }
+
+func TestReviewTimeWithoutSaving(t *testing.T) {
+	f := newClass(t)
+	s := f.s
+	sub := f.submit(t, f.ana, KindOfficial, nil)
+	if _, err := s.AddReviewTime(f.otro.ID, sub.ID, 60000); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("otro profesor sumó tiempo: %v", err)
+	}
+	_, err := s.AddReviewTime(f.prof.ID, sub.ID, 90000)
+	mustNoErr(t, err)
+	_, err = s.AddReviewTime(f.prof.ID, sub.ID, 30000)
+	mustNoErr(t, err)
+	rev, err := s.ReviewForTeacher(f.prof.ID, sub.ID)
+	mustNoErr(t, err)
+	if rev.ReviewMs != 120000 || rev.Status != ReviewDraft || rev.Feedback != "" {
+		t.Fatalf("el tiempo se guarda aunque no haya revisión: %+v", rev)
+	}
+	if needed, _ := s.NeedsAIDraft(sub.ID); !needed {
+		t.Fatal("abrir la entrega no debe impedir la propuesta de la IA")
+	}
+}
+
+func TestReviewPlan(t *testing.T) {
+	f := newClass(t)
+	s := f.s
+	tests, err := s.SetAssignmentTests(f.prof.ID, f.assignment.ID, []model.TestCase{{Name: "A", Expected: "1", Match: model.MatchContains}})
+	mustNoErr(t, err)
+	carla, err := s.CreateUser("Carla", "carla@u.edu", "password123", RoleStudent)
+	mustNoErr(t, err)
+	_, err = s.JoinGroup(carla.ID, f.group.JoinCode)
+	mustNoErr(t, err)
+
+	f.submit(t, f.ana, KindOfficial, []model.TestResult{{TestID: tests[0].ID, Passed: false}})
+	ana := f.submit(t, f.ana, KindOfficial, []model.TestResult{{TestID: tests[0].ID, Passed: true}})
+	beto := f.submit(t, f.beto, KindOfficial, []model.TestResult{{TestID: tests[0].ID, Passed: false}})
+	broken := &Submission{SubmissionMeta: SubmissionMeta{Kind: KindOfficial, GroupID: f.group.ID, AssignmentID: f.assignment.ID, StudentID: carla.ID}, Code: "x"}
+	mustNoErr(t, s.AddSubmission(broken))
+
+	g := 4.0
+	_, err = s.SaveAIDraft(f.prof.ID, ana.ID, "IA", &g, "", "alta", nil)
+	mustNoErr(t, err)
+	mustNoErr(t, s.SetAIMinutes(f.prof.ID, ana.ID, 4))
+	_, err = s.SaveAIDraft(f.prof.ID, beto.ID, "IA", &g, "", "media", nil)
+	mustNoErr(t, err)
+	mustNoErr(t, s.SetAIMinutes(f.prof.ID, beto.ID, 9))
+	if err := s.SetAIMinutes(f.otro.ID, beto.ID, 1); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("otro profesor cambió la estimación: %v", err)
+	}
+	if rev, _ := s.ReviewForTeacher(f.prof.ID, beto.ID); rev.AIMinutes == nil || *rev.AIMinutes != 9 {
+		t.Fatalf("estimación guardada: %+v", rev.AIMinutes)
+	}
+
+	if _, err := s.ReviewPlan(f.otro.ID, f.group.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("otro profesor vio el plan: %v", err)
+	}
+	plan, err := s.ReviewPlan(f.prof.ID, f.group.ID)
+	mustNoErr(t, err)
+	if len(plan.Assignments) != 1 {
+		t.Fatalf("plan: %+v", plan)
+	}
+	e := plan.Assignments[0]
+	if e.Students != 3 || e.Pending != 3 || e.WithAI != 2 || e.NotCompiling != 1 || e.AllPassing != 1 || e.FailingTests != 1 {
+		t.Fatalf("solo cuenta la última entrega de cada estudiante: %+v", e)
+	}
+	if e.TotalMinutes != 4+9+6 || e.PerSubmission != 19.0/3 {
+		t.Fatalf("minutos (IA 4 + IA 9 + 6 estimados para la que no compila): %+v", e)
+	}
+
+	_, err = s.SaveTeacherReview(f.prof.ID, ana.ID, "IA", &g, true, nil)
+	mustNoErr(t, err)
+	_, err = s.AddReviewTime(f.prof.ID, ana.ID, 6*60000)
+	mustNoErr(t, err)
+	plan, err = s.ReviewPlan(f.prof.ID, f.group.ID)
+	mustNoErr(t, err)
+	e = plan.Assignments[0]
+	if e.Returned != 1 || e.Pending != 2 || plan.Measured != 1 || *plan.MeasuredMinutes != 6 || *plan.EstimatedMinutes != 4 {
+		t.Fatalf("ritmo real frente a la estimación: %+v %+v", plan, e)
+	}
+	if e.TotalMinutes != 9+6 {
+		t.Fatalf("sin estimación de la IA se usa el ritmo real del profesor: %+v", e)
+	}
+
+	m, err := s.GroupMetrics(f.prof.ID, f.group.ID)
+	mustNoErr(t, err)
+	if m.ReviewEstimate.Count != 1 || m.OverEstimate != 1 || *m.Thresholds.BatchHours != DefaultBatchHours || *m.Thresholds.FeedbackHours != DefaultFeedbackHours {
+		t.Fatalf("RNF-08 contra la estimación y umbral de lote acordado: %+v %d %v", m.ReviewEstimate, m.OverEstimate, *m.Thresholds.BatchHours)
+	}
+	rev, err := s.DiscardAIDraft(f.prof.ID, beto.ID)
+	mustNoErr(t, err)
+	if rev.AIMinutes != nil {
+		t.Fatalf("descartar quita la estimación: %+v", rev.AIMinutes)
+	}
+}
+
+func TestComprehensionGoal(t *testing.T) {
+	f := newClass(t)
+	s := f.s
+	second, err := s.CreateAssignment(f.prof.ID, f.group.ID, "Taller 3", "Mayor de tres", "", nil, LatePolicy{AllowLate: true}, nil)
+	mustNoErr(t, err)
+	rate := func(assignment string, understood string, n int) {
+		for i := 0; i < n; i++ {
+			mustNoErr(t, s.RateInstant(f.ana.ID, AIKindFormal, assignment, understood, ""))
+		}
+	}
+	rate(f.assignment.ID, "si", 10)
+	m, err := s.GroupMetrics(f.prof.ID, f.group.ID)
+	mustNoErr(t, err)
+	if c := m.Comprehension; c.Verdict != VerdictTooFew || c.ByAssignment[0].Enough || c.Goal.MinResponses != 20 {
+		t.Fatalf("con menos de 20 respuestas no se juzga: %+v", c)
+	}
+
+	rate(f.assignment.ID, "si", 6)
+	rate(f.assignment.ID, "parcial", 2)
+	rate(f.assignment.ID, "no", 2)
+	m, err = s.GroupMetrics(f.prof.ID, f.group.ID)
+	mustNoErr(t, err)
+	if c := m.Comprehension; c.Verdict != VerdictMeets || !c.ByAssignment[0].Meets || c.ByAssignment[0].Total != 20 || c.ByAssignment[0].Title != "Taller 2" {
+		t.Fatalf("16 sí y 2 no de 20 cumple justo la meta (80 %% y 10 %%): %+v", c.ByAssignment)
+	}
+
+	rate(second.ID, "si", 15)
+	rate(second.ID, "no", 5)
+	rate("", "no", 3)
+	m, err = s.GroupMetrics(f.prof.ID, f.group.ID)
+	mustNoErr(t, err)
+	c := m.Comprehension
+	if c.Verdict != VerdictFails || len(c.ByAssignment) != 2 {
+		t.Fatalf("un taller con 25 %% de «no» no cumple; la práctica libre sin clase no cuenta: %+v", c)
+	}
+	for _, a := range c.ByAssignment {
+		if a.Title == "Taller 3" && (a.Meets || !a.Enough) {
+			t.Fatalf("Taller 3: %+v", a)
+		}
+	}
+
+	g := 4.0
+	sub := f.submit(t, f.beto, KindOfficial, nil)
+	_, err = s.SaveTeacherReview(f.prof.ID, sub.ID, "Bien", &g, true, nil)
+	mustNoErr(t, err)
+	mustNoErr(t, s.RateReview(f.beto.ID, sub.ID, "si", ""))
+	m, err = s.GroupMetrics(f.prof.ID, f.group.ID)
+	mustNoErr(t, err)
+	for _, a := range m.Comprehension.ByAssignment {
+		if a.Title == "Taller 2" && a.Total != 21 {
+			t.Fatalf("la valoración de una revisión cuenta en su taller: %+v", a)
+		}
+	}
+}
+
+func TestAssignmentAudit(t *testing.T) {
+	f := newClass(t)
+	s := f.s
+	_, err := s.UpdateAssignment(f.prof.ID, f.assignment.ID, "Taller 2: suma", "Suma de 1 a n", "", nil, LatePolicy{AllowLate: true}, nil, nil)
+	mustNoErr(t, err)
+	tests := []model.TestCase{{Name: "A", Expected: "1", Match: model.MatchContains}, {Name: "B", Expected: "2", Match: model.MatchContains, Hidden: true}}
+	_, err = s.SetAssignmentTests(f.prof.ID, f.assignment.ID, tests)
+	mustNoErr(t, err)
+	_, err = s.SetAssignmentTests(f.prof.ID, f.assignment.ID, tests)
+	mustNoErr(t, err)
+	if err := s.DeleteAssignment(f.otro.ID, f.assignment.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("otro profesor eliminó el taller: %v", err)
+	}
+	mustNoErr(t, s.DeleteAssignment(f.prof.ID, f.assignment.ID))
+	log, err := s.GroupAudit(f.prof.ID, f.group.ID, 0)
+	mustNoErr(t, err)
+	var got []string
+	for _, e := range log {
+		got = append(got, e.Action+" "+e.Detail)
+	}
+	want := []string{
+		"taller_eliminado «Taller 2: suma»",
+		"casos_actualizados «Taller 2: suma»: 2 casos (1 oculto)",
+		"taller_editado «Taller 2: suma»",
+		"taller_creado «Taller 2»",
+	}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Fatalf("bitácora de talleres (guardar los mismos casos no se registra):\n%v", got)
+	}
+}

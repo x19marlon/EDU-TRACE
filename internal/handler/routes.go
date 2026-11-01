@@ -70,6 +70,7 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("PUT /api/teacher/courses/{id}/thresholds", teacher(classes.SetThresholds))
 	mux.Handle("GET /api/teacher/ai-status", teacher(drafts.Status))
 	mux.Handle("GET /api/teacher/groups/{id}/errors", teacher(classes.FrequentErrors))
+	mux.Handle("GET /api/teacher/groups/{id}/review-plan", teacher(classes.ReviewPlan))
 	mux.Handle("GET /api/teacher/groups/{id}/export/notas.csv", teacher(classes.ExportGrades))
 	mux.Handle("GET /api/teacher/groups/{id}/export/revisiones.csv", teacher(classes.ExportReviews))
 	mux.Handle("GET /api/teacher/questions", teacher(classes.OpenQuestions))
@@ -79,6 +80,7 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("GET /api/teacher/submissions/{id}/review", teacher(reviews.Get))
 	mux.Handle("PUT /api/teacher/submissions/{id}/review", teacher(reviews.Save))
 	mux.Handle("POST /api/teacher/submissions/{id}/review/discard", teacher(reviews.Discard))
+	mux.Handle("POST /api/teacher/submissions/{id}/review/time", teacher(reviews.AddTime))
 	mux.Handle("GET /api/teacher/submissions/{id}/audit", teacher(reviews.Audit))
 
 	annotations := NewAnnotationsHandler(store)

@@ -14,6 +14,10 @@ const (
 	AuditAnnotationsSent = "anotaciones_enviadas"
 	AuditAIMode = "modo_ia"
 	AuditTestsRerun = "casos_reejecutados"
+	AuditAssignmentCreated = "taller_creado"
+	AuditAssignmentUpdated = "taller_editado"
+	AuditAssignmentDeleted = "taller_eliminado"
+	AuditTestsUpdated = "casos_actualizados"
 	SystemActorName = "EduTrace (IA)"
 	SystemActorRole = "sistema"
 	auditDefaultLimit = 200
@@ -30,6 +34,8 @@ type AuditEntry struct {
 	AssignmentTitle string `json:"assignment_title,omitempty"`
 	Detail string `json:"detail,omitempty"`
 }
+
+func quoted(title string) string { return "«" + title + "»" }
 
 func logAudit(q querier, actorID, action, groupID, submissionID, detail string) error {
 	_, err := q.Exec(`INSERT INTO audit_log (at, actor_id, actor_name, actor_role, action, group_id, submission_id, detail)

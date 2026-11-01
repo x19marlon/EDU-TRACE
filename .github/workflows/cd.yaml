@@ -1,0 +1,60 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Commit a desplegar (vacío = último de main)
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: despliegue
+  cancel-in-progress: false
+
+jobs:
+  ssh:
+    name: Desplegar por SSH
+    if: >-
+      vars.DEPLOY_MODE == 'ssh' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-24.04
+    environment: produccion
+    steps:
+      - name: Preparar la llave SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Desplegar
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/edutrace' }}
+          COMMIT: ${{ inputs.commit || github.event.workflow_run.head_sha || github.sha }}
+        run: ssh -i ~/.ssh/id_deploy -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && ./scripts/desplegar.sh '$COMMIT'"
+
+  servidor:
+    name: Desplegar con el runner del servidor
+    if: >-
+      vars.DEPLOY_MODE == 'self-hosted' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: [self-hosted, edutrace]
+    environment: produccion
+    steps:
+      - name: Desplegar
+        env:
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/edutrace' }}
+          COMMIT: ${{ inputs.commit || github.event.workflow_run.head_sha || github.sha }}
+        run: cd "$DEPLOY_PATH" && ./scripts/desplegar.sh "$COMMIT"

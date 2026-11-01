@@ -274,7 +274,7 @@ func TestDiscardOriginAndAudit(t *testing.T) {
 	}
 	group, err := s.GroupAudit(f.prof.ID, f.group.ID, 0)
 	mustNoErr(t, err)
-	if len(group) != len(log)+1 || group[0].StudentName != "Beto" || group[1].AssignmentTitle != "Taller 2" {
+	if len(group) != len(log)+2 || group[0].StudentName != "Beto" || group[1].AssignmentTitle != "Taller 2" || group[len(group)-1].Action != AuditAssignmentCreated {
 		t.Fatalf("bitácora de la clase: %+v", group)
 	}
 }
@@ -311,7 +311,7 @@ func TestAIModeGate(t *testing.T) {
 	}
 	log, err := s.GroupAudit(f.prof.ID, f.group.ID, 10)
 	mustNoErr(t, err)
-	if len(log) != 1 || log[0].Action != AuditAIMode || !strings.Contains(log[0].Detail, "supervisada → inmediata") {
+	if len(log) != 2 || log[0].Action != AuditAIMode || !strings.Contains(log[0].Detail, "supervisada → inmediata") {
 		t.Fatalf("el cambio de modo queda en la bitácora: %+v", log)
 	}
 }
@@ -340,8 +340,11 @@ func TestGroupMetrics(t *testing.T) {
 	g := 4.0
 	_, err := s.SaveAIDraft(f.prof.ID, quick.ID, "IA", &g, "", "alta", nil)
 	mustNoErr(t, err)
-	_, err = s.SaveTeacherReview(f.prof.ID, quick.ID, "IA", &g, true, nil)
+	approved, err := s.SaveTeacherReview(f.prof.ID, quick.ID, "IA", &g, true, nil)
 	mustNoErr(t, err)
+	if approved.GradeSource() != "ai_confirmed" {
+		t.Fatalf("devolver con la nota de la IA la confirma: %q", approved.GradeSource())
+	}
 	_, err = s.AddReviewTime(f.prof.ID, quick.ID, 5*60*1000)
 	mustNoErr(t, err)
 	_, err = s.SaveTeacherReview(f.prof.ID, slow.ID, "Escrita por mí", &g, true, nil)

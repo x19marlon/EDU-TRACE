@@ -38,8 +38,14 @@ type ReviewSuggestion struct {
 	Reason string `json:"justificacion"`
 	Confidence string `json:"confianza"`
 	Levels map[string]string `json:"niveles_rae,omitempty"`
+	Minutes int `json:"minutos_revision"`
 	SectionsFixed bool `json:"-"`
 }
+
+const (
+	MinReviewMinutes = 1
+	MaxReviewMinutes = 30
+)
 
 // reviewSchema obliga al modelo a responder con este JSON (salidas estructuradas de Ollama).
 var reviewSchema = json.RawMessage(`{
@@ -48,9 +54,10 @@ var reviewSchema = json.RawMessage(`{
     "retroalimentacion": {"type": "string"},
     "nota": {"type": "number"},
     "justificacion": {"type": "string"},
-    "confianza": {"type": "string", "enum": ["alta", "media", "baja"]}
+    "confianza": {"type": "string", "enum": ["alta", "media", "baja"]},
+    "minutos_revision": {"type": "integer", "minimum": 1, "maximum": 30}
   },
-  "required": ["retroalimentacion", "nota", "justificacion", "confianza"]
+  "required": ["retroalimentacion", "nota", "justificacion", "confianza", "minutos_revision"]
 }`)
 
 const systemPromptReview = `Eres un asistente de evaluación de EduTrace que apoya a un profesor del curso Introducción a la Programación en C++. Preparas una PROPUESTA que el profesor revisará, modificará o descartará: la decisión final es siempre suya.
@@ -64,6 +71,7 @@ Responde ÚNICAMENTE con un JSON con estos campos:
 - "nota": calificación tentativa de 0.0 a 5.0, con un decimal, según los criterios de evaluación del taller (o, si no hay, la rúbrica del RAE 4 del curso), el enunciado, el resultado real de la ejecución y los casos de prueba del profesor, si los hay. Primero ubica la entrega en un nivel de la escala de desempeño (Insatisfactorio [0–2), Bajo el estándar [2–3), Competente [3–3.75), Ejemplar [3.75–4.25), Ejemplar de alto nivel [4.25–5]) y da una nota dentro de ese rango.
 - "justificacion": para el profesor, de 2 a 4 frases que expliquen la nota criterio por criterio, nombrando el nivel de desempeño y el RAE.
 - "confianza": "alta", "media" o "baja". Usa "baja" si el enunciado es ambiguo, faltan criterios o no puedes comprobar si la salida es correcta y explica el porque.
+- "minutos_revision": cuántos minutos necesitará el profesor para leer esta entrega, verificar tu propuesta, ajustarla y devolverla (entero entre 1 y 30). Más si no compila, si hay varios errores, si tu confianza es baja o el código es largo; menos si funciona, pasa los casos y tu propuesta casi no necesita cambios.
 - "niveles_rae": solo si se incluyen Resultados de Aprendizaje Esperados (RAE): para cada uno, el nivel de logro que demuestra esta entrega según la escala del curso: "bajo" (Insatisfactorio o Bajo el estándar), "medio" (Competente) o "alto" (Ejemplar o Ejemplar de alto nivel). Usa "no_aplica" si el ejercicio no trabaja ese RAE (por ejemplo, el RAE 3 en un taller sin arreglos).
 
 REGLAS:
@@ -161,6 +169,9 @@ func (o *OllamaClient) SuggestReview(ctx context.Context, in ReviewInput) (*Revi
 		slog.Info("propuesta completada", "faltaban_secciones", MissingSections(sug.Feedback), "calidad_completa", checks.QualityOK)
 		sug.Feedback = fixed
 		sug.SectionsFixed = true
+	}
+	if sug.Minutes < MinReviewMinutes || sug.Minutes > MaxReviewMinutes {
+		sug.Minutes = 0
 	}
 	if sug.Confidence != "alta" && sug.Confidence != "media" && sug.Confidence != "baja" {
 		sug.Confidence = "baja"

@@ -9,7 +9,8 @@ from http.cookiejar import CookieJar
 
 WEB = os.environ.get("WEB", "http://localhost:3000")
 API = os.environ.get("API", "http://127.0.0.1:8080")
-ANCHOS = [int(x) for x in os.environ.get("ANCHOS_KBPS", "256,1000,3000").split(",")]
+ANCHOS = [int(x) for x in os.environ.get("ANCHOS_KBPS", "1000,60000,70000").split(",")]
+ESTUDIANTES = int(os.environ.get("ESTUDIANTES", "200"))
 PAGINAS = ["/login", "/", "/historial", "/cuenta", "/docente", "/privacidad"]
 ESTUDIANTE = ("ana.rodriguez@est.edu.co", "Alumno2026!")
 
@@ -31,6 +32,10 @@ def segundos(bytes_, kbps):
     return bytes_ * 8 / (kbps * 1000)
 
 
+def ancho(kbps):
+    return f"{kbps // 1000} Mbps" if kbps >= 1000 and kbps % 1000 == 0 else f"{kbps} kbps"
+
+
 def kb(n):
     return f"{n / 1024:7.1f} KB"
 
@@ -42,9 +47,9 @@ except urllib.error.URLError as e:
 if "webpack-hmr" in html or "/_next/static/development/" in html:
     print("  ⚠ El frontend está en modo desarrollo: mide con «npm run build && npm run start» para obtener el peso real.\n")
 
-vistos, total_unico, sin_gzip = set(), 0, []
+vistos, total_unico, sin_gzip, mayor = set(), 0, [], 0
 print(f"1. Primera carga de cada página ({WEB}), comprimida")
-print(f"   {'página':12} {'HTML':>10} {'JS':>10} {'CSS':>10} {'fuentes':>10} {'total':>10}   " + "   ".join(f"a {k} kbps" for k in ANCHOS))
+print(f"   {'página':12} {'HTML':>10} {'JS':>10} {'CSS':>10} {'fuentes':>10} {'total':>10}   " + "   ".join(f"a {ancho(k):>9}" for k in ANCHOS))
 for pagina in PAGINAS:
     peso_html, html, comp = bajar(WEB + pagina)
     if not comp:
@@ -75,9 +80,13 @@ for pagina in PAGINAS:
             total_unico += peso
     total = peso_html + sum(partes.values())
     total_unico += peso_html
-    tiempos = "   ".join(f"{segundos(total, k):9.1f} s" for k in ANCHOS)
+    tiempos = "   ".join(f"{segundos(total, k):9.2f} s" for k in ANCHOS)
+    mayor = max(mayor, total)
     print(f"   {pagina:12} {kb(peso_html):>10} {kb(partes['js']):>10} {kb(partes['css']):>10} {kb(partes['fuentes']):>10} {kb(total):>10}   {tiempos}")
 print(f"   Todas las páginas juntas (lo compartido se descarga una vez): {kb(total_unico)}")
+simultaneo = mayor * ESTUDIANTES
+print(f"   Si {ESTUDIANTES} estudiantes abren a la vez la página más pesada: {simultaneo / 1024 / 1024:.1f} MB → " +
+      ", ".join(f"{segundos(simultaneo, k):.1f} s a {ancho(k)}" for k in ANCHOS))
 print("   El editor de código se descarga aparte al abrir el compilador.")
 
 print(f"\n2. Respuestas de la API ({API}) para un estudiante")

@@ -13,6 +13,7 @@ STUDENTS = ["ana.rodriguez@est.edu.co", "carlos.perez@est.edu.co", "luis.martine
 GROUP = os.environ.get("CLASE", "Grupo A - Mañana")
 TALLER = os.environ.get("TALLER", "Taller 1: promedio de notas")
 LIMITE_MIN = int(os.environ.get("LIMITE_MIN", "120"))
+UMBRAL_HORAS = os.environ.get("UMBRAL_HORAS", "")
 
 CODE = """#include <iostream>
 #include <iomanip>
@@ -48,9 +49,14 @@ def client(email, password, role):
 
 
 prof = client(*TEACHER, "teacher")
-group = next((g for c in prof("GET", "/api/teacher/courses") for g in c["groups"] if g["name"] == GROUP), None)
+course, group = next(((c, g) for c in prof("GET", "/api/teacher/courses") for g in c["groups"] if g["name"] == GROUP), (None, None))
 if not group:
     sys.exit(f"  ✗ No existe la clase «{GROUP}». Carga primero ./scripts/seed_test_data.sh")
+if UMBRAL_HORAS:
+    thresholds = prof("GET", f"/api/teacher/groups/{group['id']}/metrics")["thresholds"]
+    thresholds["batch_hours"] = float(UMBRAL_HORAS)
+    prof("PUT", f"/api/teacher/courses/{course['id']}/thresholds", thresholds)
+    print(f"   Umbral «Procesar cada lote» de la materia: {UMBRAL_HORAS} h")
 taller = next((a for a in prof("GET", f"/api/teacher/groups/{group['id']}/assignments") if a["title"] == TALLER), None)
 if not taller:
     sys.exit(f"  ✗ No existe el taller «{TALLER}» en «{GROUP}»")
@@ -69,11 +75,16 @@ print(f"   ✓ {N} entregas guardadas en {time.time() - start:.1f} s (compiladas
 
 print(f"2. Esperando a que la IA prepare las {N} propuestas (límite {LIMITE_MIN} min)")
 pending = set(ids)
+shown, last_print = -1, time.time()
 while pending and time.time() - start < LIMITE_MIN * 60:
     time.sleep(10)
     states = {s["id"]: s.get("ai_job") for s in prof("GET", f"/api/teacher/groups/{group['id']}/submissions") if s["id"] in pending}
     pending = {i for i, st in states.items() if st in ("pendiente", "procesando")}
-    print(f"   {N - len(pending)}/{N} procesadas · {time.time() - start:.0f} s")
+    done_now = N - len(pending)
+    if done_now != shown and (time.time() - last_print >= 60 or not pending):
+        shown, last_print = done_now, time.time()
+        rate = (time.time() - start) / max(1, done_now)
+        print(f"   {done_now}/{N} procesadas · {(time.time() - start) / 60:.1f} min · faltan unos {len(pending) * rate / 60:.0f} min")
 
 elapsed = time.time() - start
 states = {s["id"]: s.get("ai_job") for s in prof("GET", f"/api/teacher/groups/{group['id']}/submissions") if s["id"] in ids}

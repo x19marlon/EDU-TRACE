@@ -118,6 +118,9 @@ func (s *Store) CreateAssignment(teacherID, groupID, title, statement, rubric st
 			return fail(err)
 		}
 	}
+	if err := logAudit(tx, teacherID, AuditAssignmentCreated, a.GroupID, "", quoted(a.Title)); err != nil {
+		return fail(err)
+	}
 	if err := tx.Commit(); err != nil {
 		return fail(err)
 	}

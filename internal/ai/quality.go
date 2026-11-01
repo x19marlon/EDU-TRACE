@@ -187,6 +187,18 @@ func missingQuality(text string) [3]bool {
 	return missing
 }
 
+var qualityNames = [3]string{"legibilidad", "mantenibilidad", "documentación"}
+
+func MissingQuality(text string) []string {
+	var out []string
+	for i, missing := range missingQuality(text) {
+		if missing {
+			out = append(out, qualityNames[i])
+		}
+	}
+	return out
+}
+
 func EnsureQuality(text string, q QualityReport) (string, bool) {
 	missing := missingQuality(text)
 	if !missing[0] && !missing[1] && !missing[2] {

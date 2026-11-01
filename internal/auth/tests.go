@@ -102,6 +102,23 @@ func (s *Store) SetAssignmentTests(teacherID, assignmentID string, tests []model
 	if _, err := tx.Exec(`DELETE FROM assignment_tests WHERE assignment_id = ?`, assignmentID); err != nil {
 		return nil, err
 	}
+	hidden := 0
+	for _, t := range tests {
+		if t.Hidden {
+			hidden++
+		}
+	}
+	var groupID, title string
+	if err := tx.QueryRow(`SELECT group_id, title FROM assignments WHERE id = ?`, assignmentID).Scan(&groupID, &title); err != nil {
+		return nil, err
+	}
+	detail := quoted(title) + ": " + countLabel(len(tests), "caso", "casos")
+	if hidden > 0 {
+		detail += " (" + countLabel(hidden, "oculto", "ocultos") + ")"
+	}
+	if err := logAudit(tx, teacherID, AuditTestsUpdated, groupID, "", detail); err != nil {
+		return nil, err
+	}
 	out := make([]model.TestCase, len(tests))
 	for i, t := range tests {
 		if t.ID, err = randomHex(12); err != nil {
@@ -229,4 +246,11 @@ func (s *Store) withTests(sub *Submission, full bool) error {
 	}
 	sub.Tests = results
 	return nil
+}
+
+func countLabel(n int, one, many string) string {
+	if n == 1 {
+		return "1 " + one
+	}
+	return fmt.Sprintf("%d %s", n, many)
 }

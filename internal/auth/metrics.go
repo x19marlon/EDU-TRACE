@@ -55,6 +55,11 @@ type Thresholds struct {
 	FeedbackHours *float64 `json:"feedback_hours"`
 }
 
+const (
+	DefaultBatchHours = 5.0
+	DefaultFeedbackHours = 5.0
+)
+
 var ErrInvalidThreshold = errors.New("cada umbral debe ser un número mayor que 0 y menor que 10000")
 
 func (t Thresholds) validate() error {
@@ -155,6 +160,8 @@ type GroupMetrics struct {
 	AIMode string `json:"ai_mode"`
 	Thresholds Thresholds `json:"thresholds"`
 	ReviewTime Stat `json:"review_time"`
+	ReviewEstimate Stat `json:"review_estimate"`
+	OverEstimate int `json:"over_estimate"`
 	Turnaround Stat `json:"turnaround"`
 	PendingReviews int `json:"pending_reviews"`
 	PendingOver int `json:"pending_over"`
@@ -179,6 +186,14 @@ func (s *Store) GroupMetrics(teacherID, groupID string) (*GroupMetrics, error) {
 		return nil, err
 	}
 	m.Thresholds = Thresholds{ReviewMinutes: floatPtr(review), BatchHours: floatPtr(batch), FeedbackHours: floatPtr(feedback)}
+	if m.Thresholds.BatchHours == nil {
+		hours := DefaultBatchHours
+		m.Thresholds.BatchHours = &hours
+	}
+	if m.Thresholds.FeedbackHours == nil {
+		hours := DefaultFeedbackHours
+		m.Thresholds.FeedbackHours = &hours
+	}
 	now := time.Now().UTC()
 	if err := s.reviewMetrics(m, groupID, now); err != nil {
 		return nil, fmt.Errorf("métricas de revisión: %w", err)
@@ -196,7 +211,7 @@ func (s *Store) GroupMetrics(teacherID, groupID string) (*GroupMetrics, error) {
 }
 
 func (s *Store) reviewMetrics(m *GroupMetrics, groupID string, now time.Time) error {
-	rows, err := s.db.Query(`SELECT s.created_at, r.status, r.returned_at, r.review_ms, r.feedback_origin, r.ai_discarded_at
+	rows, err := s.db.Query(`SELECT s.created_at, r.status, r.returned_at, r.review_ms, r.feedback_origin, r.ai_discarded_at, r.ai_minutes
 		FROM submissions s LEFT JOIN reviews r ON r.submission_id = s.id
 		WHERE s.group_id = ? AND s.kind = 'official'`, groupID)
 	if err != nil {
@@ -204,12 +219,12 @@ func (s *Store) reviewMetrics(m *GroupMetrics, groupID string, now time.Time) er
 	}
 	defer rows.Close()
 	feedbackLimit := limitMs(m.Thresholds.FeedbackHours, time.Hour)
-	var reviewTimes, turnarounds []int64
+	var reviewTimes, turnarounds, estimates []int64
 	for rows.Next() {
 		var created string
 		var status, returnedAt, origin, discarded sql.NullString
-		var reviewMs sql.NullInt64
-		if err := rows.Scan(&created, &status, &returnedAt, &reviewMs, &origin, &discarded); err != nil {
+		var reviewMs, aiMinutes sql.NullInt64
+		if err := rows.Scan(&created, &status, &returnedAt, &reviewMs, &origin, &discarded, &aiMinutes); err != nil {
 			return err
 		}
 		createdAt := parseTime(created)
@@ -230,6 +245,13 @@ func (s *Store) reviewMetrics(m *GroupMetrics, groupID string, now time.Time) er
 		turnarounds = append(turnarounds, parseTime(returnedAt.String).Sub(createdAt).Milliseconds())
 		if reviewMs.Int64 > 0 {
 			reviewTimes = append(reviewTimes, reviewMs.Int64)
+			if aiMinutes.Valid {
+				estimate := aiMinutes.Int64 * 60000
+				estimates = append(estimates, estimate)
+				if reviewMs.Int64 > estimate {
+					m.OverEstimate++
+				}
+			}
 		}
 		switch origin.String {
 		case OriginAI:
@@ -244,6 +266,7 @@ func (s *Store) reviewMetrics(m *GroupMetrics, groupID string, now time.Time) er
 		return err
 	}
 	m.ReviewTime = newStat(reviewTimes, limitMs(m.Thresholds.ReviewMinutes, time.Minute))
+	m.ReviewEstimate = newStat(estimates, 0)
 	m.Turnaround = newStat(turnarounds, feedbackLimit)
 	return nil
 }

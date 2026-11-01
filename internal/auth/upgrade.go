@@ -34,6 +34,8 @@ var addedColumns = []struct{ table, column, ddl string }{
 	{"reviews", "feedback_origin", `ALTER TABLE reviews ADD COLUMN feedback_origin TEXT NOT NULL DEFAULT ''`},
 	{"reviews", "review_ms", `ALTER TABLE reviews ADD COLUMN review_ms INTEGER NOT NULL DEFAULT 0`},
 	{"ai_requests", "quality_ok", `ALTER TABLE ai_requests ADD COLUMN quality_ok INTEGER`},
+	{"reviews", "ai_minutes", `ALTER TABLE reviews ADD COLUMN ai_minutes INTEGER`},
+	{"feedback_ratings", "assignment_id", `ALTER TABLE feedback_ratings ADD COLUMN assignment_id TEXT REFERENCES assignments(id) ON DELETE SET NULL`},
 }
 
 func (s *Store) upgradeSchema() error {

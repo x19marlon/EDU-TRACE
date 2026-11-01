@@ -12,6 +12,7 @@ import StudentProcess from "@/components/StudentProcess";
 import RaeScatter from "@/components/RaeScatter";
 import ClassOversight from "@/components/ClassOversight";
 import ClassErrors, { ExportButtons } from "@/components/ClassErrors";
+import ReviewTimeCard from "@/components/ReviewTimeCard";
 import { ReviewPill, StatusPill, SubmissionDetail } from "@/components/SubmissionView";
 import { LatePill } from "@/components/Deadline";
 import {
@@ -228,6 +229,8 @@ function GroupView() {
           </div>
         </Card>
       </div>
+
+      <ReviewTimeCard groupId={group.id} refreshKey={matrixKey} />
 
       <ClassOversight
         groupId={group.id}

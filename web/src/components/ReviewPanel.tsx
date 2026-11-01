@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AuditEntry,
   discardReviewDraft,
@@ -11,6 +11,7 @@ import {
   RAELevel,
   Review,
   saveReview,
+  sendReviewTime,
   SubmissionMeta,
 } from "@/lib/api";
 import { Spinner } from "@/components/ui";
@@ -42,6 +43,11 @@ export const ACTION_LABEL: Record<string, string> = {
   anotaciones_enviadas: "Marcas enviadas",
   modo_ia: "Modo de IA",
   casos_reejecutados: "Casos re-ejecutados",
+  pregunta_respondida: "Pregunta respondida",
+  taller_creado: "Taller creado",
+  taller_editado: "Taller editado",
+  taller_eliminado: "Taller eliminado",
+  casos_actualizados: "Casos de prueba actualizados",
 };
 
 function useReviewTimer() {
@@ -62,12 +68,15 @@ function useReviewTimer() {
       window.clearInterval(id);
     };
   }, []);
-  return {
-    take: () => total.current - sent.current,
-    commit: (ms: number) => {
-      sent.current += ms;
-    },
-  };
+  return useMemo(
+    () => ({
+      take: () => total.current - sent.current,
+      commit: (ms: number) => {
+        sent.current += ms;
+      },
+    }),
+    []
+  );
 }
 
 function minutes(ms: number): string {
@@ -174,6 +183,24 @@ export default function ReviewPanel({
   const [error, setError] = useState<string | null>(null);
   const [historyKey, setHistoryKey] = useState(0);
   const timer = useReviewTimer();
+  useEffect(() => {
+    const flush = () => {
+      const ms = timer.take();
+      if (ms < 1000) return;
+      sendReviewTime(submissionId, ms);
+      timer.commit(ms);
+    };
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", flush);
+      flush();
+    };
+  }, [submissionId, timer]);
   const loaded = useRef<{ feedback: string; grade: string }>({ feedback: "", grade: "" });
   // consistencia de datos
   const apply = useCallback((r: Review) => {
@@ -349,6 +376,11 @@ export default function ReviewPanel({
             {review.ai_confidence && (
               <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${Style[review.ai_confidence]}`}>
                 Confianza {review.ai_confidence}
+              </span>
+            )}
+            {review.ai_minutes !== undefined && (
+              <span className="rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-lavender-700 ring-1 ring-lavender-200">
+                ⏱ Revisarla te tomará unos {review.ai_minutes} min
               </span>
             )}
           </div>

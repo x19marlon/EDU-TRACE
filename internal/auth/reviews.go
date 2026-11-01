@@ -41,6 +41,7 @@ type Review struct {
 	AIDiscardedAt *time.Time `json:"ai_discarded_at,omitempty"`
 	Origin string `json:"origin,omitempty"`
 	ReviewMs int64 `json:"review_ms"`
+	AIMinutes *int `json:"ai_minutes,omitempty"`
 }
 
 func (r *Review) origin() string {
@@ -64,6 +65,8 @@ type ReviewState struct {
 func (r *Review) GradeSource() string {
 	switch {
 	case r.Grade == nil:
+		return ""
+	case r.AIGrade != nil && *r.AIGrade == *r.Grade && r.Status != ReviewReturned:
 		return ""
 	case r.AIGrade != nil && *r.AIGrade == *r.Grade:
 		return "ai_confirmed"
@@ -103,13 +106,14 @@ func ownedOfficial(q querier, teacherID, submissionID string) error {
 func loadReview(q querier, teacherID, submissionID string) (*Review, error) {
 	r := &Review{SubmissionID: submissionID, TeacherID: teacherID, Status: ReviewDraft}
 	var aiGrade, grade sql.NullFloat64
+	var aiMinutes sql.NullInt64
 	var aiAt, returnedAt, discarded sql.NullString
 	var updated string
 	err := q.QueryRow(`SELECT teacher_id, ai_feedback, ai_grade, ai_reason, ai_confidence, ai_at,
-			feedback, grade, status, returned_at, updated_at, ai_discarded_at, feedback_origin, review_ms
+			feedback, grade, status, returned_at, updated_at, ai_discarded_at, feedback_origin, review_ms, ai_minutes
 		FROM reviews WHERE submission_id = ?`, submissionID).Scan(&r.TeacherID, &r.AIFeedback, &aiGrade,
 		&r.AIReason, &r.AIConfidence, &aiAt, &r.Feedback, &grade, &r.Status, &returnedAt, &updated,
-		&discarded, &r.Origin, &r.ReviewMs)
+		&discarded, &r.Origin, &r.ReviewMs, &aiMinutes)
 	if errors.Is(err, sql.ErrNoRows) {
 		return r, nil
 	}
@@ -118,23 +122,28 @@ func loadReview(q querier, teacherID, submissionID string) (*Review, error) {
 	}
 	r.AIGrade, r.AIAt, r.Grade, r.ReturnedAt = floatPtr(aiGrade), timePtr(aiAt), floatPtr(grade), timePtr(returnedAt)
 	r.UpdatedAt, r.AIDiscardedAt = parseTime(updated), timePtr(discarded)
+	if aiMinutes.Valid {
+		m := int(aiMinutes.Int64)
+		r.AIMinutes = &m
+	}
 	return r, nil
 }
 
 // saveReview inserta o actualiza la revisión completa.
 func saveReview(q querier, r *Review) error {
 	_, err := q.Exec(`INSERT INTO reviews (submission_id, teacher_id, ai_feedback, ai_grade, ai_reason,
-			ai_confidence, ai_at, feedback, grade, status, returned_at, updated_at, ai_discarded_at, feedback_origin, review_ms)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ai_confidence, ai_at, feedback, grade, status, returned_at, updated_at, ai_discarded_at, feedback_origin, review_ms, ai_minutes)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(submission_id) DO UPDATE SET
 			teacher_id = excluded.teacher_id, ai_feedback = excluded.ai_feedback, ai_grade = excluded.ai_grade,
 			ai_reason = excluded.ai_reason, ai_confidence = excluded.ai_confidence, ai_at = excluded.ai_at,
 			feedback = excluded.feedback, grade = excluded.grade, status = excluded.status,
 			returned_at = excluded.returned_at, updated_at = excluded.updated_at,
-			ai_discarded_at = excluded.ai_discarded_at, feedback_origin = excluded.feedback_origin, review_ms = excluded.review_ms`,
+			ai_discarded_at = excluded.ai_discarded_at, feedback_origin = excluded.feedback_origin, review_ms = excluded.review_ms,
+			ai_minutes = excluded.ai_minutes`,
 		r.SubmissionID, r.TeacherID, r.AIFeedback, floatArg(r.AIGrade), r.AIReason, r.AIConfidence,
 		fmtTimePtr(r.AIAt), r.Feedback, floatArg(r.Grade), r.Status, fmtTimePtr(r.ReturnedAt), fmtTime(r.UpdatedAt),
-		fmtTimePtr(r.AIDiscardedAt), r.Origin, r.ReviewMs)
+		fmtTimePtr(r.AIDiscardedAt), r.Origin, r.ReviewMs, intArg(r.AIMinutes))
 	return err
 }
 
@@ -325,7 +334,7 @@ func (s *Store) DiscardAIDraft(teacherID, submissionID string) (*Review, error) 
 				r.Grade = nil
 			}
 		}
-		r.AIFeedback, r.AIGrade, r.AIReason, r.AIConfidence, r.AIAt = "", nil, "", "", nil
+		r.AIFeedback, r.AIGrade, r.AIReason, r.AIConfidence, r.AIAt, r.AIMinutes = "", nil, "", "", nil, nil
 		r.AIDiscardedAt = &now
 		return nil
 	}, func(q querier, r *Review) error {
@@ -336,6 +345,25 @@ func (s *Store) DiscardAIDraft(teacherID, submissionID string) (*Review, error) 
 	})
 }
 
+func intArg(n *int) any {
+	if n == nil {
+		return nil
+	}
+	return *n
+}
+
+func (s *Store) SetAIMinutes(teacherID, submissionID string, minutes int) error {
+	if err := ownedOfficial(s.db, teacherID, submissionID); err != nil {
+		return err
+	}
+	var value any
+	if minutes > 0 {
+		value = minutes
+	}
+	_, err := s.db.Exec(`UPDATE reviews SET ai_minutes = ? WHERE submission_id = ? AND ai_at IS NOT NULL`, value, submissionID)
+	return err
+}
+
 func (s *Store) AddReviewTime(teacherID, submissionID string, ms int64) (int64, error) {
 	if ms <= 0 {
 		return 0, nil
@@ -344,6 +372,8 @@ func (s *Store) AddReviewTime(teacherID, submissionID string, ms int64) (int64, 
 	if err := ownedOfficial(s.db, teacherID, submissionID); err != nil {
 		return 0, err
 	}
-	_, err := s.db.Exec(`UPDATE reviews SET review_ms = review_ms + ? WHERE submission_id = ?`, ms, submissionID)
+	_, err := s.db.Exec(`INSERT INTO reviews (submission_id, teacher_id, status, updated_at, review_ms) VALUES (?, ?, 'draft', ?, ?)
+		ON CONFLICT(submission_id) DO UPDATE SET review_ms = review_ms + excluded.review_ms`,
+		submissionID, teacherID, fmtTime(time.Now()), ms)
 	return ms, err
 }

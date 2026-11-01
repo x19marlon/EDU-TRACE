@@ -12,10 +12,12 @@ const PW = W - M.left - M.right;
 const PH = H - M.top - M.bottom;
 const RH = PH / 3;
 const ROWS: RAELevel[] = ["alto", "medio", "bajo"];
+const MID = 3;
+const HIGH = 3.75;
 const BANDS = [
-  { label: "Bajo", range: "0.0 – 2.9", from: 0, to: 3 },
-  { label: "Medio", range: "3.0 – 3.9", from: 3, to: 4 },
-  { label: "Alto", range: "4.0 – 5.0", from: 4, to: 5 },
+  { label: "Bajo", range: "[0 – 3)", from: 0, to: MID },
+  { label: "Medio", range: "[3 – 3.75)", from: MID, to: HIGH },
+  { label: "Alto", range: "[3.75 – 5]", from: HIGH, to: 5 },
 ];
 const INK = "#2E2A3F";
 const INK_SOFT = "#6B6680";
@@ -27,7 +29,7 @@ const POINT_STRONG = "#5C42AE";
 
 const xOf = (grade: number) => M.left + (grade / 5) * PW;
 const rowOf = (level: RAELevel) => ROWS.indexOf(level);
-const bandOf = (grade: number) => (grade < 3 ? 0 : grade < 4 ? 1 : 2);
+const bandOf = (grade: number) => (grade < MID ? 0 : grade < HIGH ? 1 : 2);
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 interface Plotted {
@@ -164,19 +166,20 @@ export default function RaeScatter({
             <div className="overflow-x-auto">
               <div className="relative min-w-[520px]">
                 <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={`Diagrama de dispersión: nota promedio contra nivel en ${rae.code}`}>
-                  <rect x={M.left} y={M.top + 2 * RH} width={xOf(3) - M.left} height={RH} fill="#FFF6EF" />
-                  <rect x={xOf(4)} y={M.top} width={M.left + PW - xOf(4)} height={RH} fill="#F0FAF5" />
+                  <rect x={M.left} y={M.top + 2 * RH} width={xOf(MID) - M.left} height={RH} fill="#FFF6EF" />
+                  <rect x={xOf(HIGH)} y={M.top} width={M.left + PW - xOf(HIGH)} height={RH} fill="#F0FAF5" />
                   <text x={M.left + 8} y={M.top + 2 * RH + 15} fontSize={11} fill={INK_FAINT}>Requiere acompañamiento</text>
-                  <text x={xOf(4) + 8} y={M.top + 15} fontSize={11} fill={INK_FAINT}>Logro consolidado</text>
+                  <text x={xOf(HIGH) + 8} y={M.top + 15} fontSize={11} fill={INK_FAINT}>Logro consolidado</text>
 
                   {[0, 1, 2, 3, 4, 5].map((t) => (
                     <g key={t}>
-                      <line x1={xOf(t)} x2={xOf(t)} y1={M.top} y2={M.top + PH} stroke={t === 3 || t === 4 ? DIVIDER : GRID} strokeWidth={1} />
+                      <line x1={xOf(t)} x2={xOf(t)} y1={M.top} y2={M.top + PH} stroke={t === MID ? DIVIDER : GRID} strokeWidth={1} />
                       <text x={xOf(t)} y={M.top + PH + 16} fontSize={11} fill={INK_SOFT} textAnchor="middle" className="tabular-nums">
                         {t.toFixed(1)}
                       </text>
                     </g>
                   ))}
+                  <line x1={xOf(HIGH)} x2={xOf(HIGH)} y1={M.top} y2={M.top + PH} stroke={DIVIDER} strokeWidth={1} />
                   {[0, 1, 2, 3].map((i) => (
                     <line key={i} x1={M.left} x2={M.left + PW} y1={M.top + i * RH} y2={M.top + i * RH} stroke={i === 0 || i === 3 ? GRID : DIVIDER} strokeWidth={1} />
                   ))}

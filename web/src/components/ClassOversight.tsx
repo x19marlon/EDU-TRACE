@@ -70,7 +70,6 @@ function statDetail(s: Stat, unit: string): string {
 
 function ThresholdsForm({ courseId, initial, onSaved }: { courseId: string; initial: Thresholds; onSaved: () => void }) {
   const toText = (v?: number | null) => (v ? String(v) : "");
-  const [review, setReview] = useState(toText(initial.review_minutes));
   const [feedback, setFeedback] = useState(toText(initial.feedback_hours));
   const [batch, setBatch] = useState(toText(initial.batch_hours));
   const [busy, setBusy] = useState(false);
@@ -82,7 +81,7 @@ function ThresholdsForm({ courseId, initial, onSaved }: { courseId: string; init
     setBusy(true);
     setError(null);
     try {
-      await setThresholds(courseId, { review_minutes: parse(review), feedback_hours: parse(feedback), batch_hours: parse(batch) });
+      await setThresholds(courseId, { review_minutes: initial.review_minutes ?? null, feedback_hours: parse(feedback), batch_hours: parse(batch) });
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudieron guardar los umbrales");
@@ -108,11 +107,10 @@ function ThresholdsForm({ courseId, initial, onSaved }: { courseId: string; init
   return (
     <form onSubmit={save} className="space-y-2 rounded-2xl border border-lavender-100 p-3">
       <p className="text-xs text-ink-soft">
-        Umbrales acordados para la materia (el catálogo deja las cifras al docente). Aplican a todas sus clases; deja vacío lo que aún no
-        definas.
+        Umbrales acordados para la materia; aplican a todas sus clases. Quedaron acordadas 5 h para procesar cada lote y 5 h entre la
+        entrega y la retroalimentación. El tiempo de revisión no lleva umbral: lo decides tú con la estimación de la IA.
       </p>
       <div className="flex flex-wrap gap-x-4 gap-y-2">
-        {field("Revisión por entrega ≤", "min", review, setReview)}
         {field("Entrega → retroalimentación ≤", "h", feedback, setFeedback)}
         {field("Procesar cada lote ≤", "h", batch, setBatch)}
         <button
@@ -189,33 +187,75 @@ function share(c: RatingCount): string {
   return total === 0 ? "sin respuestas" : `${Math.round((c.si / total) * 100)} % entendió (${c.si} sí · ${c.parcial} en parte · ${c.no} no)`;
 }
 
+const COMPREHENSION_VERDICT: Record<GroupMetrics["comprehension"]["veredicto"], [string, string]> = {
+  cumple: ["Cumple la meta", "bg-mint-100 text-mint-700"],
+  no_cumple: ["No cumple la meta", "bg-peach-100 text-peach-700"],
+  pocas_respuestas: ["Pocas respuestas", "bg-lavender-50 text-ink-soft"],
+};
+
+function pct(n: number, total: number): number {
+  return total ? Math.round((n / total) * 100) : 0;
+}
+
 function Comprehension({ data }: { data: GroupMetrics["comprehension"] }) {
-  const total = (["revisiones", "inmediata"] as const).reduce((n, k) => n + data[k].si + data[k].parcial + data[k].no, 0);
+  const goal = data.meta;
+  const [label, tone] = COMPREHENSION_VERDICT[data.veredicto];
   return (
-    <div className="rounded-2xl bg-lavender-50/60 p-3 text-xs">
-      <p className="font-bold text-ink-soft">
-        <span className="text-lavender-700">RNF-09</span> · ¿Los estudiantes entienden la retroalimentación?
+    <div className="space-y-2 rounded-2xl bg-lavender-50/60 p-3 text-xs">
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-bold text-ink-soft">
+          <span className="text-lavender-700">RNF-09</span> · ¿Los estudiantes entienden la retroalimentación?
+        </p>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${tone}`}>{label}</span>
+      </div>
+      <p className="text-ink-soft">
+        Meta por taller: al menos {Math.round(goal.min_si * 100)} % de «sí» y como máximo {Math.round(goal.max_no * 100)} % de «no», con{" "}
+        {goal.min_respuestas} respuestas o más.
       </p>
-      {total === 0 ? (
-        <p className="mt-1 text-ink-soft">
+      {data.por_taller.length === 0 ? (
+        <p className="text-ink-soft">
           Aún nadie respondió. Cada retroalimentación le pregunta al estudiante si la entendió; aquí verás el resumen sin nombres.
         </p>
       ) : (
-        <>
-          <p className="mt-1 text-ink-soft">
-            Revisiones devueltas: {share(data.revisiones)} · IA inmediata: {share(data.inmediata)}
-          </p>
-          {data.comentarios.length > 0 && (
-            <ul className="mt-2 space-y-1">
-              {data.comentarios.map((c, i) => (
-                <li key={i} className="rounded-xl bg-white px-2.5 py-1.5">
-                  <span className="font-bold">{c.understood === "no" ? "No entendió" : c.understood === "parcial" ? "En parte" : "Entendió"}:</span>{" "}
-                  {c.comment} <span className="text-ink-faint">· {formatDateTime(c.at)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
+        <ul className="space-y-1.5">
+          {data.por_taller.map((t) => (
+            <li key={t.assignment_id || "libre"} className="rounded-xl bg-white px-2.5 py-2">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="min-w-0 flex-1 truncate font-bold">{t.title}</span>
+                <span className="text-ink-soft">
+                  {pct(t.si, t.total)} % sí · {pct(t.parcial, t.total)} % en parte · {pct(t.no, t.total)} % no
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    !t.suficientes ? "bg-lavender-50 text-ink-soft" : t.cumple ? "bg-mint-100 text-mint-700" : "bg-peach-100 text-peach-700"
+                  }`}
+                >
+                  {!t.suficientes ? `${t.total} de ${goal.min_respuestas} respuestas` : t.cumple ? "Cumple" : "No cumple"}
+                </span>
+              </div>
+              <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-lavender-100" aria-hidden>
+                <div className="bg-mint-400" style={{ width: `${pct(t.si, t.total)}%` }} />
+                <div className="bg-amber-300" style={{ width: `${pct(t.parcial, t.total)}%` }} />
+                <div className="bg-peach-400" style={{ width: `${pct(t.no, t.total)}%` }} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {data.por_taller.length > 0 && (
+        <p className="text-ink-faint">
+          Revisiones devueltas: {share(data.revisiones)} · IA inmediata: {share(data.inmediata)}
+        </p>
+      )}
+      {data.comentarios.length > 0 && (
+        <ul className="space-y-1">
+          {data.comentarios.map((c, i) => (
+            <li key={i} className="rounded-xl bg-white px-2.5 py-1.5">
+              <span className="font-bold">{c.understood === "no" ? "No entendió" : c.understood === "parcial" ? "En parte" : "Entendió"}:</span>{" "}
+              {c.comment} <span className="text-ink-faint">· {formatDateTime(c.at)}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -345,10 +385,18 @@ export default function ClassOversight({
             <div className="grid gap-2 sm:grid-cols-2">
               <Indicator
                 id="RNF-08"
-                title={`Tiempo de revisión por entrega${t?.review_minutes ? ` (≤ ${t.review_minutes} min)` : ""}`}
+                title="Tiempo de revisión por entrega (frente a lo que estimó la IA)"
                 value={statLine(metrics.review_time)}
-                detail={statDetail(metrics.review_time, "revisiones medidas")}
-                state={verdict(metrics.review_time.count > 0, t?.review_minutes, metrics.review_time.over > 0)}
+                detail={`${statDetail(metrics.review_time, "revisiones medidas")}${
+                  metrics.review_estimate.count
+                    ? ` · la IA estimó una mediana de ${fmtMs(metrics.review_estimate.p50_ms)}; ${metrics.over_estimate} de ${metrics.review_estimate.count} tomaron más`
+                    : ""
+                }`}
+                state={verdict(
+                  metrics.review_time.count > 0,
+                  metrics.review_estimate.count > 0 ? metrics.review_estimate.p50_ms : undefined,
+                  metrics.review_time.p50_ms > metrics.review_estimate.p50_ms
+                )}
               />
               <Indicator
                 id="RNF-11"

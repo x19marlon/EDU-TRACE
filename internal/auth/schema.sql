@@ -110,7 +110,8 @@ CREATE TABLE IF NOT EXISTS reviews (
   updated_at TEXT NOT NULL,
   ai_discarded_at TEXT,
   feedback_origin TEXT NOT NULL DEFAULT '',
-  review_ms INTEGER NOT NULL DEFAULT 0
+  review_ms INTEGER NOT NULL DEFAULT 0,
+  ai_minutes INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS group_monitors (
@@ -246,7 +247,8 @@ CREATE TABLE IF NOT EXISTS feedback_ratings (
   submission_id TEXT REFERENCES submissions(id) ON DELETE CASCADE,
   student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   understood TEXT NOT NULL CHECK (understood IN ('si', 'parcial', 'no')),
-  comment TEXT NOT NULL DEFAULT ''
+  comment TEXT NOT NULL DEFAULT '',
+  assignment_id TEXT REFERENCES assignments(id) ON DELETE SET NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS feedback_ratings_submission ON feedback_ratings(submission_id, student_id) WHERE submission_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS feedback_ratings_group ON feedback_ratings(group_id);
