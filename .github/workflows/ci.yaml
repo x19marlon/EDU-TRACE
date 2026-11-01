@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Descargar el código
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Instalar Go
         uses: actions/setup-go@v6
@@ -49,7 +49,7 @@ jobs:
         working-directory: web
     steps:
       - name: Descargar el código
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Instalar Node.js
         uses: actions/setup-node@v5
@@ -85,7 +85,7 @@ jobs:
       E2E_TEACHER_CODE: codigo-de-ci
     steps:
       - name: Descargar el código
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Instalar Go
         uses: actions/setup-go@v6
