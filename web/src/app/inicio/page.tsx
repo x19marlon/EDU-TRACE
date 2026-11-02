@@ -98,10 +98,7 @@ export default function HomePage() {
 
       <header className="relative z-10 mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5 sm:px-6">
         <Link href="/inicio" aria-label="EduTrace, inicio" className="flex items-center gap-2">
-          <Logo animated className="h-10 w-10" />
-          <span className="text-xl font-extrabold tracking-tight">
-            Edu<span className="text-lavender-600">Trace</span>
-          </span>
+          <Logo full className="h-14 w-auto" />
         </Link>
         <nav aria-label="Tu cuenta" className="flex flex-wrap items-center gap-2">
           <HomeActions />

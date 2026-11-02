@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Logo, { Wordmark } from "@/components/Logo";
+import Logo from "@/components/Logo";
 import UserMenu from "@/components/UserMenu";
 import NotificationBell from "@/components/NotificationBell";
 import SearchBar from "@/components/SearchBar";
@@ -127,8 +127,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Barra lateral */}
       <aside className="hidden md:flex sticky top-0 h-screen w-24 shrink-0 flex-col items-center gap-1 bg-white border-r border-lavender-100 py-5 z-10">
         <Link href="/inicio" aria-label="EduTrace, inicio" className="flex flex-col items-center gap-1 mb-6">
-          <Logo className="h-10 w-10" />
-          <Wordmark />
+          <Logo full className="h-auto w-[76px]" />
         </Link>
         <nav className="flex flex-col gap-2 w-full px-3">
           {items.map((item) => {
@@ -161,7 +160,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {/* Barra superior */}
         <header className="relative z-30 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-4">
           <Link href="/inicio" aria-label="EduTrace, inicio" className="hidden min-[440px]:flex md:hidden items-center gap-2">
-            <Logo className="h-8 w-8" />
+            <Logo className="h-9 w-auto" />
           </Link>
           <nav aria-label="Secciones" className="flex min-w-0 items-center gap-1 rounded-full bg-white p-1 shadow-soft">
             {items.map((item) => {

@@ -7,31 +7,6 @@ body {
   color: #2E2A3F;
 }
 
-/* --- Logo: el brote crece al cargar --- */
-.logo-sprout {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: sprout-grow 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
-}
-
-.logo-leaf {
-  transform-box: fill-box;
-  animation: leaf-open 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-.logo-leaf-left  { transform-origin: 100% 100%; animation-delay: 0.7s; }
-.logo-leaf-right { transform-origin: 0% 100%;   animation-delay: 0.85s; }
-
-@keyframes sprout-grow {
-  from { transform: scaleY(0); }
-  to   { transform: scaleY(1); }
-}
-
-@keyframes leaf-open {
-  from { transform: scale(0) rotate(-20deg); }
-  to   { transform: scale(1) rotate(0); }
-}
-
 /* --- Formas decorativas del fondo --- */
 .blob {
   position: absolute;
@@ -55,7 +30,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .logo-sprout, .logo-leaf, .blob, .rise-in { animation: none; }
+  .blob, .rise-in { animation: none; }
 }
 
 /* --- CodeMirror --- */

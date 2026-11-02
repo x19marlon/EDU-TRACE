@@ -22,10 +22,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-3xl space-y-6 p-4 sm:p-8">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <Link href="/login" className="flex items-center gap-2">
-          <Logo className="h-10 w-10" />
-          <span className="text-xl font-extrabold tracking-tight">
-            Edu<span className="text-lavender-600">Trace</span>
-          </span>
+          <Logo full className="h-14 w-auto" />
         </Link>
         <span className="rounded-full bg-lavender-50 px-3 py-1 text-xs font-bold text-lavender-700">Versión {VERSION}</span>
       </header>

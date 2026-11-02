@@ -126,10 +126,7 @@ export default function LoginPage() {
 
           <div className="relative rise-in">
             <Link href="/inicio" aria-label="EduTrace, inicio" className="mb-8 flex items-center gap-3">
-              <Logo animated className="h-20 w-20 drop-shadow-sm" />
-              <span className="text-3xl font-extrabold tracking-tight">
-                Edu<span className="text-lavender-600">Trace</span>
-              </span>
+              <Logo full className="h-32 w-auto" />
             </Link>
             <h1 className="text-4xl font-extrabold leading-tight tracking-tight">
               Programa. Comprende. <span className="text-lavender-600">Avanza.</span>
@@ -148,10 +145,7 @@ export default function LoginPage() {
         {/* Formulario */}
         <div className="relative rounded-[2rem] bg-white p-7 sm:p-10 md:rounded-l-none">
           <Link href="/inicio" aria-label="EduTrace, inicio" className="md:hidden mb-6 flex items-center gap-2">
-            <Logo animated className="h-10 w-10" />
-            <span className="text-xl font-extrabold tracking-tight">
-              Edu<span className="text-lavender-600">Trace</span>
-            </span>
+            <Logo full className="h-16 w-auto" />
           </Link>
 
           <div className="rise-in">

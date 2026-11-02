@@ -28,7 +28,7 @@ export default function ConsentGate() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <div role="dialog" aria-modal="true" aria-labelledby="consent-title" className="w-full max-w-lg space-y-4 rounded-3xl bg-white p-6 shadow-lift sm:p-8">
         <div className="flex items-center gap-3">
-          <Logo className="h-10 w-10" />
+          <Logo className="h-10 w-auto shrink-0" />
           <h1 id="consent-title" className="text-xl font-extrabold tracking-tight">
             {updated ? "Actualizamos la política de datos" : "Autorización de tratamiento de datos"}
           </h1>
