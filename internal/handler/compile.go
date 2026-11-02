@@ -80,7 +80,7 @@ func (h *CompileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case isExercise:
 		tests = exercise.Tests
 	default:
-		enrolled = user.Role == auth.RoleStudent && req.GroupID != "" && h.store.IsEnrolled(user.ID, req.GroupID)
+		enrolled = user.IsLearner() && req.GroupID != "" && h.store.IsEnrolled(user.ID, req.GroupID)
 		if !enrolled || (req.AssignmentID != "" && !h.store.AssignmentInGroup(req.AssignmentID, req.GroupID)) {
 			req.AssignmentID = ""
 		}
@@ -94,7 +94,7 @@ func (h *CompileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		official.Tests = result.Tests[:len(tests)]
 		h.saveAttempt(user, req, &official)
 	}
-	if isExercise && user.Role == auth.RoleStudent {
+	if isExercise && user.IsLearner() {
 		passed := 0
 		for _, t := range result.Tests[:len(tests)] {
 			if t.Passed {

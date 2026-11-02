@@ -92,7 +92,7 @@ export default function GradeChart({ points, label }: { points: GradePoint[]; la
         >
           <span className="block font-bold text-ink">{shown.title}</span>
           <span className="block text-ink-soft">
-            Nota <span className="font-bold text-ink">{shown.grade.toFixed(1)}</span> · {formatDateTime(shown.at)}
+            Nota <span className="font-bold text-ink">{shown.grade.toFixed(1)}</span>, {formatDateTime(shown.at)}
           </span>
         </div>
       )}

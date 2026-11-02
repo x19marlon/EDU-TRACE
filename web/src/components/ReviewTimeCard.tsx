@@ -100,7 +100,7 @@ export default function ReviewTimeCard({ groupId, refreshKey }: { groupId: strin
           </p>
         )
       ) : plan.assignments.length === 0 ? (
-        <p className="text-sm text-ink-soft">Cuando lleguen entregas a los talleres, aquí verás cuánto tiempo te tomará revisarlas.</p>
+        <p className="text-sm text-ink-soft">Cuando lleguen entregas a los talleres, aquí verás cuánto tiempo te tomará revisarlas aproximadamente.</p>
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-ink-soft">

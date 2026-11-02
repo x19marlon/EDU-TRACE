@@ -1,12 +1,4 @@
-// aieval compara modelos de Ollama con casos típicos de estudiantes, usando el mismo
-// camino que la aplicación (sandbox + prompt + Ollama), y puntúa cada respuesta con
-// comprobaciones automáticas. Las comprobaciones son heurísticas: sirven para comparar
-// modelos, no sustituyen leer las respuestas (usa -out para guardarlas).
-//
-// Uso (desde la raíz del repositorio, para que encuentre syllabus/):
-//
-//	go run ./cmd/aieval -model llama3.1:8b -ctx 6144
-//	go run ./cmd/aieval -model qwen3:4b -think -out /ruta/salidas
+
 package main
 
 import (

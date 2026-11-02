@@ -41,16 +41,22 @@ export default function ConsentGate() {
           </p>
         )}
         <p className="text-sm leading-relaxed text-ink-soft">
-          Para seguir usando EduTrace necesitamos que autorices el tratamiento de tus datos personales (Ley 1581 de 2012) con fines
-          académicos de la asignatura. Tus datos y tu código no salen del servidor: la IA funciona en el propio servidor y nunca recibe tu
-          nombre ni tu email.
+          Para seguir usando EduTrace, necesitamos tu autorización para tratar tus datos personales, de acuerdo con la Ley 1581 de 2012 y con
+          fines académicos relacionados con la asignatura.
         </p>
         <p className="text-sm leading-relaxed text-ink-soft">
-          Puedes descargar, corregir o eliminar tus datos cuando quieras desde «Mi cuenta». Lee la{" "}
+          Queremos que tengas tranquilidad sobre tu información: tus datos y el código que compartes permanecen en nuestro servidor. Además, la
+          inteligencia artificial funciona allí mismo y no tiene acceso a tu nombre ni a tu correo electrónico.
+        </p>
+        <p className="text-sm leading-relaxed text-ink-soft">
+          En cualquier momento puedes consultar, descargar, corregir o solicitar la eliminación de tus datos desde «Mi cuenta».
+        </p>
+        <p className="text-sm leading-relaxed text-ink-soft">
+          Te invitamos a leer nuestra{" "}
           <Link href="/privacidad" target="_blank" className="font-bold text-lavender-600 underline">
             política de tratamiento de datos
           </Link>{" "}
-          completa.
+          para conocer todos los detalles.
         </p>
         {error && <p className="rounded-2xl bg-peach-50 px-4 py-2 text-sm font-semibold text-peach-700">{error}</p>}
         <div className="flex flex-wrap gap-2">

@@ -118,7 +118,7 @@ func prlimitArgs(mem, fsize, cpuSecs, procs int) []string {
 // compileCommand devuelve el comando (nombre + args) para compilar main.cpp.
 // Se ejecuta con cmd.Dir = workDir, por eso las rutas de g++ son relativas.
 func (c *Compiler) compileCommand(workDir string) (string, []string) {
-	gppArgs := []string{"-o", "main", "-Wall", "-Wextra", "-std=c++17", "main.cpp"}
+	gppArgs := []string{"-o", "main", "-Wall", "-Wextra", "-std=c++17", "-include", entradaHeaderName, "main.cpp"}
 	if c.cfg.Sandbox == "none" {
 		return c.cfg.GppPath, gppArgs
 	}
@@ -131,7 +131,7 @@ func (c *Compiler) compileCommand(workDir string) (string, []string) {
 }
 
 // runCommand devuelve el comando para ejecutar el binario compilado en workDir.
-func (c *Compiler) runCommand(workDir string) (string, []string) {
+func (c *Compiler) runCommand(workDir string, display bool) (string, []string) {
 	if c.cfg.Sandbox == "none" {
 		return filepath.Join(workDir, "main"), nil
 	}
@@ -139,7 +139,11 @@ func (c *Compiler) runCommand(workDir string) (string, []string) {
 	// El directorio del estudiante se monta en solo lectura: el programa solo puede
 	// escribir en su /tmp privado (tmpfs), que desaparece al terminar.
 	args := append(sandboxPrefix(), baseBwrapArgs(runTmpBytes)...)
-	args = append(args, "--ro-bind", workDir, boxDir, "--chdir", boxDir, "--")
+	args = append(args, "--ro-bind", workDir, boxDir, "--chdir", boxDir)
+	if display {
+		args = append(args, "--setenv", entradaEnvVar, "1")
+	}
+	args = append(args, "--")
 	args = append(args, prlimitArgs(runMemoryBytes, runFileBytes, cpu, runMaxProcs)...)
 	return "choom", append(args, boxDir+"/main")
 }

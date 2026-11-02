@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AuditEntry,
   discardReviewDraft,
-  FeedbackOrigin,
   generateReviewDraft,
   getReview,
   getSubmissionAudit,
@@ -15,6 +14,8 @@ import {
   SubmissionMeta,
 } from "@/lib/api";
 import { SmallButton, Spinner } from "@/components/ui";
+import AuditItem from "@/components/AuditItem";
+import { gradeFarFromLevel, gradeLevel } from "@/lib/rae";
 import { formatDateTime, formatDeadline, formatDuration, formatFeedback, LEVEL_STYLE, performanceBand, startedDays } from "@/lib/format";
 
 const GRADE_MAX = 5;
@@ -27,34 +28,6 @@ const Style: Record<string, string> = {
 
 const IDLE_MS = 5 * 60 * 1000;
 const POLL_MS = 8000;
-
-const ORIGIN_TEXT: Record<FeedbackOrigin, string> = {
-  ia: "El estudiante verá el texto de la IA sin cambios, marcado como «propuesto por IA y aprobado por tu profesor».",
-  ia_editada: "El estudiante verá que la IA propuso el texto y que tú lo editaste y aprobaste.",
-  docente: "El estudiante verá que escribiste tú la retroalimentación.",
-};
-
-export const ACTION_LABEL: Record<string, string> = {
-  propuesta_ia: "Propuesta de la IA",
-  propuesta_descartada: "Propuesta descartada",
-  borrador_guardado: "Borrador guardado",
-  aprobada: "Aprobada y devuelta",
-  devuelta_actualizada: "Devolución actualizada",
-  anotaciones_enviadas: "Marcas enviadas",
-  modo_ia: "Modo de IA",
-  casos_reejecutados: "Casos re-ejecutados",
-  pregunta_respondida: "Pregunta respondida",
-  taller_creado: "Taller creado",
-  taller_editado: "Taller editado",
-  taller_eliminado: "Taller eliminado",
-  casos_actualizados: "Casos de prueba actualizados",
-  codigo_restablecimiento: "Código para restablecer contraseña",
-  periodo_cerrado: "Periodo cerrado",
-  periodo_reabierto: "Periodo reabierto",
-  profesor_agregado: "Profesor agregado",
-  profesor_retirado: "Profesor retirado",
-  materia_copiada: "Materia copiada",
-};
 
 function useReviewTimer() {
   const total = useRef(0);
@@ -108,14 +81,7 @@ function ReviewHistory({ submissionId, refreshKey }: { submissionId: string; ref
       {entries && entries.length > 0 && (
         <ol className="mt-2 space-y-1.5 border-l-2 border-lavender-100 pl-3">
           {entries.map((e) => (
-            <li key={e.id}>
-              <span className="font-bold text-ink">{ACTION_LABEL[e.action] ?? e.action}</span>
-              <span className="text-ink-faint">
-                {" "}
-                · {e.actor_name} · {formatDateTime(e.at)}
-              </span>
-              {e.detail && <p className="text-ink-soft">{e.detail}</p>}
-            </li>
+            <AuditItem key={e.id} entry={e} />
           ))}
         </ol>
       )}
@@ -266,6 +232,8 @@ export default function ReviewPanel({
     }
   };
 
+  const gradeValue = parseGrade(grade);
+
   const discard = async () => {
     if (!window.confirm("¿Descartar la propuesta de la IA? Se quitará de tu formulario si no la modificaste y quedará registrado en la bitácora.")) return;
     setBusy("discard");
@@ -362,8 +330,6 @@ export default function ReviewPanel({
 
   const hasAI = !!review.ai_at;
   const returned = review.status === "returned";
-  const origin: FeedbackOrigin =
-    hasAI && review.ai_feedback ? (feedback.trim() === review.ai_feedback.trim() ? "ia" : "ia_editada") : "docente";
   const job = review.ai_job;
 
   return (
@@ -412,9 +378,7 @@ export default function ReviewPanel({
 
       {hasAI && (
         <div className="rounded-2xl bg-lavender-50/70 p-4">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ink-soft">
-            Propuesta IA solo accesible por ti
-          </p>
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ink-soft">Propuesta IA</p>
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-3xl font-extrabold tabular-nums text-lavender-700">
               {review.ai_grade === undefined ? "—" : review.ai_grade.toFixed(1)}
@@ -437,12 +401,6 @@ export default function ReviewPanel({
             )}
           </div>
           {review.ai_reason && <p className="mt-2 text-sm text-ink-soft">{review.ai_reason}</p>}
-          {review.ai_model && (
-            <p className="mt-2 text-xs text-ink-soft">
-              Generada por <span className="font-semibold">{review.ai_model}</span>
-              {review.ai_prompt && <> · versión del prompt <span className="font-mono">{review.ai_prompt}</span></>}
-            </p>
-          )}
           {review.ai_grade === undefined && (
             <p className="mt-2 text-xs text-peach-700">Error del modelo al calcular la nota tentativa.</p>
           )}
@@ -576,6 +534,12 @@ export default function ReviewPanel({
                     </button>
                   ))}
                 </div>
+                {typeof gradeValue === "number" && levels[r.rae_id] && gradeFarFromLevel(gradeValue, levels[r.rae_id] as RAELevel) && (
+                  <p className="w-full text-[11px] font-semibold text-amber-900">
+                    Con nota {gradeValue.toFixed(1)} se esperaría nivel {gradeLevel(gradeValue)}. Puedes dejarlo así, pero aparecerá como «para
+                    revisar» en el rendimiento por RAE.
+                  </p>
+                )}
               </li>
             ))}
           </ul>
@@ -584,9 +548,9 @@ export default function ReviewPanel({
 
       {error && (
         <div className="rounded-2xl bg-peach-50 px-3 py-2 text-xs text-peach-700 font-medium">
-          <span className="font-bold block">Aviso del sistema (RNF-15): {error}</span>
+          <span className="font-bold block">Aviso del sistema: {error}</span>
           <span className="text-[11px] text-peach-600 block mt-0.5">
-            La entrega del estudiante se conserva intacta en el servidor (RNF-14). Puedes completar la evaluación manualmente.
+            La entrega del estudiante se conserva intacta en el servidor. Puedes completar la evaluación manualmente.
           </span>
         </div>
       )}
@@ -618,24 +582,13 @@ export default function ReviewPanel({
         </button>
       </div>
 
-      {feedback.trim() && <p className="text-xs text-ink-soft">{ORIGIN_TEXT[origin]}</p>}
-
-      <p className="text-xs text-ink-faint">
-        {returned && review.returned_at
-          ? `Aprobada y devuelta al estudiante el ${formatDateTime(review.returned_at)}. `
-          : "Aún no la ve el estudiante. "}
+      <p className="text-xs text-ink-faint empty:hidden">
+        {returned && review.returned_at && `Aprobada y devuelta al estudiante el ${formatDateTime(review.returned_at)}. `}
         {review.review_ms > 0 && `Tiempo de revisión registrado: ${minutes(review.review_ms)}. `}
         {review.grade_source === "ai_confirmed" && "Nota de la IA confirmada por ti."}
         {review.grade_source === "profesor" &&
           review.ai_grade !== undefined &&
           `Nota modificada por ti (la IA proponía ${review.ai_grade.toFixed(1)}).`}
-      </p>
-
-      <p className="text-[11px] text-ink-soft">
-        Atajos: <kbd className="rounded bg-lavender-50 px-1 font-mono">Ctrl</kbd>+<kbd className="rounded bg-lavender-50 px-1 font-mono">S</kbd> guarda
-        sin devolver · <kbd className="rounded bg-lavender-50 px-1 font-mono">Ctrl</kbd>+<kbd className="rounded bg-lavender-50 px-1 font-mono">Enter</kbd>{" "}
-        aprueba y devuelve con tu nota · <kbd className="rounded bg-lavender-50 px-1 font-mono">Alt</kbd>+<kbd className="rounded bg-lavender-50 px-1 font-mono">↓</kbd>{" "}
-        siguiente entrega por revisar.
       </p>
 
       <ReviewHistory submissionId={submissionId} refreshKey={historyKey} />

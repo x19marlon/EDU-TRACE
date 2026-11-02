@@ -49,7 +49,7 @@ export default function StudentAssignments({
             {(selected.due_at || selected.evaluation) && (
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 {selected.evaluation && (
-                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900">Evaluación · sin IA</span>
+                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900">Evaluación sin IA</span>
                 )}
                 {selected.due_at && <DeadlineBadge assignment={selected} withDetail />}
               </div>

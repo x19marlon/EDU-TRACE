@@ -129,7 +129,7 @@ function RecoverySection() {
     <div className="space-y-3">
       {user.has_recovery ? (
         <p className="rounded-2xl bg-mint-50 px-4 py-2 text-sm font-semibold text-mint-700">
-          Tienes un código de recuperación activo. Si lo perdiste, genera uno nuevo: el anterior deja de servir.
+          Ya tienes un código de recuperación activo. Guárdalo bien. Si lo perdiste, puedes generar uno nuevo, pero ten en cuenta que el anterior dejará de funcionar.
         </p>
       ) : (
         <p className="rounded-2xl bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800">
@@ -196,10 +196,10 @@ function EmailNotices() {
 
   return (
     <div className="space-y-3 text-sm">
-      <p className="text-ink-soft">
-        La campana de arriba te avisa de las novedades: revisiones devueltas o actualizadas, preguntas nuevas o respondidas y
-        comentarios de monitores. Si no abres un aviso en 2 minutos, te llega también por correo.
-      </p>
+      <div className="space-y-2 text-ink-soft">
+        <p>La campana de la parte superior te mantiene al tanto de las novedades: revisiones nuevas o actualizadas, preguntas respondidas y comentarios de los monitores.</p>
+        <p>Si no consultas una notificación durante los siguientes 2 minutos, también recibirás un aviso por correo electrónico.</p>
+      </div>
       {state && (
         <label className="flex items-start gap-3 rounded-2xl bg-lavender-50/60 px-4 py-3">
           <input
@@ -210,7 +210,7 @@ function EmailNotices() {
             className="mt-0.5 h-4 w-4 accent-lavender-600"
           />
           <span>
-            <span className="font-semibold text-ink">Recibir los avisos también por correo</span>
+            <span className="font-semibold text-ink">Recibir notificaciones por correo electrónico</span>
             {!state.available && (
               <span className="block text-ink-soft">El servidor todavía no tiene configurado el envío de correos: por ahora solo verás la campana.</span>
             )}
@@ -376,7 +376,10 @@ function AccountView() {
         <div className="min-w-0">
           <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Mi cuenta</h1>
           <p className="truncate text-sm text-ink-soft">
-            {user.name} · {user.email} · {ROLE_LABELS[user.role]}
+            {user.name}, {user.email}
+          </p>
+          <p className="mt-1">
+            <span className="rounded-full bg-lavender-100 px-2.5 py-0.5 text-xs font-bold text-lavender-700">{ROLE_LABELS[user.role]}</span>
           </p>
         </div>
       </section>
@@ -385,8 +388,7 @@ function AccountView() {
       </Card>
       <Card title="Código de recuperación" className="rise-in">
         <p className="mb-3 text-sm text-ink-soft">
-          Si olvidas tu contraseña, en la pantalla de inicio eliges «¿Olvidaste tu contraseña?» y usas tu email y este código para
-          crear una nueva. Cada código sirve una sola vez.
+          Si algún día olvidas tu contraseña, ve a la pantalla de inicio y selecciona «¿Olvidaste tu contraseña?». Allí podrás crear una nueva usando tu correo electrónico y este código de recuperación. Recuerda que cada código solo se puede utilizar una vez.
         </p>
         <RecoverySection />
       </Card>

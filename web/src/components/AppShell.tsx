@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Logo, { Wordmark } from "@/components/Logo";
 import UserMenu from "@/components/UserMenu";
 import NotificationBell from "@/components/NotificationBell";
+import SearchBar from "@/components/SearchBar";
 import { useAuth } from "@/components/AuthProvider";
 import { Role } from "@/lib/api";
 
@@ -39,7 +40,7 @@ const NAV: NavItem[] = [
     href: "/historial",
     label: "Historial",
     tabLabel: "Mi historial",
-    roles: ["student"],
+    roles: ["student", "monitor"],
     icon: (
       <svg {...iconProps}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
@@ -49,7 +50,7 @@ const NAV: NavItem[] = [
   {
     href: "/practica",
     label: "Práctica",
-    roles: ["student"],
+    roles: ["student", "monitor"],
     icon: (
       <svg {...iconProps}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
@@ -60,7 +61,7 @@ const NAV: NavItem[] = [
     href: "/progreso",
     label: "Progreso",
     tabLabel: "Mi progreso",
-    roles: ["student"],
+    roles: ["student", "monitor"],
     icon: (
       <svg {...iconProps}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
@@ -79,9 +80,31 @@ const NAV: NavItem[] = [
     ),
   },
   {
+    href: "/docente/historial",
+    label: "Historial",
+    tabLabel: "Historial de cursos",
+    roles: ["teacher"],
+    icon: (
+      <svg {...iconProps}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/docente/progreso",
+    label: "Progreso",
+    tabLabel: "Cómo va el curso",
+    roles: ["teacher"],
+    icon: (
+      <svg {...iconProps}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+      </svg>
+    ),
+  },
+  {
     href: "/monitor",
-    label: "Clases",
-    tabLabel: "Mis clases",
+    label: "Monitoría",
+    tabLabel: "Mi monitoría",
     roles: ["monitor"],
     icon: (
       <svg {...iconProps}>
@@ -95,13 +118,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const pathname = usePathname();
   const items = NAV.filter((n) => !n.roles || (user && n.roles.includes(user.role)));
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const matches = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const current = items.filter((n) => matches(n.href)).sort((a, b) => b.href.length - a.href.length)[0]?.href;
+  const isActive = (href: string) => href === current;
 
   return (
     <div className="min-h-screen flex">
       {/* Barra lateral */}
       <aside className="hidden md:flex sticky top-0 h-screen w-24 shrink-0 flex-col items-center gap-1 bg-white border-r border-lavender-100 py-5 z-10">
-        <Link href="/" className="flex flex-col items-center gap-1 mb-6">
+        <Link href="/inicio" aria-label="EduTrace, inicio" className="flex flex-col items-center gap-1 mb-6">
           <Logo className="h-10 w-10" />
           <Wordmark />
         </Link>
@@ -134,8 +159,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Barra superior */}
-        <header className="relative z-30 flex items-center justify-between gap-3 px-4 sm:px-6 py-4">
-          <Link href="/" aria-label="EduTrace, inicio" className="hidden min-[440px]:flex md:hidden items-center gap-2">
+        <header className="relative z-30 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-4">
+          <Link href="/inicio" aria-label="EduTrace, inicio" className="hidden min-[440px]:flex md:hidden items-center gap-2">
             <Logo className="h-8 w-8" />
           </Link>
           <nav aria-label="Secciones" className="flex min-w-0 items-center gap-1 rounded-full bg-white p-1 shadow-soft">
@@ -151,12 +176,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     active ? "bg-lavender-100 text-lavender-700" : "text-ink-soft hover:text-ink"
                   }`}
                 >
-                  {compact && <span className="md:hidden">{item.icon}</span>}
-                  <span className={compact ? "sr-only md:not-sr-only" : ""}>{item.tabLabel ?? item.label}</span>
+                  {compact ? (
+                    <>
+                      <span className="md:hidden">{item.icon}</span>
+                      <span className="sr-only md:hidden">{item.tabLabel ?? item.label}</span>
+                      <span className="hidden md:inline xl:hidden">{item.label}</span>
+                      <span className="hidden xl:inline">{item.tabLabel ?? item.label}</span>
+                    </>
+                  ) : (
+                    item.tabLabel ?? item.label
+                  )}
                 </Link>
               );
             })}
           </nav>
+          <div className="order-last w-full lg:order-none lg:w-auto lg:min-w-0 lg:flex-1">
+            <SearchBar />
+          </div>
           <div className="flex items-center gap-2">
             <NotificationBell />
             <UserMenu />

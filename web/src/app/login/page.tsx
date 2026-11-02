@@ -14,33 +14,11 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = (["student", "teacher", "
   label: ROLE_LABELS[value],
 }));
 
-/** Pestañas para elegir con qué tipo de cuenta entrar, visibles de una vez. */
-function RoleTabs({ role, onChange }: { role: Role; onChange: (r: Role) => void }) {
-  return (
-    <div role="radiogroup" aria-label="Entrar como" className="grid grid-cols-3 gap-1 rounded-full bg-lavender-50 p-1">
-      {ROLE_OPTIONS.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          role="radio"
-          aria-checked={role === o.value}
-          onClick={() => onChange(o.value)}
-          className={`rounded-full py-2 text-sm font-bold transition ${
-            role === o.value ? "bg-white text-lavender-700 shadow-soft" : "text-ink-soft hover:text-ink"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 const SUBTITLES: Record<"login" | "register", Record<Role, string>> = {
   login: {
     student: "Entra para seguir practicando.",
     teacher: "Entra para acompañar a tu grupo.",
-    monitor: "Entra para retroalimentar a los estudiantes de tus clases.",
+    monitor: "Entra para programar, practicar y retroalimentar a los estudiantes de tus clases.",
   },
   register: {
     student: "Empieza a practicar en un minuto.",
@@ -74,7 +52,9 @@ export default function LoginPage() {
 
   // ?rol=teacher|student (desde "Cambiar de rol") tiene prioridad sobre la última elección.
   useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get("rol");
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("modo") === "registro") setMode("register");
+    const fromUrl = params.get("rol");
     if (isRole(fromUrl)) {
       setRole(fromUrl);
       saveRole(fromUrl);
@@ -145,38 +125,48 @@ export default function LoginPage() {
           </div>
 
           <div className="relative rise-in">
-            <div className="mb-8 flex items-center gap-3">
+            <Link href="/inicio" aria-label="EduTrace, inicio" className="mb-8 flex items-center gap-3">
               <Logo animated className="h-20 w-20 drop-shadow-sm" />
               <span className="text-3xl font-extrabold tracking-tight">
                 Edu<span className="text-lavender-600">Trace</span>
               </span>
-            </div>
+            </Link>
             <h1 className="text-4xl font-extrabold leading-tight tracking-tight">
-              Aprende a programar
-              <br />
-              <span className="text-lavender-600">con guía, paso a paso.</span>
+              Programa. Comprende. <span className="text-lavender-600">Avanza.</span>
             </h1>
-            <p className="mt-3 max-w-sm text-ink-soft">
-              Compila tu código, entiende tus errores y descubre qué sigue. La IA te orienta con pistas,
-              sin darte la solución, y tu docente sigue siendo quien decide.
+            <p className="mt-3 max-w-sm text-lg font-semibold leading-snug text-ink">
+              Practica, aprende de tus errores y recibe orientación paso a paso. Tu docente acompaña tu progreso.
             </p>
+            <p className="mt-3 max-w-sm text-ink-soft">
+              Escribe y compila C++ desde el navegador, comprueba tu programa con casos de prueba y entiende cada error. Recibe pistas de
+              IA y el acompañamiento de tu docente en cada paso.
+            </p>
+            <p className="mt-4 text-sm font-bold text-lavender-700">De javerianos para javerianos.</p>
           </div>
         </div>
 
         {/* Formulario */}
         <div className="relative rounded-[2rem] bg-white p-7 sm:p-10 md:rounded-l-none">
-          <div className="md:hidden mb-6 flex items-center gap-2">
+          <Link href="/inicio" aria-label="EduTrace, inicio" className="md:hidden mb-6 flex items-center gap-2">
             <Logo animated className="h-10 w-10" />
             <span className="text-xl font-extrabold tracking-tight">
               Edu<span className="text-lavender-600">Trace</span>
             </span>
-          </div>
+          </Link>
 
           <div className="rise-in">
             {mode !== "recover" && (
               <>
-                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ink-faint">Entrar como</p>
-                <RoleTabs role={role} onChange={chooseRole} />
+                <label htmlFor="rol" className="mb-2 block text-xs font-bold uppercase tracking-wider text-ink-faint">
+                  {mode === "register" ? "Registrarme como" : "Entrar como"}
+                </label>
+                <select id="rol" value={role} onChange={(e) => chooseRole(e.target.value as Role)} className={`${inputClass} font-semibold`}>
+                  {ROLE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
                 <div className="mb-7" />
               </>
             )}
@@ -285,24 +275,29 @@ export default function LoginPage() {
               )}
 
               {mode === "register" && (
-                <label className="flex items-start gap-2.5 rounded-xl border border-lavender-100 bg-lavender-50/50 p-3 text-[11px] leading-relaxed text-ink-soft">
-                  <input
-                    type="checkbox"
-                    required
-                    checked={consent}
-                    onChange={(e) => setConsent(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-lavender-600"
-                  />
-                  <span>
-                    <span className="font-semibold text-ink">Autorizo el tratamiento de mis datos personales</span> (Ley 1581 de 2012) con
-                    fines académicos de la asignatura, según la{" "}
-                    <Link href="/privacidad" target="_blank" className="font-bold text-lavender-600 underline">
-                      política de tratamiento de datos
-                    </Link>
-                    . Mis datos y mi código no salen del servidor de EduTrace: la IA funciona en el propio servidor. Puedo consultar,
-                    descargar, corregir o eliminar mis datos desde «Mi cuenta».
-                  </span>
-                </label>
+                <div className="space-y-2 rounded-xl border border-lavender-100 bg-lavender-50/50 p-3 text-xs leading-relaxed text-ink-soft">
+                  <label className="flex items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      required
+                      checked={consent}
+                      onChange={(e) => setConsent(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-lavender-600"
+                    />
+                    <span className="font-semibold text-ink">
+                      Autorizo el uso y tratamiento de mis datos personales de acuerdo con la Ley 1581 de 2012 y la{" "}
+                      <Link href="/privacidad" target="_blank" className="font-bold text-lavender-700 underline">
+                        política de tratamiento de datos
+                      </Link>
+                      , exclusivamente para los fines académicos de la asignatura.
+                    </span>
+                  </label>
+                  <p>
+                    En EduTrace, tu información y el código que compartas permanecen en nuestro propio servidor. La inteligencia artificial
+                    también funciona allí, por lo que tus datos no se envían a servicios externos.
+                  </p>
+                  <p>Además, siempre podrás consultar, descargar, actualizar o solicitar la eliminación de tus datos desde la sección «Mi cuenta».</p>
+                </div>
               )}
 
               {error && (
@@ -333,6 +328,11 @@ export default function LoginPage() {
               >
                 {mode === "login" ? "Regístrate" : "Inicia sesión"}
               </button>
+            </p>
+            <p className="mt-3 text-center text-sm">
+              <Link href="/inicio" className="font-semibold text-ink-soft hover:text-lavender-700">
+                Volver al inicio
+              </Link>
             </p>
           </div>
         </div>

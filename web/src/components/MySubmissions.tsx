@@ -43,7 +43,7 @@ export default function MySubmissions({ refreshKey }: { refreshKey: number }) {
               >
                 <span className="font-bold">{s.assignment_title || "Práctica libre"}</span>
                 <span className="text-xs text-ink-soft">
-                  {s.course_name} · {s.group_name} · {formatDateTime(s.created_at)}
+                  {s.course_name}, {s.group_name}, {formatDateTime(s.created_at)}
                 </span>
                 <span className="flex-1" />
                 <TestsPill meta={s} />

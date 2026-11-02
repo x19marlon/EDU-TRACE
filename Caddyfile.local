@@ -1,0 +1,10 @@
+:8000 {
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8080 {
+            flush_interval -1
+        }
+    }
+    handle {
+        reverse_proxy 127.0.0.1:3000
+    }
+}

@@ -29,10 +29,17 @@ export default function StudentAlerts({
       className="rise-in"
       action={alerts && <span className="text-xs font-semibold text-ink-soft">{alerts.length} {alerts.length === 1 ? "estudiante" : "estudiantes"}</span>}
     >
-      <p className="mb-3 text-xs text-ink-soft">
-        Estudiantes que no entregaron talleres vencidos, llevan 14 días sin actividad, acumulan 8 compilaciones seguidas con errores,
-        tienen nivel bajo en 2 o más RAE o un promedio menor a 3.0. Son señales para conversar, no un diagnóstico.
-      </p>
+      <div className="mb-3 space-y-1.5 text-xs leading-relaxed text-ink-soft">
+        <p>
+          Aquí encontrarás estudiantes que podrían necesitar un poco más de acompañamiento. Se tienen en cuenta situaciones como talleres
+          vencidos sin entregar, 14 días o más sin actividad, 8 compilaciones consecutivas con errores, nivel bajo en dos o más RAE o un
+          promedio inferior a 3.0.
+        </p>
+        <p>
+          Estas señales buscan ayudarte a identificar quién podría necesitar apoyo y saber cuándo acercarte a conversar. No son un
+          diagnóstico ni definen las capacidades del estudiante.
+        </p>
+      </div>
       {error && <p className="rounded-2xl bg-peach-50 px-4 py-2 text-sm text-peach-700">{error}</p>}
       {alerts && alerts.length === 0 && <p className="text-sm text-ink-soft">Nadie necesita atención especial por ahora.</p>}
       {alerts && alerts.length > 0 && (

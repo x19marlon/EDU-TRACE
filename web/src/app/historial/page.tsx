@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import RequireAuth from "@/components/RequireAuth";
+import { LEARNER_ROLES } from "@/lib/role";
 import AppShell from "@/components/AppShell";
 import { Card, Spinner } from "@/components/ui";
 import { StatusPill } from "@/components/SubmissionView";
@@ -11,7 +12,7 @@ import { LatePill } from "@/components/Deadline";
 import { AnnotationsPill, MonitorCountPill, ReviewStatusPill, SubmissionFeedback } from "@/components/StudentFeedback";
 import { getMyHistory, getMySubmission, StudentHistory, StudentSubmission, Submission } from "@/lib/api";
 import TestResults, { TestsPill } from "@/components/TestResults";
-import { formatDateTime, formatFeedback } from "@/lib/format";
+import { formatDateTime, formatFeedback, informalHeadings } from "@/lib/format";
 
 type Tab = "entregas" | "intentos";
 
@@ -69,7 +70,7 @@ function HistoryDetail({ item }: { item: StudentSubmission }) {
                   <div
                     key={i}
                     className={`rounded-2xl p-3 text-sm leading-relaxed ${i === 0 && sub.ai_feedback ? "bg-mint-50" : "bg-peach-50"}`}
-                    dangerouslySetInnerHTML={{ __html: formatFeedback(text) }}
+                    dangerouslySetInnerHTML={{ __html: formatFeedback(text === sub.ai_feedback_informal ? informalHeadings(text) : text) }}
                   />
                 ))}
               </div>
@@ -135,7 +136,7 @@ function HistoryView() {
   const groups = useMemo(() => {
     const seen = new Map<string, string>();
     for (const s of [...(history?.submissions ?? []), ...(history?.attempts ?? [])]) {
-      if (!seen.has(s.group_id)) seen.set(s.group_id, `${s.course_name} · ${s.group_name}`);
+      if (!seen.has(s.group_id)) seen.set(s.group_id, `${s.course_name}, ${s.group_name}`);
     }
     return Array.from(seen.entries());
   }, [history]);
@@ -154,7 +155,7 @@ function HistoryView() {
     for (const s of submissions) {
       const key = `${s.group_id}:${s.assignment_id ?? ""}`;
       if (!map.has(key)) {
-        map.set(key, { title: s.assignment_title || "Práctica libre", place: `${s.course_name} · ${s.group_name}`, items: [] });
+        map.set(key, { title: s.assignment_title || "Práctica libre", place: `${s.course_name}, ${s.group_name}`, items: [] });
       }
       map.get(key)!.items.push(s);
     }
@@ -175,7 +176,7 @@ function HistoryView() {
       <section className="rise-in rounded-3xl bg-white p-5 sm:p-6 shadow-soft">
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Mi historial</h1>
         <p className="mt-0.5 text-sm text-ink-soft">
-          Todo lo que has enviado: tus entregas oficiales con la revisión de tu profesor y tus intentos de compilación.
+          Aquí encontrarás todo lo que has enviado: tus entregas oficiales, junto con las revisiones y comentarios de tu profesor, y el historial de tus intentos de compilación.
         </p>
       </section>
 
@@ -183,11 +184,12 @@ function HistoryView() {
         <Card>
           <p className="font-bold">Aún no has enviado nada</p>
           <p className="mt-1 text-sm text-ink-soft">
-            Elige tu clase en el{" "}
-            <Link href="/" className="font-bold text-lavender-600 hover:text-lavender-700">
+            Ve al{" "}
+            <Link href="/" className="font-bold text-lavender-700 hover:underline">
               compilador
             </Link>
-            , compila tu código y envíalo: cada intento y cada entrega aparecerán aquí.
+            , selecciona tu clase y empieza a trabajar en tu código. Cuando lo tengas listo, envíalo a tu profesor. Aquí podrás consultar todos tus
+            intentos y entregas, y hacer seguimiento a tu progreso.
           </p>
         </Card>
       ) : (
@@ -263,7 +265,7 @@ function HistoryView() {
                   title={group.title}
                   action={
                     <span className="shrink-0 text-right text-xs font-semibold text-ink-faint">
-                      <span className="hidden sm:inline">{group.place} · </span>
+                      <span className="hidden sm:inline">{group.place}, </span>
                       {group.items.length} {group.items.length === 1 ? "entrega" : "entregas"}
                     </span>
                   }
@@ -319,7 +321,7 @@ function HistoryView() {
 
 export default function HistoryPage() {
   return (
-    <RequireAuth role="student">
+    <RequireAuth role={LEARNER_ROLES}>
       <AppShell>
         <HistoryView />
       </AppShell>

@@ -24,11 +24,11 @@ CARLOS_FEEDBACK = (
 )
 
 PLAN = [
-    ("Ana Rodríguez", "Taller 1: promedio de notas", True, None, {"RAE 1": "medio", "RAE 2": "alto", "RAE 3": "", "RAE 4": "alto"}),
-    ("Ana Rodríguez", "Taller 2: suma con ciclos", True, None, {"RAE 1": "medio", "RAE 2": "medio", "RAE 3": "", "RAE 4": "bajo"}),
+    ("Ana Rodríguez", "Taller 1: promedio de notas", True, None, {"RAE 1": "alto", "RAE 2": "alto", "RAE 3": "", "RAE 4": "alto"}),
+    ("Ana Rodríguez", "Taller 2: suma con ciclos", True, None, {"RAE 1": "medio", "RAE 2": "medio", "RAE 3": "", "RAE 4": "medio"}),
     ("Ana Rodríguez", "Taller 3: el mayor de tres", False, None, {"RAE 1": "alto", "RAE 2": "alto", "RAE 3": "", "RAE 4": "alto"}),
     ("Luis Martínez", "Taller 2: suma con ciclos", True, None, {"RAE 1": "alto", "RAE 2": "alto", "RAE 3": "", "RAE 4": "alto"}),
-    ("Carlos Pérez", "Taller 1: promedio de notas", True, (2.8, CARLOS_FEEDBACK), {"RAE 1": "medio", "RAE 2": "medio", "RAE 3": "", "RAE 4": "bajo"}),
+    ("Carlos Pérez", "Taller 1: promedio de notas", True, (2.8, CARLOS_FEEDBACK), {"RAE 1": "bajo", "RAE 2": "bajo", "RAE 3": "", "RAE 4": "bajo"}),
 ]
 
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))

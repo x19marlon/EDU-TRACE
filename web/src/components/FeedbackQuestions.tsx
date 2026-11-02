@@ -11,13 +11,13 @@ function Thread({ q, children }: { q: Question; children?: React.ReactNode }) {
     <li className="space-y-1.5 rounded-2xl bg-white p-3 text-sm ring-1 ring-lavender-100">
       <p>
         <span className="font-bold">Pregunta</span>{" "}
-        <span className="text-xs text-ink-faint">· {formatDateTime(q.created_at)}</span>
+        <span className="text-xs text-ink-faint">{formatDateTime(q.created_at)}</span>
       </p>
       <p className="whitespace-pre-wrap text-ink-soft">{q.body}</p>
       {q.answer && q.answered_at && (
         <div className="rounded-xl bg-mint-50 p-2.5">
           <p className="text-xs font-bold text-mint-700">
-            {q.answered_by} ({ROLE_NAME[q.answered_role ?? ""] ?? "docente"}) · {formatDateTime(q.answered_at)}
+            {q.answered_by} ({ROLE_NAME[q.answered_role ?? ""] ?? "docente"}), {formatDateTime(q.answered_at)}
           </p>
           <p className="whitespace-pre-wrap">{q.answer}</p>
         </div>

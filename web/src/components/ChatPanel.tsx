@@ -98,9 +98,6 @@ export default function ChatPanel({ code, stdin, assignmentId, exerciseId, disab
         <div className="flex items-center gap-2">
           <span className="flex h-2 w-2 rounded-full bg-mint-500 animate-pulse" />
           <span className="text-xs font-bold text-lavender-900">Tutor Pedagógico</span>
-          <span className="text-[11px] text-ink-faint">
-            (Pistas conceptuales y ejemplos ilustrativos)
-          </span>
         </div>
         {messages.length > 0 && (
           <button

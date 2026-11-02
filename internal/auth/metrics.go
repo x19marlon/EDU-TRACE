@@ -157,14 +157,6 @@ type Decisions struct {
 	Discarded int `json:"descartadas"`
 }
 
-type ModelDecisions struct {
-	Model string `json:"model"`
-	Prompt string `json:"prompt"`
-	Unchanged int `json:"sin_cambios"`
-	Edited int `json:"editadas"`
-	Discarded int `json:"descartadas"`
-}
-
 type GroupMetrics struct {
 	CourseID string `json:"course_id"`
 	CourseName string `json:"course_name"`
@@ -181,12 +173,11 @@ type GroupMetrics struct {
 	Batches []BatchMetric `json:"batches"`
 	Instant InstantMetric `json:"instant"`
 	Decisions Decisions `json:"decisions"`
-	Models []ModelDecisions `json:"models"`
 	Comprehension Comprehension `json:"comprehension"`
 }
 
 func (s *Store) GroupMetrics(teacherID, groupID string) (*GroupMetrics, error) {
-	m := &GroupMetrics{Batches: []BatchMetric{}, Models: []ModelDecisions{}}
+	m := &GroupMetrics{Batches: []BatchMetric{}}
 	var review, batch, feedback sql.NullFloat64
 	err := s.db.QueryRow(`SELECT c.id, c.name, g.ai_mode, c.review_minutes_max, c.batch_hours_max, c.feedback_hours_max
 		FROM class_groups g JOIN courses c ON c.id = g.course_id
@@ -223,8 +214,7 @@ func (s *Store) GroupMetrics(teacherID, groupID string) (*GroupMetrics, error) {
 }
 
 func (s *Store) reviewMetrics(m *GroupMetrics, groupID string, now time.Time) error {
-	rows, err := s.db.Query(`SELECT s.created_at, r.status, r.returned_at, r.review_ms, r.feedback_origin, r.ai_discarded_at, r.ai_minutes,
-			COALESCE(r.ai_model, ''), COALESCE(r.ai_prompt, '')
+	rows, err := s.db.Query(`SELECT s.created_at, r.status, r.returned_at, r.review_ms, r.feedback_origin, r.ai_discarded_at, r.ai_minutes
 		FROM submissions s LEFT JOIN reviews r ON r.submission_id = s.id
 		WHERE s.group_id = ? AND s.kind = 'official'`, groupID)
 	if err != nil {
@@ -233,27 +223,16 @@ func (s *Store) reviewMetrics(m *GroupMetrics, groupID string, now time.Time) er
 	defer rows.Close()
 	feedbackLimit := limitMs(m.Thresholds.FeedbackHours, time.Hour)
 	var reviewTimes, turnarounds, estimates []int64
-	models := map[[2]string]*ModelDecisions{}
-	byModel := func(model, prompt string) *ModelDecisions {
-		key := [2]string{model, prompt}
-		if models[key] == nil {
-			models[key] = &ModelDecisions{Model: model, Prompt: prompt}
-		}
-		return models[key]
-	}
 	for rows.Next() {
-		var created, model, prompt string
+		var created string
 		var status, returnedAt, origin, discarded sql.NullString
 		var reviewMs, aiMinutes sql.NullInt64
-		if err := rows.Scan(&created, &status, &returnedAt, &reviewMs, &origin, &discarded, &aiMinutes, &model, &prompt); err != nil {
+		if err := rows.Scan(&created, &status, &returnedAt, &reviewMs, &origin, &discarded, &aiMinutes); err != nil {
 			return err
 		}
 		createdAt := parseTime(created)
 		if discarded.Valid {
 			m.Decisions.Discarded++
-			if model != "" {
-				byModel(model, prompt).Discarded++
-			}
 		}
 		if status.String != ReviewReturned || !returnedAt.Valid {
 			m.PendingReviews++
@@ -280,14 +259,8 @@ func (s *Store) reviewMetrics(m *GroupMetrics, groupID string, now time.Time) er
 		switch origin.String {
 		case OriginAI:
 			m.Decisions.AI++
-			if model != "" {
-				byModel(model, prompt).Unchanged++
-			}
 		case OriginAIEdited:
 			m.Decisions.Edited++
-			if model != "" {
-				byModel(model, prompt).Edited++
-			}
 		default:
 			m.Decisions.Teacher++
 		}
@@ -295,15 +268,6 @@ func (s *Store) reviewMetrics(m *GroupMetrics, groupID string, now time.Time) er
 	if err := rows.Err(); err != nil {
 		return err
 	}
-	for _, d := range models {
-		m.Models = append(m.Models, *d)
-	}
-	sort.Slice(m.Models, func(i, j int) bool {
-		if m.Models[i].Model != m.Models[j].Model {
-			return m.Models[i].Model < m.Models[j].Model
-		}
-		return m.Models[i].Prompt < m.Models[j].Prompt
-	})
 	m.ReviewTime = newStat(reviewTimes, limitMs(m.Thresholds.ReviewMinutes, time.Minute))
 	m.ReviewEstimate = newStat(estimates, 0)
 	m.Turnaround = newStat(turnarounds, feedbackLimit)

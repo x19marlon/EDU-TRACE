@@ -27,10 +27,10 @@ export function TestsEditor({
   return (
     <div className="space-y-2 rounded-2xl bg-lavender-50/60 p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-ink-soft">{student ? "Mis casos de prueba" : "Casos de prueba"}</span>
+        {!student && <span className="text-sm font-semibold text-ink-soft">Casos de prueba</span>}
         <span className="text-xs text-ink-faint">
           {student
-            ? "Cada vez que compilas, tu programa también se prueba con estas entradas. Se guardan solo en este navegador."
+            ? "Cada vez que compiles tu programa, EduTrace ejecutará automáticamente estas pruebas para comprobar si los resultados son los esperados. Los casos de prueba se guardan únicamente en este navegador."
             : "(opcional) Cada envío y cada compilación del estudiante se ejecuta con estas entradas y se compara con la salida esperada."}
         </span>
       </div>
@@ -98,8 +98,9 @@ export function TestsEditor({
         </button>
       )}
       <p className="text-[11px] text-ink-faint">
-        Se ignoran los espacios repetidos y las líneas vacías. «Contiene» acepta mensajes extra como «Ingrese un número:».
-        {!student && " Los casos ocultos solo le muestran al estudiante si pasa o no."}
+        {student
+          ? "No te preocupes por los espacios repetidos o las líneas vacías, se ignoran automáticamente. Además, si seleccionas «Contiene», tu programa podrá mostrar mensajes adicionales, como «Ingrese un número:», sin que la prueba falle."
+          : "Se ignoran los espacios repetidos y las líneas vacías. «Contiene» acepta mensajes extra como «Ingrese un número:». Los casos ocultos solo le muestran al estudiante si pasa o no."}
       </p>
     </div>
   );
@@ -291,7 +292,7 @@ function AssignmentForm({
       <textarea
         value={rubric}
         onChange={(e) => setRubric(e.target.value)}
-        placeholder="Criterios de evaluación (opcional): p. ej. Compila (1.0) · Lee bien la entrada (1.0) · Resultado correcto (2.0) · Legibilidad (1.0)"
+        placeholder="Criterios de evaluación (opcional): p. ej. Compila (1.0), lee bien la entrada (1.0), resultado correcto (2.0), legibilidad (1.0)"
         maxLength={5000}
         className={`${fieldClass} h-20 resize-y`}
       />
@@ -547,12 +548,12 @@ export default function TeacherAssignments({
                 <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="min-w-0 flex-1 font-bold">{a.title}</span>
                   {a.evaluation && (
-                    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900">Evaluación · sin IA</span>
+                    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900">Evaluación sin IA</span>
                   )}
                   <DeadlineBadge assignment={a} />
                   <span className="text-xs text-ink-soft">
-                    {a.files.length} {a.files.length === 1 ? "archivo" : "archivos"} · {(a.tests ?? []).length}{" "}
-                    {(a.tests ?? []).length === 1 ? "caso de prueba" : "casos de prueba"} · {submissionCounts.get(a.id) ?? 0} entregas
+                    {a.files.length} {a.files.length === 1 ? "archivo" : "archivos"}, {(a.tests ?? []).length}{" "}
+                    {(a.tests ?? []).length === 1 ? "caso de prueba" : "casos de prueba"}, {submissionCounts.get(a.id) ?? 0} entregas
                   </span>
                   <svg className="h-4 w-4 text-ink-faint transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
                     <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" />
@@ -562,13 +563,13 @@ export default function TeacherAssignments({
                   {a.due_at && (
                     <p className="text-xs text-ink-soft">
                       Fecha límite: <span className="font-semibold text-ink">{formatDeadline(a.due_at)}</span>
-                      {" · "}
+                      {", "}
                       {!a.allow_late
                         ? "no se aceptan tardías"
                         : a.late_until
                           ? `tardías hasta el ${formatDeadline(a.late_until)}`
                           : "se aceptan tardías"}
-                      {a.late_penalty !== undefined && a.allow_late && ` · penalización sugerida −${a.late_penalty.toFixed(1)} por día`}
+                      {a.late_penalty !== undefined && a.allow_late && `, penalización sugerida −${a.late_penalty.toFixed(1)} por día`}
                     </p>
                   )}
                   <div className="max-h-60 overflow-auto whitespace-pre-wrap rounded-2xl bg-white p-3 text-sm leading-relaxed">

@@ -68,6 +68,10 @@ func (c *Compiler) CompileAndTest(ctx context.Context, sourceCode string, stdin 
 		result.Error = fmt.Sprintf("failed to write source file: %v", err)
 		return result
 	}
+	if err := os.WriteFile(filepath.Join(tmpDir, entradaHeaderName), []byte(entradaHeader), 0600); err != nil {
+		result.Error = fmt.Sprintf("failed to write source file: %v", err)
+		return result
+	}
 
 	// --- Compilation phase ---
 	compileStart := time.Now()
@@ -110,7 +114,7 @@ func (c *Compiler) CompileAndTest(ctx context.Context, sourceCode string, stdin 
 	// --- Execution phase ---
 	result.Success = true
 
-	run := c.run(ctx, tmpDir, stdin)
+	run := c.run(ctx, tmpDir, stdin, true)
 	result.ProgramOutput, result.ExitCode, result.Error, result.RunTimeMs = run.output, run.exitCode, run.err, run.ms
 	result.Tests = c.runTests(ctx, tmpDir, tests)
 	result.Explanations = Explain(result)
@@ -125,16 +129,19 @@ type runOutcome struct {
 	timedOut bool
 }
 
-func (c *Compiler) run(ctx context.Context, tmpDir, stdin string) runOutcome {
+func (c *Compiler) run(ctx context.Context, tmpDir, stdin string, display bool) runOutcome {
 	var out runOutcome
 	runStart := time.Now()
 	runCtx, runCancel := context.WithTimeout(ctx, c.cfg.RunTimeout)
 	defer runCancel()
 
-	name, args := c.runCommand(tmpDir)
+	name, args := c.runCommand(tmpDir, display)
 	runCmd := exec.CommandContext(runCtx, name, args...)
 	runCmd.Dir = tmpDir
 	runCmd.WaitDelay = time.Second
+	if display && c.cfg.Sandbox == "none" {
+		runCmd.Env = append(os.Environ(), entradaEnvVar+"=1")
+	}
 
 	// Pipe stdin to the program if provided.
 	if stdin != "" {
@@ -180,7 +187,7 @@ func (c *Compiler) runTests(ctx context.Context, tmpDir string, tests []model.Te
 			results = append(results, testResult(t, runOutcome{}, "no se ejecutó: el programa no terminó en los casos anteriores"))
 			continue
 		}
-		out := c.run(ctx, tmpDir, t.Stdin)
+		out := c.run(ctx, tmpDir, t.Stdin, false)
 		if out.timedOut {
 			timeouts++
 		}

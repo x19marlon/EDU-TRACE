@@ -166,7 +166,7 @@ type exerciseView struct {
 func (h *ClassesHandler) PracticeList(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFrom(r.Context())
 	results := map[string]auth.PracticeResult{}
-	if user.Role == auth.RoleStudent {
+	if user.IsLearner() {
 		var err error
 		if results, err = h.store.PracticeResults(user.ID); err != nil {
 			writeStoreErr(w, err, "cargar tu práctica")

@@ -50,7 +50,7 @@ export function LatePill({ meta }: { meta: Pick<SubmissionMeta, "kind" | "late_s
       className="rounded-full bg-peach-100 px-2.5 py-0.5 text-[11px] font-bold text-peach-700"
       title={meta.due_at ? `Fecha límite: ${formatDeadline(meta.due_at)}` : undefined}
     >
-      Tardía · {formatShortDuration(meta.late_seconds)}
+      Tardía por {formatShortDuration(meta.late_seconds)}
     </span>
   );
 }

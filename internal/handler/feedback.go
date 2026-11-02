@@ -133,7 +133,7 @@ func evaluationMessage(e *auth.OpenEvaluation) string {
 }
 
 func aiAllowed(w http.ResponseWriter, store *auth.Store, limit *auth.LoginLimiter, user *auth.User, assignmentID string) bool {
-	if user.Role != auth.RoleStudent {
+	if !user.IsLearner() {
 		return true
 	}
 	block, err := store.StudentAIBlock(user.ID, assignmentID)

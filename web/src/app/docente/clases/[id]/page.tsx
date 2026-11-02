@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/AppShell";
 import { Avatar, Card, ProgressRing, RenameForm, SmallButton } from "@/components/ui";
 import { MonitorsCard } from "@/components/ClassAdmin";
 import TeacherAssignments from "@/components/TeacherAssignments";
 import StudentProcess from "@/components/StudentProcess";
-import RaeScatter from "@/components/RaeScatter";
+import RaeLevels from "@/components/RaeLevels";
 import ClassOversight from "@/components/ClassOversight";
 import ClassErrors, { ExportButtons } from "@/components/ClassErrors";
 import ReviewTimeCard from "@/components/ReviewTimeCard";
@@ -31,23 +31,7 @@ import {
   listGroupSubmissions,
   SubmissionMeta,
 } from "@/lib/api";
-import { formatDateTime, relativeTime } from "@/lib/format";
-
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
-
-function lastSeen(s: GroupStudent): string | undefined {
-  const a = s.activity.last_active_at;
-  const candidates = [a && !a.startsWith("0001") ? a : undefined, s.last_submission_at, s.last_attempt_at].filter(
-    Boolean
-  ) as string[];
-  return candidates.sort().at(-1);
-}
-
-function isActive(s: GroupStudent): boolean {
-  const seen = lastSeen(s);
-  return !!seen && Date.now() - new Date(seen).getTime() < WEEK_MS;
-}
+import { formatDateTime, isActive, lastSeen, relativeTime } from "@/lib/format";
 
 function CopyCode({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
@@ -99,6 +83,7 @@ function GroupView() {
   const [adminError, setAdminError] = useState<string | null>(null);
   const [resetCode, setResetCode] = useState<{ name: string; code: string; expiresAt: string } | null>(null);
   const router = useRouter();
+  const wantedStudent = useSearchParams().get("estudiante");
 
   useEffect(() => {
     Promise.all([getGroup(id), listGroupSubmissions(id), listGroupAssignments(id)])
@@ -109,6 +94,19 @@ function GroupView() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar la clase"));
   }, [id]);
+
+  const loaded = !!group && !!submissions;
+  useEffect(() => {
+    if (!loaded) return;
+    if (wantedStudent) {
+      setStudentId(wantedStudent);
+      setSubmissionId(null);
+      window.history.replaceState(null, "", window.location.pathname);
+      document.getElementById("estudiantes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (window.location.hash) {
+      document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [loaded, wantedStudent]);
 
   const names = useMemo(() => new Map(group?.students.map((s) => [s.id, s.name]) ?? []), [group]);
   const assignmentTitles = useMemo(() => new Map(assignments.map((a) => [a.id, a.title])), [assignments]);
@@ -334,7 +332,7 @@ function GroupView() {
         />
       </div>
 
-      <RaeScatter
+      <RaeLevels
         groupId={group.id}
         refreshKey={matrixKey}
         selectedId={studentId}
@@ -345,6 +343,7 @@ function GroupView() {
         }}
       />
 
+      <div id="talleres" className="scroll-mt-4">
       <TeacherAssignments
         groupId={group.id}
         assignments={assignments}
@@ -356,6 +355,7 @@ function GroupView() {
           setSubmissions((list) => list?.map((m) => (m.assignment_id === aid ? { ...m, assignment_id: undefined } : m)) ?? null);
         }}
       />
+      </div>
 
       <MonitorsCard groupId={group.id} monitors={group.monitors} onChange={(monitors) => setGroup({ ...group, monitors })} />
 
@@ -401,8 +401,8 @@ function GroupView() {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-bold">{s.name}</span>
                       <span className="block truncate text-xs text-ink-soft">
-                        {s.submission_count} {s.submission_count === 1 ? "entrega" : "entregas"} · {s.attempt_count}{" "}
-                        {s.attempt_count === 1 ? "intento" : "intentos"} · {relativeTime(lastSeen(s))}
+                        {s.submission_count} {s.submission_count === 1 ? "entrega" : "entregas"}, {s.attempt_count}{" "}
+                        {s.attempt_count === 1 ? "intento" : "intentos"}, {relativeTime(lastSeen(s)).toLowerCase()}
                       </span>
                     </span>
                     <span

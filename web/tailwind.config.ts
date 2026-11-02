@@ -5,6 +5,7 @@ const config: Config = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
@@ -35,6 +36,7 @@ const config: Config = {
           200: "#BFE6D6",
           300: "#9AD6BE",
           400: "#6FC2A2",
+          500: "#2F9872",
           600: "#3A8F6F",
           700: "#2D7258",
         },

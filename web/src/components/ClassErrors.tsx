@@ -5,7 +5,7 @@ import { downloadGroupCSV, ErrorReport, FrequentError, getFrequentErrors } from 
 import { Card, SmallButton, Spinner } from "@/components/ui";
 import { relativeTime } from "@/lib/format";
 
-function ErrorList({ title, items, empty }: { title: string; items: FrequentError[]; empty: string }) {
+export function ErrorList({ title, items, empty }: { title: string; items: FrequentError[]; empty: string }) {
   return (
     <div className="space-y-2">
       <h3 className="text-xs font-bold uppercase tracking-wider text-ink-soft">{title}</h3>
@@ -18,12 +18,12 @@ function ErrorList({ title, items, empty }: { title: string; items: FrequentErro
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <code className="min-w-0 flex-1 break-words font-mono text-xs text-peach-700">{e.message}</code>
                 <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-lavender-700">
-                  {e.students} {e.students === 1 ? "estudiante" : "estudiantes"} · {e.count} {e.count === 1 ? "vez" : "veces"}
+                  {e.students} {e.students === 1 ? "estudiante" : "estudiantes"}, {e.count} {e.count === 1 ? "vez" : "veces"}
                 </span>
               </div>
               {e.explanation && <p className="mt-1 text-sm">{e.explanation}</p>}
               <p className="mt-0.5 text-[11px] text-ink-faint">
-                {e.assignments.length > 0 ? `${e.assignments.join(" · ")} · ` : ""}última vez {relativeTime(e.last_at).toLowerCase()}
+                {e.assignments.length > 0 ? `${e.assignments.join(", ")}. ` : ""}Última vez: {relativeTime(e.last_at).toLowerCase()}
               </p>
             </li>
           ))}
@@ -76,7 +76,7 @@ export default function ClassErrors({ groupId, refreshKey }: { groupId: string; 
 
   return (
     <Card
-      title="Errores frecuentes (RF-21)"
+      title="Errores frecuentes"
       className="rise-in"
       action={
         <div role="radiogroup" aria-label="Alcance" className="flex gap-1 rounded-full bg-lavender-50 p-1">
@@ -111,7 +111,7 @@ export default function ClassErrors({ groupId, refreshKey }: { groupId: string; 
         <div className="space-y-4">
           <p className="text-xs text-ink-soft">
             {report.analyzed} intentos y entregas analizados
-            {report.scope === "materia" ? ` en ${report.groups} ${report.groups === 1 ? "clase" : "clases"}` : ""} ·{" "}
+            {report.scope === "materia" ? ` en ${report.groups} ${report.groups === 1 ? "clase" : "clases"}` : ""}.{" "}
             {report.students_with_errors} {report.students_with_errors === 1 ? "estudiante tuvo" : "estudiantes tuvieron"} al menos un error.
             Ordenados por cuántos estudiantes los tuvieron.
           </p>
@@ -136,7 +136,7 @@ export default function ClassErrors({ groupId, refreshKey }: { groupId: string; 
                           {t.not_passing === 1 ? "pasa" : "pasan"}
                         </span>
                         <span className="text-ink-faint">
-                          · {t.failures} {t.failures === 1 ? "fallo" : "fallos"} en {t.runs} {t.runs === 1 ? "ejecución" : "ejecuciones"}
+                          ({t.failures} {t.failures === 1 ? "fallo" : "fallos"} en {t.runs} {t.runs === 1 ? "ejecución" : "ejecuciones"})
                         </span>
                       </li>
                     ))}

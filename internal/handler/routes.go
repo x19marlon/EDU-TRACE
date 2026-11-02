@@ -45,7 +45,7 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	// docente y sus clases
 	classes := NewClassesHandler(store, comp, drafts)
 	teacher := func(f http.HandlerFunc) http.Handler { return auth.RequireRole(store, auth.RoleTeacher, f) }
-	student := func(h http.Handler) http.Handler { return auth.RequireRole(store, auth.RoleStudent, h) }
+	student := func(h http.Handler) http.Handler { return auth.RequireLearner(store, h) }
 	mux.Handle("GET /api/teacher/courses", teacher(classes.Courses))
 	mux.Handle("POST /api/teacher/courses", teacher(classes.CreateCourse))
 	mux.Handle("POST /api/teacher/courses/{id}/groups", teacher(classes.CreateGroup))

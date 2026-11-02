@@ -173,3 +173,59 @@ func TestExplain(t *testing.T) {
 		t.Fatal("un programa que funciona no necesita explicaciones")
 	}
 }
+
+func TestAutomaticLineBreakAfterInput(t *testing.T) {
+	if _, err := exec.LookPath("g++"); err != nil {
+		t.Skip("g++ no está instalado")
+	}
+	sandboxes := []string{"none"}
+	if CheckSandbox("bwrap") == nil {
+		sandboxes = append(sandboxes, "bwrap")
+	}
+	for _, sandbox := range sandboxes {
+		c := New(&config.Config{GppPath: "g++", Sandbox: sandbox, CompileTimeout: 30 * time.Second, RunTimeout: 3 * time.Second, MaxOutputSize: 10240})
+		prompts := `#include <iostream>
+#include <string>
+using namespace std;
+int main() {
+    int a, b;
+    string nombre;
+    cout << "Primero: ";
+    cin >> a;
+    cout << "Segundo: ";
+    cin >> b;
+    cin.ignore();
+    cout << "Nombre: ";
+    getline(cin, nombre);
+    cout << nombre << " suma " << a + b << endl;
+}`
+		tests := []model.TestCase{{ID: "x", Name: "sin salto", Stdin: "1\n2\nAna\n", Expected: "Primero: Segundo: Nombre: Ana suma 3", Match: model.MatchExact}}
+		res := c.CompileAndTest(context.Background(), prompts, "1\n2\nAna Maria\n", tests)
+		if want := "Primero: \nSegundo: \nNombre: \nAna Maria suma 3\n"; res.ProgramOutput != want {
+			t.Errorf("%s: salida %q, se esperaba %q (%+v)", sandbox, res.ProgramOutput, want, res)
+		}
+		if res.CompilerOutput != "" {
+			t.Errorf("%s: el salto automático no debe producir mensajes del compilador: %q", sandbox, res.CompilerOutput)
+		}
+		if !res.Tests[0].Passed {
+			t.Errorf("%s: los casos de prueba se comparan con la salida original: %+v", sandbox, res.Tests[0])
+		}
+
+		silent := c.CompileAndTest(context.Background(), "#include <iostream>\nint main(){int n;std::cin>>n;std::cout<<n*2<<'\\n';}", "4", nil)
+		if silent.ProgramOutput != "8\n" {
+			t.Errorf("%s: sin mensaje previo no debe agregar líneas: %q", sandbox, silent.ProgramOutput)
+		}
+		eof := c.CompileAndTest(context.Background(), "#include <iostream>\nint main(){int n=7;std::cout<<\"Dato: \";std::cin>>n;std::cout<<n;}", "", nil)
+		if eof.ProgramOutput != "Dato: 7" {
+			t.Errorf("%s: sin entrada no debe agregar el salto: %q", sandbox, eof.ProgramOutput)
+		}
+		fast := c.CompileAndTest(context.Background(), "#include <iostream>\nint main(){std::ios::sync_with_stdio(false);int n;std::cout<<\"Dato: \";std::cin>>n;std::cout<<n;}", "3", nil)
+		if !fast.Success || fast.ExitCode != 0 || fast.ProgramOutput != "Dato: 3" {
+			t.Errorf("%s: un programa con sync_with_stdio(false) debe seguir funcionando: %+v", sandbox, fast)
+		}
+		broken := c.CompileAndTest(context.Background(), "#include <iostream>\n\nint main() {\n  cout << 1\n}\n", "", nil)
+		if got := Explain(broken); len(got) == 0 || got[0].Line != 4 {
+			t.Errorf("%s: los errores deben seguir apuntando a la línea correcta: %+v", sandbox, got)
+		}
+	}
+}

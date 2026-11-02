@@ -3,7 +3,7 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 
 export const metadata: Metadata = {
-  title: "Política de datos · EduTrace",
+  title: "Política de datos de EduTrace",
 };
 
 const VERSION = "2026-11";

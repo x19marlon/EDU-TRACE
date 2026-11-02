@@ -93,6 +93,7 @@ export interface RAE {
 export interface CourseSummary {
   id: string;
   name: string;
+  created_at: string;
   groups: GroupSummary[];
   raes: RAE[];
   closed_at?: string;
@@ -108,12 +109,17 @@ export interface CourseTeacher {
   owner: boolean;
 }
 
+export interface RAEStanding {
+  level: RAELevel;
+  grade: number;
+}
+
 export interface StudentPoint {
   id: string;
   name: string;
   average_grade?: number;
   graded: number;
-  levels: Record<string, RAELevel>;
+  standings: Record<string, RAEStanding>;
 }
 
 export interface RAEMatrix {
@@ -722,7 +728,6 @@ export interface GroupMetrics {
     chats: number;
   };
   decisions: { ia: number; ia_editada: number; docente: number; descartadas: number };
-  models: { model: string; prompt: string; sin_cambios: number; editadas: number; descartadas: number }[];
   comprehension: {
     revisiones: RatingCount;
     inmediata: RatingCount;

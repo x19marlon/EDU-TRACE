@@ -88,10 +88,7 @@ export default function UserMenu() {
                 user.role === r ? "bg-lavender-50 text-lavender-700" : "text-ink-soft hover:bg-lavender-50 hover:text-ink"
               }`}
             >
-              <span>
-                {ROLE_LABELS[r]}
-                {user.role !== r && <span className="ml-1 text-xs font-normal text-ink-faint">(entrar con esa cuenta)</span>}
-              </span>
+              <span>{ROLE_LABELS[r]}</span>
               {user.role === r && <span aria-hidden>✓</span>}
             </button>
           ))}

@@ -15,6 +15,7 @@ const MaxAssignmentFiles = 10
 
 var (
 	ErrMonitorNotFound = errors.New("no hay una cuenta de monitor con ese email")
+	ErrStudentOfCourse = errors.New("esa persona está inscrita como estudiante en esta materia, así que no puede ser monitor de ella")
 	ErrTooManyFiles = fmt.Errorf("máximo %d archivos por taller", MaxAssignmentFiles)
 )
 
@@ -205,6 +206,16 @@ func (s *Store) AddMonitor(teacherID, groupID, email string) (*GroupMonitor, err
 	}
 	if err != nil {
 		return nil, err
+	}
+	var enrolled int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM group_students gs
+		JOIN class_groups sg ON sg.id = gs.group_id
+		JOIN class_groups g ON g.course_id = sg.course_id
+		WHERE g.id = ? AND gs.student_id = ?`, groupID, m.ID).Scan(&enrolled); err != nil {
+		return nil, err
+	}
+	if enrolled > 0 {
+		return nil, ErrStudentOfCourse
 	}
 	if _, err := s.db.Exec(`INSERT INTO group_monitors (group_id, monitor_id, added_at) VALUES (?, ?, ?)
 		ON CONFLICT DO NOTHING`, groupID, m.ID, fmtTime(time.Now())); err != nil {

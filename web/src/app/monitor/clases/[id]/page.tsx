@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import AppShell from "@/components/AppShell";
 import { Avatar, Card } from "@/components/ui";
@@ -38,6 +38,14 @@ function MonitorGroupView() {
       .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar la clase"));
   }, [id]);
 
+  const wantedStudent = useSearchParams().get("estudiante");
+  useEffect(() => {
+    if (!wantedStudent) return;
+    setStudentId(wantedStudent);
+    setSubmissionId(null);
+    window.history.replaceState(null, "", window.location.pathname);
+  }, [wantedStudent]);
+
   const reloadSubmissions = useCallback(() => {
     listMonitorSubmissions(id).then(setSubmissions).catch(() => {});
   }, [id]);
@@ -53,7 +61,7 @@ function MonitorGroupView() {
     return (
       <div className="mx-auto max-w-7xl">
         <p className="rounded-2xl bg-peach-50 p-4 text-sm text-peach-700">{error}</p>
-        <Link href="/monitor" className="mt-3 inline-block text-sm font-bold text-lavender-600">← Volver a mis clases</Link>
+        <Link href="/monitor" className="mt-3 inline-block text-sm font-bold text-lavender-600">← Volver a mi monitoría</Link>
       </div>
     );
   if (!group || !submissions) return <p className="mx-auto max-w-7xl text-sm text-ink-soft">Cargando...</p>;
@@ -64,7 +72,7 @@ function MonitorGroupView() {
   return (
     <div className="mx-auto max-w-7xl space-y-5">
       <nav className="text-sm font-semibold text-ink-soft">
-        <Link href="/monitor" className="hover:text-lavender-700">Mis clases</Link>
+        <Link href="/monitor" className="hover:text-lavender-700">Mi monitoría</Link>
         <span className="mx-2 text-ink-faint">/</span>
         {group.course_name}
         <span className="mx-2 text-ink-faint">/</span>

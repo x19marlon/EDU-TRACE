@@ -10,6 +10,7 @@ type Session = { api: APIRequestContext; email: string; id: string };
 
 let teacher: Session;
 let student: Session;
+let monitor: Session;
 let groupId = "";
 
 async function call<T>(api: APIRequestContext, method: string, path: string, data?: unknown): Promise<T> {
@@ -18,7 +19,7 @@ async function call<T>(api: APIRequestContext, method: string, path: string, dat
   return response.status() === 204 ? (undefined as T) : response.json();
 }
 
-async function account(role: "teacher" | "student", name: string): Promise<Session> {
+async function account(role: "teacher" | "student" | "monitor", name: string): Promise<Session> {
   const api = await request.newContext();
   const email = `${role}-${Date.now()}@prueba.edu`;
   const user = await call<{ id: string }>(api, "POST", "/api/auth/register", { name, email, password: PASSWORD, role, teacher_code: TEACHER_CODE, consent: true });
@@ -43,9 +44,14 @@ test.beforeAll(async () => {
   expect(TEACHER_CODE, "falta E2E_TEACHER_CODE").not.toBe("");
   teacher = await account("teacher", "Elena Prueba");
   student = await account("student", "Ana Prueba");
+  monitor = await account("monitor", "Mona Prueba");
   const course = await call<{ id: string }>(teacher.api, "POST", "/api/teacher/courses", { name: "Programación I" });
   const group = await call<{ id: string; join_code: string }>(teacher.api, "POST", `/api/teacher/courses/${course.id}/groups`, { name: "Grupo 1" });
   groupId = group.id;
+  await call(teacher.api, "POST", `/api/teacher/groups/${group.id}/monitors`, { email: monitor.email });
+  const otherCourse = await call<{ id: string }>(teacher.api, "POST", "/api/teacher/courses", { name: "Programación II" });
+  const other = await call<{ join_code: string }>(teacher.api, "POST", `/api/teacher/courses/${otherCourse.id}/groups`, { name: "Grupo 2" });
+  await call(monitor.api, "POST", "/api/student/groups/join", { code: other.join_code });
   const due = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
   const tests = JSON.stringify([
     { name: "Suma", stdin: "3", expected: "6", match: "contiene", hidden: false },
@@ -83,7 +89,7 @@ test.beforeAll(async () => {
 });
 
 test("páginas públicas", async ({ page }) => {
-  for (const path of ["/login", "/login?rol=teacher", "/privacidad"]) {
+  for (const path of ["/inicio", "/login", "/login?rol=teacher", "/privacidad"]) {
     await page.goto(path);
     await expectAccessible(page, path);
   }
@@ -104,7 +110,7 @@ test("estudiante", async ({ browser }) => {
 
 test("profesor", async ({ browser }) => {
   const page = await pageAs(browser, teacher);
-  for (const path of ["/docente", `/docente/clases/${groupId}`, `/docente/clases/${groupId}/reporte/${student.id}`, "/cuenta"]) {
+  for (const path of ["/docente", "/docente/historial", "/docente/progreso", `/docente/clases/${groupId}`, `/docente/clases/${groupId}/reporte/${student.id}`, "/cuenta"]) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
     await expectAccessible(page, path);
@@ -113,9 +119,22 @@ test("profesor", async ({ browser }) => {
   await page.getByRole("button", { name: /Ana Prueba.*Taller 1: suma/ }).click();
   await expect(page.getByText("Rúbrica").first()).toBeVisible();
   await expectAccessible(page, "revisión con rúbrica");
+  await page.getByRole("combobox", { name: "Buscar en EduTrace" }).fill("ana");
+  await expect(page.getByRole("option", { name: /Ana Prueba/ })).toBeVisible();
+  await expectAccessible(page, "barra de búsqueda con resultados");
+});
+
+test("monitor", async ({ browser }) => {
+  const page = await pageAs(browser, monitor);
+  for (const path of ["/monitor", `/monitor/clases/${groupId}`, "/", "/historial", "/practica", "/progreso"]) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+    await expectAccessible(page, path);
+  }
 });
 
 test.afterAll(async () => {
   await teacher?.api.dispose();
   await student?.api.dispose();
+  await monitor?.api.dispose();
 });

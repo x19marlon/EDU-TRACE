@@ -33,11 +33,17 @@ export default function SimilarityCard({
 
   return (
     <Card title="Código similar" className="rise-in">
-      <p className="mb-3 text-xs text-ink-soft">
-        Compara la última entrega de cada estudiante en un taller. Cambiar nombres de variables, comentarios o espacios no oculta el
-        parecido, y lo que comparte casi toda la clase (como la plantilla del taller) no cuenta. Un parecido alto es una razón para
-        revisar las dos entregas, no una prueba de copia.
-      </p>
+      <div className="mb-3 space-y-1.5 text-xs leading-relaxed text-ink-soft">
+        <p>Esta herramienta compara la entrega más reciente de cada estudiante para un mismo taller y busca encontrar similitudes entre los códigos.</p>
+        <p>
+          Cambiar los nombres de las variables, los comentarios o los espacios no hace que las similitudes desaparezcan. Tampoco se tienen en
+          cuenta las partes del código que todos comparten, como la plantilla inicial del taller.
+        </p>
+        <p>
+          Ten en cuenta: encontrar un parecido alto no significa necesariamente que sea copia. Es una señal para que puedas revisar ambas
+          entregas con más detalle y valorar cada caso por separado.
+        </p>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-soft">
           Taller

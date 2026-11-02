@@ -39,7 +39,7 @@ export function MonitorNotes({
           <li key={n.id} className="rounded-2xl bg-mint-50 p-4">
             <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
               <span className="font-bold text-mint-700">{n.monitor_name}</span>
-              <span className="text-ink-faint">Monitor · {formatDateTime(n.created_at)}</span>
+              <span className="text-ink-faint">Monitor, {formatDateTime(n.created_at)}</span>
               <span className="flex-1" />
               {onDelete && (!canDelete || canDelete(n)) && (
                 <SmallButton tone="danger" disabled={busy === n.id} onClick={() => remove(n)}>

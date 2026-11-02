@@ -43,7 +43,7 @@ func writeStoreErr(w http.ResponseWriter, err error, action string) {
 		writeJSON(w, http.StatusNotFound, model.ErrorResponse{Error: "no encontrado"})
 	case errors.Is(err, auth.ErrNotEnrolled):
 		writeJSON(w, http.StatusForbidden, model.ErrorResponse{Error: err.Error()})
-	case errors.Is(err, auth.ErrCourseClosed):
+	case errors.Is(err, auth.ErrCourseClosed), errors.Is(err, auth.ErrMonitorOfCourse), errors.Is(err, auth.ErrStudentOfCourse):
 		writeJSON(w, http.StatusConflict, model.ErrorResponse{Error: err.Error()})
 	default:
 		slog.Error(action+" failed", "error", err)

@@ -10,7 +10,7 @@ export function ReviewStatusPill({ item }: { item: StudentSubmission }) {
   return item.review ? (
     <span className="rounded-full bg-mint-100 px-3 py-1 text-xs font-bold text-mint-700">
       Revisada
-      {item.review.grade !== undefined ? ` · ${item.review.grade.toFixed(1)} / 5.0 · ${performanceBand(item.review.grade).label}` : ""}
+      {item.review.grade !== undefined ? `: ${item.review.grade.toFixed(1)} / 5.0, ${performanceBand(item.review.grade).label}` : ""}
     </span>
   ) : (
     <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-ink-soft">En revisión</span>
@@ -54,7 +54,7 @@ export function SubmissionFeedback({ item }: { item: StudentSubmission }) {
           <div className="mb-2 flex flex-wrap items-center gap-2">
             {origin !== "docente" ? (
               <span className="rounded-full bg-lavender-100 px-2.5 py-0.5 text-[11px] font-bold text-lavender-700">
-                Generado con IA · aprobado por {teacher}
+                Generado con IA y aprobado por {teacher}
               </span>
             ) : (
               <span className="rounded-full bg-mint-100 px-2.5 py-0.5 text-[11px] font-bold text-mint-700">Escrito por {teacher}</span>

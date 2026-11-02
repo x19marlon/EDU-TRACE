@@ -29,7 +29,8 @@ function MonitorDashboard() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">¡Hola, {user.name.split(" ")[0]}!</h1>
             <p className="mt-0.5 text-sm text-ink-soft">
-              Acompaña a los estudiantes de tus clases con retroalimentación sobre su código. El profesor decide las notas.
+              Acompaña a los estudiantes de tus clases con retroalimentación sobre su código. Para tu propio trabajo, tienes en el menú el
+              compilador, tu historial, la práctica y tu progreso.
             </p>
           </div>
         </div>
@@ -56,13 +57,13 @@ function MonitorDashboard() {
                 href={`/monitor/clases/${g.id}`}
                 className="rise-in flex flex-wrap items-center gap-x-4 gap-y-1 rounded-3xl border border-lavender-100/70 bg-white px-5 py-4 shadow-soft transition hover:bg-lavender-50"
               >
-                <span className="min-w-0 flex-1">
+                <span className="min-w-[11rem] flex-1">
                   <span className="block text-xs font-bold uppercase tracking-wider text-lavender-600">{g.course_name}</span>
                   <span className="block font-bold">{g.name}</span>
                   <span className="block text-xs text-ink-soft">Profesor: {g.teacher_name}</span>
                 </span>
                 <span className="text-xs font-semibold text-ink-soft">
-                  {g.student_count} {g.student_count === 1 ? "estudiante" : "estudiantes"} · {g.submission_count}{" "}
+                  {g.student_count} {g.student_count === 1 ? "estudiante" : "estudiantes"}, {g.submission_count}{" "}
                   {g.submission_count === 1 ? "entrega" : "entregas"}
                 </span>
                 <svg className="h-4 w-4 text-ink-faint" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
@@ -75,10 +76,10 @@ function MonitorDashboard() {
 
         <Card title="Tu papel como monitor" className="rise-in self-start" surface="bg-mint-50">
           <ul className="list-disc space-y-2 pl-5 text-sm text-ink-soft">
-            <li>Ves las entregas oficiales de las clases donde el profesor te agregó.</li>
-            <li>Escribes retroalimentación sobre el código: qué está bien, qué revisar y por qué.</li>
-            <li>Das pistas y preguntas guía; no entregues la solución.</li>
-            <li>No calificas ni ves las notas: eso lo decide el profesor.</li>
+            <li>Puedes consultar las entregas oficiales de las clases en las que tu profesor te haya agregado como monitor.</li>
+            <li>Tu labor es acompañar a los estudiantes con comentarios sobre su código: reconocer lo que está bien, señalar qué pueden mejorar y explicarles por qué.</li>
+            <li>Puedes darles pistas y hacer preguntas que los ayuden a encontrar sus propios errores y avanzar. La idea es guiarlos, no darles la solución.</li>
+            <li>No asignas calificaciones ni tienes acceso a las notas. Esa responsabilidad sigue estando en manos del profesor.</li>
           </ul>
         </Card>
       </div>

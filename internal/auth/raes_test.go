@@ -118,14 +118,23 @@ func TestRAELevelsAndMatrix(t *testing.T) {
 	if pa.AverageGrade == nil || *pa.AverageGrade != 3.85 || pa.Graded != 2 {
 		t.Fatalf("promedio de Ana: %+v", pa)
 	}
-	if pa.Levels[r1.ID] != "alto" || pa.Levels[r2.ID] != "medio" {
-		t.Fatalf("niveles de Ana (alto+medio redondea a alto, alto+bajo a medio): %+v", pa.Levels)
+	if pa.Standings[r1.ID] != (RAEStanding{Level: "medio", Grade: 3.2}) || pa.Standings[r2.ID] != (RAEStanding{Level: "bajo", Grade: 3.2}) {
+		t.Fatalf("Ana debe quedar con la nota y el nivel de su última entrega: %+v", pa.Standings)
 	}
-	if pb.AverageGrade == nil || *pb.AverageGrade != 5 || pb.Levels[r1.ID] != "alto" || pb.Levels[r2.ID] != "" {
+	if _, ok := pb.Standings[r2.ID]; pb.AverageGrade == nil || *pb.AverageGrade != 5 || pb.Standings[r1.ID] != (RAEStanding{Level: "alto", Grade: 5}) || ok {
 		t.Fatalf("Beto: %+v", pb)
 	}
-	if pc.AverageGrade != nil || pc.Graded != 0 || len(pc.Levels) != 0 {
+	if pc.AverageGrade != nil || pc.Graded != 0 || len(pc.Standings) != 0 {
 		t.Fatalf("Caro solo tiene un borrador y no debe contar: %+v", pc)
+	}
+
+	beto2 := submit(beto)
+	_, err = s.SaveTeacherReview(prof.ID, beto2, "sin nota", nil, true, map[string]string{r1.ID: "bajo", r2.ID: "bajo"}, nil)
+	mustNoErr(t, err)
+	m, err = s.GroupRAEMatrix(prof.ID, g.ID)
+	mustNoErr(t, err)
+	if _, ok := m.Students[1].Standings[r2.ID]; m.Students[1].Standings[r1.ID] != (RAEStanding{Level: "alto", Grade: 5}) || ok {
+		t.Fatalf("una entrega sin nota no debe cambiar la posición del estudiante: %+v", m.Students[1].Standings)
 	}
 
 	mustNoErr(t, s.DeleteRAE(prof.ID, r2.ID))

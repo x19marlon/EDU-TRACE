@@ -86,13 +86,13 @@ Ana también tiene dos intentos de compilación en el Taller 2 (uno sin compilar
 
 ## RAE y niveles de logro
 
-*Introducción a la Programación 2026-1* usa los cuatro RAE oficiales del programa del curso 33698 (RAE 1: caracterizar el problema; RAE 2: diseñar con construcciones básicas; RAE 3: organizar los datos con colecciones; RAE 4: implementar en C++). Cada revisión marca el nivel de logro (bajo, medio o alto) de los RAE que el taller trabaja; el RAE 3 queda sin marcar porque estos talleres no usan colecciones. El diagrama de dispersión de la clase cruza la nota promedio (0 a 5) con ese nivel:
+*Introducción a la Programación 2026-1* usa los cuatro RAE oficiales del programa del curso 33698 (RAE 1: caracterizar el problema; RAE 2: diseñar con construcciones básicas; RAE 3: organizar los datos con colecciones; RAE 4: implementar en C++). Cada revisión marca el nivel de logro (bajo, medio o alto) de los RAE que el taller trabaja; el RAE 3 queda sin marcar porque estos talleres no usan colecciones. El diagrama de la clase ubica a cada estudiante según la nota y el nivel de su última entrega devuelta que evaluó ese RAE. Cada nivel tiene un rango habitual de notas (bajo: menos de 3.0; medio: de 3.0 a 3.74; alto: de 3.75 a 5.0). Si la nota se aleja un poco de ese rango, el estudiante sigue en su nivel con una flecha; si se aleja medio punto o más, aparece en «Para revisar»:
 
-| Alumno | Nota promedio | RAE 1 | RAE 2 | RAE 3 | RAE 4 |
+| Alumno | Última nota | RAE 1 | RAE 2 | RAE 3 | RAE 4 |
 |---|---|---|---|---|---|
-| Ana Rodríguez | 3.85 | medio | alto | — | medio |
+| Ana Rodríguez | 3.2 | medio | medio | — | medio |
 | Luis Martínez | 5.0 | alto | alto | — | alto |
-| Carlos Pérez | 2.8 | medio | medio | — | bajo |
+| Carlos Pérez | 2.8 | bajo | bajo | — | bajo |
 
 Solo cuentan las revisiones devueltas (el Taller 3 de Ana está en borrador). Si la base ya tenía los datos de prueba de antes, este script carga los RAE oficiales (o actualiza el texto de los que ya existen) y los niveles:
 

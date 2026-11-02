@@ -218,27 +218,22 @@ func (s *Store) returnedRAELevels(submissionIDs []string) (map[string][]StudentR
 	return out, rows.Err()
 }
 
+type RAEStanding struct {
+	Level string `json:"level"`
+	Grade float64 `json:"grade"`
+}
+
 type StudentPoint struct {
 	ID string `json:"id"`
 	Name string `json:"name"`
 	AverageGrade *float64 `json:"average_grade,omitempty"`
 	Graded int `json:"graded"`
-	Levels map[string]string `json:"levels"`
+	Standings map[string]RAEStanding `json:"standings"`
 }
 
 type RAEMatrix struct {
 	RAEs []RAE `json:"raes"`
 	Students []StudentPoint `json:"students"`
-}
-
-func levelFromScore(score float64) string {
-	switch math.Round(score) {
-	case 1:
-		return LevelLow
-	case 2:
-		return LevelMid
-	}
-	return LevelHigh
 }
 
 func (s *Store) GroupRAEMatrix(teacherID, groupID string) (*RAEMatrix, error) {
@@ -278,7 +273,7 @@ func (s *Store) GroupRAEMatrix(teacherID, groupID string) (*RAEMatrix, error) {
 			v := math.Round(avg.Float64*100) / 100
 			p.AverageGrade = &v
 		}
-		p.Levels = map[string]string{}
+		p.Standings = map[string]RAEStanding{}
 		index[p.ID] = len(m.Students)
 		m.Students = append(m.Students, p)
 	}
@@ -287,25 +282,24 @@ func (s *Store) GroupRAEMatrix(teacherID, groupID string) (*RAEMatrix, error) {
 		return nil, err
 	}
 
-	rows, err = s.db.Query(`SELECT s.student_id, l.rae_id,
-			AVG(CASE l.level WHEN 'bajo' THEN 1 WHEN 'medio' THEN 2 ELSE 3 END)
+	rows, err = s.db.Query(`SELECT s.student_id, l.rae_id, l.level, v.grade
 		FROM review_raes l
 		JOIN submissions s ON s.id = l.submission_id
 		JOIN reviews v ON v.submission_id = s.id AND v.status = 'returned'
-		WHERE s.group_id = ? AND s.kind = 'official' AND l.level != ''
-		GROUP BY s.student_id, l.rae_id`, groupID)
+		WHERE s.group_id = ? AND s.kind = 'official' AND l.level != '' AND v.grade IS NOT NULL
+		ORDER BY s.created_at, s.id`, groupID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var studentID, raeID string
-		var score float64
-		if err := rows.Scan(&studentID, &raeID, &score); err != nil {
+		var standing RAEStanding
+		if err := rows.Scan(&studentID, &raeID, &standing.Level, &standing.Grade); err != nil {
 			return nil, err
 		}
 		if i, ok := index[studentID]; ok {
-			m.Students[i].Levels[raeID] = levelFromScore(score)
+			m.Students[i].Standings[raeID] = standing
 		}
 	}
 	if err := rows.Err(); err != nil {

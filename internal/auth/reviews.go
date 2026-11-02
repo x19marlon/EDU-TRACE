@@ -297,9 +297,6 @@ func (s *Store) saveAIDraft(teacherID, actorID, submissionID string, d AIDraft) 
 		if d.Confidence != "" {
 			detail += " · confianza " + d.Confidence
 		}
-		if d.Model != "" {
-			detail += " · modelo " + d.Model
-		}
 		return logAudit(q, actorID, AuditAIDraft, "", submissionID, detail)
 	})
 }

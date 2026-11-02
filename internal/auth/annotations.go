@@ -147,6 +147,9 @@ func (s *Store) AddAnnotation(u *User, submissionID string, in AnnotationInput) 
 	return a, nil
 }
 
+const sentToOwner = `a.submission_id = ? AND u.role = 'monitor' AND a.sent_at IS NOT NULL
+	AND EXISTS (SELECT 1 FROM submissions s WHERE s.id = a.submission_id AND s.student_id = ?)`
+
 const annotationSelect = `SELECT a.id, a.submission_id, a.author_id, u.name, u.role, a.kind,
 		COALESCE(a.line_start, 0), COALESCE(a.line_end, 0), a.comment, a.data, a.sent_at, a.created_at
 	FROM code_annotations a JOIN users u ON u.id = a.author_id`
@@ -185,12 +188,13 @@ func (s *Store) AnnotationsFor(u *User, submissionID string) []Annotation {
 			list, err = s.queryAnnotations(`a.submission_id = ?`, submissionID)
 		}
 	case RoleMonitor:
-		if _, err = s.annotationTarget(u, submissionID); err == nil {
+		if _, err = s.annotationTarget(u, submissionID); errors.Is(err, ErrNotFound) {
+			list, err = s.queryAnnotations(sentToOwner, submissionID, u.ID)
+		} else if err == nil {
 			list, err = s.queryAnnotations(`a.submission_id = ? AND (a.author_id = ? OR (u.role = 'monitor' AND a.sent_at IS NOT NULL))`, submissionID, u.ID)
 		}
 	case RoleStudent:
-		list, err = s.queryAnnotations(`a.submission_id = ? AND u.role = 'monitor' AND a.sent_at IS NOT NULL
-			AND EXISTS (SELECT 1 FROM submissions s WHERE s.id = a.submission_id AND s.student_id = ?)`, submissionID, u.ID)
+		list, err = s.queryAnnotations(sentToOwner, submissionID, u.ID)
 	}
 	if err != nil {
 		if !errors.Is(err, ErrNotFound) {

@@ -81,4 +81,16 @@ func TestAIRequestLimit(t *testing.T) {
 			t.Fatal("el límite es solo para estudiantes")
 		}
 	}
+	monitor, err := store.CreateUser("Mona", "mona@u.edu", "password123", auth.RoleMonitor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		if !aiAllowed(httptest.NewRecorder(), store, limit, monitor, "") {
+			t.Fatalf("pedido %d del monitor rechazado", i+1)
+		}
+	}
+	if aiAllowed(httptest.NewRecorder(), store, limit, monitor, "") {
+		t.Fatal("el monitor tiene el mismo límite que un estudiante")
+	}
 }

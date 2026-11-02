@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import RequireAuth from "@/components/RequireAuth";
+import { LEARNER_ROLES } from "@/lib/role";
 import AppShell from "@/components/AppShell";
 import { Card } from "@/components/ui";
 import GradeChart from "@/components/GradeChart";
@@ -20,7 +21,7 @@ function GroupProgress({ g }: { g: ProgressGroup }) {
   return (
     <Card
       className="rise-in"
-      title={`${g.course_name} · ${g.group_name}`}
+      title={`${g.course_name}, ${g.group_name}`}
       action={
         g.average !== undefined && (
           <span className="text-sm text-ink-soft">
@@ -120,7 +121,7 @@ function ProgressView() {
 
 export default function ProgressPage() {
   return (
-    <RequireAuth role="student">
+    <RequireAuth role={LEARNER_ROLES}>
       <AppShell>
         <ProgressView />
       </AppShell>

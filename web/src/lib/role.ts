@@ -16,6 +16,10 @@ export function loadRole(): Role {
   }
 }
 
+export const LEARNER_ROLES: Role[] = ["student", "monitor"];
+
+export const isLearnerRole = (role: Role) => LEARNER_ROLES.includes(role);
+
 export function homeFor(role: Role): string {
   if (role === "teacher") return "/docente";
   if (role === "monitor") return "/monitor";

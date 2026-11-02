@@ -3,6 +3,15 @@
 import { useState } from "react";
 import { joinGroup, StudentGroup } from "@/lib/api";
 
+const CLASS_COLORS = [
+  { on: "bg-lavender-600 text-white", sub: "text-lavender-100", off: "bg-lavender-100 text-ink hover:bg-lavender-200" },
+  { on: "bg-mint-700 text-white", sub: "text-mint-100", off: "bg-mint-100 text-ink hover:bg-mint-200" },
+  { on: "bg-peach-700 text-white", sub: "text-peach-100", off: "bg-peach-100 text-ink hover:bg-peach-200" },
+  { on: "bg-sky-700 text-white", sub: "text-sky-100", off: "bg-sky-100 text-ink hover:bg-sky-200" },
+  { on: "bg-rose-700 text-white", sub: "text-rose-100", off: "bg-rose-100 text-ink hover:bg-rose-200" },
+  { on: "bg-amber-800 text-white", sub: "text-amber-100", off: "bg-amber-100 text-ink hover:bg-amber-200" },
+];
+
 /** Clases del estudiante: elegir a cuál enviar y unirse con un código. */
 export default function StudentClasses({
   groups,
@@ -42,29 +51,28 @@ export default function StudentClasses({
         </p>
         {groups.length === 0 ? (
           <p className="text-sm text-ink-soft">
-            Aún no estás en ninguna clase. Pídele el código a tu profesor para poder enviarle tu código.
+            Todavía no haces parte de ninguna clase. Pídele a tu profesor el código de acceso para unirte y poder compartir tu código con él.
           </p>
         ) : (
           <div role="radiogroup" aria-label="Clase a la que envías" className="flex flex-wrap gap-2">
-            {groups.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                role="radio"
-                aria-checked={selectedId === g.id}
-                onClick={() => onSelect(g.id)}
-                className={`rounded-2xl px-3.5 py-2 text-left transition ${
-                  selectedId === g.id
-                    ? "bg-lavender-600 text-white shadow-soft"
-                    : "bg-lavender-50 text-ink hover:bg-lavender-100"
-                }`}
-              >
-                <span className="block text-sm font-bold">{g.course_name}</span>
-                <span className={`block text-xs ${selectedId === g.id ? "text-lavender-100" : "text-ink-soft"}`}>
-                  {g.name} · {g.teacher_name}
-                </span>
-              </button>
-            ))}
+            {groups.map((g, i) => {
+              const color = CLASS_COLORS[i % CLASS_COLORS.length];
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedId === g.id}
+                  onClick={() => onSelect(g.id)}
+                  className={`rounded-2xl px-3.5 py-2 text-left transition ${selectedId === g.id ? `${color.on} shadow-soft` : color.off}`}
+                >
+                  <span className="block text-sm font-bold">{g.course_name}</span>
+                  <span className={`block text-xs ${selectedId === g.id ? color.sub : "text-ink"}`}>
+                    {g.name} con {g.teacher_name}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
         {groups.length > 0 && (

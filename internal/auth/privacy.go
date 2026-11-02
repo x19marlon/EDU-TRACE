@@ -145,7 +145,7 @@ func (s *Store) ExportData(u *User) (*DataExport, error) {
 		return nil, err
 	}
 
-	if u.Role == RoleStudent {
+	if u.IsLearner() {
 		if out.Submissions, err = s.exportSubmissions(u); err != nil {
 			return nil, err
 		}

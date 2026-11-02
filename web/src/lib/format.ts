@@ -12,6 +12,27 @@ export function relativeTime(iso?: string | null): string {
   return date.toLocaleDateString("es", { dateStyle: "medium" });
 }
 
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+interface SeenStudent {
+  activity: { last_active_at?: string };
+  last_submission_at?: string;
+  last_attempt_at?: string;
+}
+
+export function lastSeen(s: SeenStudent): string | undefined {
+  const a = s.activity.last_active_at;
+  const candidates = [a && !a.startsWith("0001") ? a : undefined, s.last_submission_at, s.last_attempt_at].filter(
+    Boolean
+  ) as string[];
+  return candidates.sort().at(-1);
+}
+
+export function isActive(s: SeenStudent): boolean {
+  const seen = lastSeen(s);
+  return !!seen && Date.now() - new Date(seen).getTime() < WEEK_MS;
+}
+
 export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("es", { dateStyle: "medium", timeStyle: "short" });
 }
@@ -157,4 +178,14 @@ export const PERFORMANCE_BANDS = [
 
 export function performanceBand(grade: number) {
   return PERFORMANCE_BANDS.find((b) => grade >= b.min) ?? PERFORMANCE_BANDS[PERFORMANCE_BANDS.length - 1];
+}
+
+const INFORMAL_HEADINGS: [RegExp, string][] = [
+  [/¿Hacia d[oó]nde voy\?/gi, "¿Qué pide el ejercicio?"],
+  [/¿C[oó]mo voy\?/gi, "¿Qué está funcionando y qué puedo mejorar?"],
+  [/¿Qu[eé] sigue\?/gi, "¿Qué puedo hacer ahora?"],
+];
+
+export function informalHeadings(text: string): string {
+  return INFORMAL_HEADINGS.reduce((out, [pattern, heading]) => out.replace(pattern, heading), text);
 }

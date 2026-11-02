@@ -494,7 +494,7 @@ export default function AnnotatedCode({
                     {linesLabel(a) && <span className="font-semibold text-ink">{linesLabel(a)}</span>}
                     {mode !== "student" && (
                       <span className="text-ink-soft">
-                        {a.author_name} · {a.author_role === "teacher" ? "Profesor" : "Monitor"}
+                        {a.author_name} ({a.author_role === "teacher" ? "Profesor" : "Monitor"})
                       </span>
                     )}
                     <span className="text-ink-faint">{formatDateTime(a.sent_at ?? a.created_at)}</span>

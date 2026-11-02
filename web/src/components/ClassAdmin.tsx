@@ -88,7 +88,7 @@ export function MonitorsCard({
             {busy ? "Agregando..." : "Agregar monitor"}
           </button>
         </div>
-        <p className="px-2 text-xs text-ink-faint">La persona debe registrarse primero en EduTrace con el rol Monitor.</p>
+        <p className="px-2 text-xs text-ink-faint">La persona debe registrarse primero en EduTrace con el rol Monitor y no puede estar inscrita como estudiante en esta materia.</p>
         {error && <p className="px-2 text-xs font-semibold text-peach-700">{error}</p>}
       </form>
     </Card>

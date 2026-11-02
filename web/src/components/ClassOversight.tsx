@@ -17,7 +17,7 @@ import {
   Thresholds,
 } from "@/lib/api";
 import { Card, SmallButton, Spinner } from "@/components/ui";
-import { ACTION_LABEL } from "@/components/ReviewPanel";
+import AuditItem from "@/components/AuditItem";
 import { formatDateTime, formatShortDuration } from "@/lib/format";
 
 function fmtMs(ms: number): string {
@@ -29,9 +29,16 @@ function fmtMs(ms: number): string {
 type Verdict = "ok" | "over" | "none" | "empty";
 
 const VERDICT: Record<Verdict, [string, string]> = {
-  ok: ["Cumple", "bg-mint-100 text-mint-700"],
-  over: ["No cumple", "bg-peach-100 text-peach-700"],
-  none: ["Sin umbral", "bg-lavender-50 text-ink-soft"],
+  ok: ["A tiempo", "bg-mint-100 text-mint-700"],
+  over: ["Con demoras", "bg-peach-100 text-peach-700"],
+  none: ["Sin meta", "bg-lavender-50 text-ink-soft"],
+  empty: ["Sin datos", "bg-lavender-50 text-ink-soft"],
+};
+
+const ESTIMATE_VERDICT: Record<Verdict, [string, string]> = {
+  ok: ["Dentro de lo estimado", "bg-mint-100 text-mint-700"],
+  over: ["Más de lo estimado", "bg-amber-100 text-amber-800"],
+  none: ["Sin estimación", "bg-lavender-50 text-ink-soft"],
   empty: ["Sin datos", "bg-lavender-50 text-ink-soft"],
 };
 
@@ -41,31 +48,61 @@ function verdict(hasData: boolean, limit: number | null | undefined, over: boole
   return over ? "over" : "ok";
 }
 
-function Indicator({ id, title, value, detail, state }: { id: string; title: string; value: string; detail: string; state: Verdict }) {
-  const [label, tone] = VERDICT[state];
+function Indicator({ title, value, detail, chip }: { title: string; value: string; detail: string; chip: [string, string] }) {
+  const [label, tone] = chip;
   return (
     <div className="rounded-2xl bg-lavender-50/60 p-3">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-bold text-ink-soft">
-          <span className="text-lavender-700">{id}</span> · {title}
-        </p>
+        <p className="text-xs font-bold text-ink-soft">{title}</p>
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${tone}`}>{label}</span>
       </div>
       <p className="mt-1 text-xl font-extrabold tabular-nums">{value}</p>
-      <p className="text-[11px] text-ink-soft">{detail}</p>
+      <p className="mt-1 text-xs leading-relaxed text-ink-soft">{detail}</p>
     </div>
   );
 }
 
 function statLine(s: Stat): string {
-  return s.count === 0 ? "—" : `${fmtMs(s.avg_ms)} promedio`;
+  return s.count === 0 ? "—" : `${fmtMs(s.avg_ms)} en promedio`;
 }
 
-function statDetail(s: Stat, unit: string): string {
-  if (s.count === 0) return `Aún no hay ${unit}.`;
-  return `${s.count} ${unit} · mediana ${fmtMs(s.p50_ms)} · 90 % en menos de ${fmtMs(s.p90_ms)} · máximo ${fmtMs(s.max_ms)}${
-    s.over ? ` · ${s.over} sobre el umbral` : ""
-  }`;
+function reviewText(m: GroupMetrics): string {
+  const r = m.review_time;
+  if (r.count === 0) return "Todavía no hay revisiones medidas. Cuando revises entregas, aquí verás cuánto tiempo les dedicas.";
+  const base =
+    r.count === 1
+      ? "Llevas 1 revisión medida."
+      : `Llevas ${r.count} revisiones medidas. La mitad te tomó menos de ${fmtMs(r.p50_ms)} y la más larga, ${fmtMs(r.max_ms)}.`;
+  if (m.review_estimate.count === 0) return base;
+  return `${base} La IA calculaba unos ${fmtMs(m.review_estimate.p50_ms)} por entrega y ${m.over_estimate} de ${m.review_estimate.count} te tomaron más.`;
+}
+
+function turnaroundText(m: GroupMetrics): string {
+  const t = m.turnaround;
+  const limit = m.thresholds.feedback_hours;
+  const parts = [];
+  if (t.count === 0) parts.push("Todavía no has devuelto retroalimentación en esta clase.");
+  else if (t.count === 1) parts.push("Ya devolviste 1 retroalimentación.");
+  else parts.push(`Ya devolviste ${t.count} retroalimentaciones. La mitad llegó en menos de ${fmtMs(t.p50_ms)} y la más demorada tardó ${fmtMs(t.max_ms)}.`);
+  if (t.over && limit) parts.push(`${t.over} ${t.over === 1 ? "pasó" : "pasaron"} de las ${limit} h que tienes como meta.`);
+  if (m.pending_reviews) {
+    const late = m.pending_over && limit ? ` y ${m.pending_over} ya ${m.pending_over === 1 ? "pasó" : "pasaron"} de las ${limit} h` : "";
+    parts.push(`Faltan ${m.pending_reviews} por devolver: la más antigua lleva ${fmtMs(m.oldest_pending_ms)} esperando${late}.`);
+  }
+  return parts.join(" ");
+}
+
+function instantText(i: GroupMetrics["instant"]): string {
+  const chats = i.chats > 0 ? ` También han enviado ${i.chats} ${i.chats === 1 ? "mensaje" : "mensajes"} al tutor.` : "";
+  if (i.requests === 0) return `Tus estudiantes todavía no le han pedido retroalimentación directamente a la IA.${chats}`;
+  const percent = (ok: number, checked: number) => (checked ? Math.round((ok / checked) * 100) : 100);
+  const failed = i.failures > 0 ? ` ${i.failures} ${i.failures === 1 ? "pedido falló" : "pedidos fallaron"}.` : "";
+  return (
+    `Tus estudiantes le han pedido retroalimentación directamente ${i.requests} ${i.requests === 1 ? "vez" : "veces"}. ` +
+    `Suele empezar a responder en ${fmtMs(i.first_token.avg_ms)} y termina en ${fmtMs(i.total.avg_ms)}.${failed} ` +
+    `El ${percent(i.sections_ok, i.sections_checked)} % de las respuestas trajo sus tres secciones y el ${percent(i.quality_ok, i.quality_checked)} % ` +
+    `incluyó la observación de calidad; cuando algo faltó, EduTrace lo agregó automáticamente.${chats}`
+  );
 }
 
 function ThresholdsForm({ courseId, initial, onSaved }: { courseId: string; initial: Thresholds; onSaved: () => void }) {
@@ -106,13 +143,20 @@ function ThresholdsForm({ courseId, initial, onSaved }: { courseId: string; init
 
   return (
     <form onSubmit={save} className="space-y-2 rounded-2xl border border-lavender-100 p-3">
-      <p className="text-xs text-ink-soft">
-        Umbrales acordados para la materia; aplican a todas sus clases. Quedaron acordadas 5 h para procesar cada lote y 5 h entre la
-        entrega y la retroalimentación. El tiempo de revisión no lleva umbral: lo decides tú con la estimación de la IA.
-      </p>
+      <div className="space-y-1.5 text-xs leading-relaxed text-ink-soft">
+        <p>Aquí puedes configurar los tiempos que quieres manejar para tu materia. Estos ajustes se aplicarán a todas las clases que tengas asociadas.</p>
+        <p>
+          Por ahora, se han establecido por defecto 5 horas para procesar cada lote de entregas y otras 5 horas como tiempo máximo entre la
+          entrega de un estudiante y la recepción de su retroalimentación. Puedes ajustar estos tiempos según las necesidades de tu materia.
+        </p>
+        <p>
+          El tiempo de revisión queda a tu criterio, podrás decidir cuánto dedicarle a cada propuesta teniendo en cuenta la estimación de tiempo
+          que te proporciona la IA.
+        </p>
+      </div>
       <div className="flex flex-wrap gap-x-4 gap-y-2">
-        {field("Entrega → retroalimentación ≤", "h", feedback, setFeedback)}
-        {field("Procesar cada lote ≤", "h", batch, setBatch)}
+        {field("De la entrega a la retroalimentación, máximo", "h", feedback, setFeedback)}
+        {field("Procesar cada lote, máximo", "h", batch, setBatch)}
         <button
           type="submit"
           disabled={busy}
@@ -134,7 +178,7 @@ function AIModeSwitch({ groupId, mode, onChange }: { groupId: string; mode: AIMo
     if (
       next === "inmediata" &&
       !window.confirm(
-        "En modo inmediato los estudiantes reciben la retroalimentación y el chat de la IA sin tu aprobación. Esto no cumple RNF-06 (validación docente). ¿Continuar?"
+        "En el modo inmediato, los estudiantes recibirán directamente la retroalimentación y podrán interactuar con la IA sin necesidad de que revises o apruebes su contenido previamente.\n\n¿Estás seguro de que deseas continuar?"
       )
     )
       return;
@@ -169,7 +213,7 @@ function AIModeSwitch({ groupId, mode, onChange }: { groupId: string; mode: AIMo
         {option(
           "supervisada",
           "Supervisada (recomendada)",
-          "La IA prepara un borrador de cada entrega y el estudiante solo ve lo que tú apruebas. Cumple RNF-06."
+          "La IA prepara un borrador de cada entrega y el estudiante solo ve lo que tú apruebas."
         )}
         {option(
           "inmediata",
@@ -184,12 +228,12 @@ function AIModeSwitch({ groupId, mode, onChange }: { groupId: string; mode: AIMo
 
 function share(c: RatingCount): string {
   const total = c.si + c.parcial + c.no;
-  return total === 0 ? "sin respuestas" : `${Math.round((c.si / total) * 100)} % entendió (${c.si} sí · ${c.parcial} en parte · ${c.no} no)`;
+  return total === 0 ? "sin respuestas" : `${Math.round((c.si / total) * 100)} % entendió (${c.si} sí, ${c.parcial} en parte, ${c.no} no)`;
 }
 
 const COMPREHENSION_VERDICT: Record<GroupMetrics["comprehension"]["veredicto"], [string, string]> = {
-  cumple: ["Cumple la meta", "bg-mint-100 text-mint-700"],
-  no_cumple: ["No cumple la meta", "bg-peach-100 text-peach-700"],
+  cumple: ["Se entiende bien", "bg-mint-100 text-mint-700"],
+  no_cumple: ["Les está costando", "bg-peach-100 text-peach-700"],
   pocas_respuestas: ["Pocas respuestas", "bg-lavender-50 text-ink-soft"],
 };
 
@@ -203,18 +247,17 @@ function Comprehension({ data }: { data: GroupMetrics["comprehension"] }) {
   return (
     <div className="space-y-2 rounded-2xl bg-lavender-50/60 p-3 text-xs">
       <div className="flex items-start justify-between gap-2">
-        <p className="font-bold text-ink-soft">
-          <span className="text-lavender-700">RNF-09</span> · ¿Los estudiantes entienden la retroalimentación?
-        </p>
+        <p className="font-bold text-ink-soft">¿Los estudiantes entienden la retroalimentación?</p>
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${tone}`}>{label}</span>
       </div>
       <p className="text-ink-soft">
-        Meta por taller: al menos {Math.round(goal.min_si * 100)} % de «sí» y como máximo {Math.round(goal.max_no * 100)} % de «no», con{" "}
-        {goal.min_respuestas} respuestas o más.
+        Después de cada retroalimentación les preguntamos si la entendieron. En cada taller buscamos que al menos el{" "}
+        {Math.round(goal.min_si * 100)} % diga que sí y que no más del {Math.round(goal.max_no * 100)} % diga que no, con {goal.min_respuestas}{" "}
+        respuestas o más.
       </p>
       {data.por_taller.length === 0 ? (
         <p className="text-ink-soft">
-          Aún nadie respondió. Cada retroalimentación le pregunta al estudiante si la entendió; aquí verás el resumen sin nombres.
+          Aún nadie ha respondido. Cuando lo hagan, aquí verás el resumen, sin nombres.
         </p>
       ) : (
         <ul className="space-y-1.5">
@@ -223,14 +266,14 @@ function Comprehension({ data }: { data: GroupMetrics["comprehension"] }) {
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="min-w-0 flex-1 truncate font-bold">{t.title}</span>
                 <span className="text-ink-soft">
-                  {pct(t.si, t.total)} % sí · {pct(t.parcial, t.total)} % en parte · {pct(t.no, t.total)} % no
+                  {pct(t.si, t.total)} % sí, {pct(t.parcial, t.total)} % en parte, {pct(t.no, t.total)} % no
                 </span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                     !t.suficientes ? "bg-lavender-50 text-ink-soft" : t.cumple ? "bg-mint-100 text-mint-700" : "bg-peach-100 text-peach-700"
                   }`}
                 >
-                  {!t.suficientes ? `${t.total} de ${goal.min_respuestas} respuestas` : t.cumple ? "Cumple" : "No cumple"}
+                  {!t.suficientes ? `${t.total} de ${goal.min_respuestas} respuestas` : t.cumple ? "Se entiende" : "Les cuesta"}
                 </span>
               </div>
               <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-lavender-100" aria-hidden>
@@ -244,7 +287,7 @@ function Comprehension({ data }: { data: GroupMetrics["comprehension"] }) {
       )}
       {data.por_taller.length > 0 && (
         <p className="text-ink-faint">
-          Revisiones devueltas: {share(data.revisiones)} · IA inmediata: {share(data.inmediata)}
+          En las revisiones devueltas: {share(data.revisiones)}. En la IA inmediata: {share(data.inmediata)}.
         </p>
       )}
       {data.comentarios.length > 0 && (
@@ -252,7 +295,7 @@ function Comprehension({ data }: { data: GroupMetrics["comprehension"] }) {
           {data.comentarios.map((c, i) => (
             <li key={i} className="rounded-xl bg-white px-2.5 py-1.5">
               <span className="font-bold">{c.understood === "no" ? "No entendió" : c.understood === "parcial" ? "En parte" : "Entendió"}:</span>{" "}
-              {c.comment} <span className="text-ink-faint">· {formatDateTime(c.at)}</span>
+              {c.comment} <span className="text-ink-faint">({formatDateTime(c.at)})</span>
             </li>
           ))}
         </ul>
@@ -354,8 +397,8 @@ export default function ClassOversight({
             </div>
           )}
           <p className="text-xs text-ink-faint">
-            Cada entrega oficial entra sola a la cola (RF-01, RF-16): la IA ejecuta los casos de prueba y prepara una propuesta que
-            revisas, editas, apruebas o descartas.
+            Cada entrega oficial pasa automáticamente a la cola de revisión. La IA ejecuta los casos de prueba y prepara una propuesta de
+            retroalimentación que podrás revisar, editar, aprobar o descartar.
           </p>
         </div>
       </Card>
@@ -384,50 +427,45 @@ export default function ClassOversight({
             )}
             <div className="grid gap-2 sm:grid-cols-2">
               <Indicator
-                id="RNF-08"
-                title="Tiempo de revisión por entrega (frente a lo que estimó la IA)"
+                title="Tiempo de revisión por entrega"
                 value={statLine(metrics.review_time)}
-                detail={`${statDetail(metrics.review_time, "revisiones medidas")}${
-                  metrics.review_estimate.count
-                    ? ` · la IA estimó una mediana de ${fmtMs(metrics.review_estimate.p50_ms)}; ${metrics.over_estimate} de ${metrics.review_estimate.count} tomaron más`
-                    : ""
-                }`}
-                state={verdict(
-                  metrics.review_time.count > 0,
-                  metrics.review_estimate.count > 0 ? metrics.review_estimate.p50_ms : undefined,
-                  metrics.review_time.p50_ms > metrics.review_estimate.p50_ms
-                )}
+                detail={reviewText(metrics)}
+                chip={
+                  ESTIMATE_VERDICT[
+                    verdict(
+                      metrics.review_time.count > 0,
+                      metrics.review_estimate.count > 0 ? metrics.review_estimate.p50_ms : undefined,
+                      metrics.review_time.p50_ms > metrics.review_estimate.p50_ms
+                    )
+                  ]
+                }
               />
               <Indicator
-                id="RNF-11"
-                title={`Entrega → retroalimentación${t?.feedback_hours ? ` (≤ ${t.feedback_hours} h)` : ""}`}
+                title="De la entrega a la retroalimentación"
                 value={statLine(metrics.turnaround)}
-                detail={`${statDetail(metrics.turnaround, "devueltas")}${
-                  metrics.pending_reviews
-                    ? ` · ${metrics.pending_reviews} por devolver (la más antigua hace ${fmtMs(metrics.oldest_pending_ms)}${
-                        metrics.pending_over ? `, ${metrics.pending_over} ya pasaron el umbral` : ""
-                      })`
-                    : ""
-                }`}
-                state={verdict(
-                  metrics.turnaround.count + metrics.pending_reviews > 0,
-                  t?.feedback_hours,
-                  metrics.turnaround.over + metrics.pending_over > 0
-                )}
+                detail={turnaroundText(metrics)}
+                chip={
+                  VERDICT[
+                    verdict(
+                      metrics.turnaround.count + metrics.pending_reviews > 0,
+                      t?.feedback_hours,
+                      metrics.turnaround.over + metrics.pending_over > 0
+                    )
+                  ]
+                }
               />
             </div>
             <div className="rounded-2xl bg-lavender-50/60 p-3">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-bold text-ink-soft">
-                  <span className="text-lavender-700">RNF-10</span> · Procesamiento de cada lote
-                  {t?.batch_hours ? ` (≤ ${t.batch_hours} h por entrega)` : ""}
-                </p>
-                <span className="text-[11px] text-ink-faint">
-                  IA: espera {statLine(metrics.queue.wait)} · propuesta {statLine(metrics.queue.run)}
-                </span>
-              </div>
+              <p className="text-xs font-bold text-ink-soft">Procesamiento de cada lote</p>
+              <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                Aquí ves cuánto tarda la IA en preparar las propuestas de cada taller.
+                {t?.batch_hours ? ` La idea es que ninguna entrega tarde más de ${t.batch_hours} h.` : ""}
+                {metrics.queue.run.count > 0
+                  ? ` En promedio, cada entrega espera ${fmtMs(metrics.queue.wait.avg_ms)} en la cola y su propuesta tarda ${fmtMs(metrics.queue.run.avg_ms)}.`
+                  : ""}
+              </p>
               {metrics.batches.length === 0 ? (
-                <p className="mt-1 text-[11px] text-ink-soft">Aún no hay entregas oficiales en la cola.</p>
+                <p className="mt-1 text-xs text-ink-soft">Todavía no hay entregas oficiales en la cola.</p>
               ) : (
                 <ul className="mt-2 space-y-1">
                   {metrics.batches.map((b) => {
@@ -441,9 +479,9 @@ export default function ClassOversight({
                       <li key={b.assignment_id || "libre"} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                         <span className="min-w-0 flex-1 truncate font-bold">{b.title}</span>
                         <span className="text-ink-soft">
-                          {b.done}/{b.submissions} listas{b.failed ? ` · ${b.failed} con error` : ""}
-                          {b.waiting ? ` · ${b.waiting} en cola` : ""}
-                          {skipped ? "" : ` · peor demora ${fmtMs(b.worst_ms)}`}
+                          {b.done} de {b.submissions} listas{b.failed ? `, ${b.failed} con error` : ""}
+                          {b.waiting ? `, ${b.waiting} en cola` : ""}
+                          {skipped ? "" : `. La más demorada tardó ${fmtMs(b.worst_ms)}`}
                         </span>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${tone}`}>{label}</span>
                       </li>
@@ -454,60 +492,15 @@ export default function ClassOversight({
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="rounded-2xl bg-lavender-50/60 p-3 text-xs">
-                <p className="font-bold text-ink-soft">
-                  <span className="text-lavender-700">RF-10 a RF-13</span> · Decisiones sobre la IA
+                <p className="font-bold text-ink-soft">Decisiones sobre la IA</p>
+                <p className="mt-1 leading-relaxed text-ink-soft">
+                  De las propuestas de la IA, aprobaste {metrics.decisions.ia} sin cambios, editaste {metrics.decisions.ia_editada} y descartaste{" "}
+                  {metrics.decisions.descartadas}. Además, escribiste {metrics.decisions.docente} por tu cuenta.
                 </p>
-                <p className="mt-1 text-ink-soft">
-                  {metrics.decisions.ia} aprobadas sin cambios · {metrics.decisions.ia_editada} editadas · {metrics.decisions.docente}{" "}
-                  escritas por ti · {metrics.decisions.descartadas} descartadas
-                </p>
-                {(metrics.models ?? []).length > 0 && (
-                  <table className="mt-2 w-full text-left">
-                    <caption className="sr-only">Decisiones por modelo de IA y versión del prompt</caption>
-                    <thead className="text-ink-soft">
-                      <tr>
-                        <th scope="col" className="py-0.5 pr-2 font-semibold">Modelo · prompt</th>
-                        <th scope="col" className="py-0.5 pr-2 text-right font-semibold">Sin cambios</th>
-                        <th scope="col" className="py-0.5 pr-2 text-right font-semibold">Editadas</th>
-                        <th scope="col" className="py-0.5 text-right font-semibold">Descartadas</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {metrics.models.map((m) => (
-                        <tr key={`${m.model}-${m.prompt}`} className="border-t border-lavender-100">
-                          <td className="py-0.5 pr-2">
-                            {m.model}
-                            {m.prompt && <span className="font-mono text-ink-soft"> · {m.prompt}</span>}
-                          </td>
-                          <td className="py-0.5 pr-2 text-right tabular-nums">{m.sin_cambios}</td>
-                          <td className="py-0.5 pr-2 text-right tabular-nums">{m.editadas}</td>
-                          <td className="py-0.5 text-right tabular-nums">{m.descartadas}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
               </div>
               <div className="rounded-2xl bg-lavender-50/60 p-3 text-xs">
-                <p className="font-bold text-ink-soft">
-                  <span className="text-lavender-700">RF-02/03 y RF-05/07</span> · IA inmediata
-                </p>
-                <p className="mt-1 text-ink-soft">
-                  {metrics.instant.requests === 0
-                    ? "Sin pedidos directos de los estudiantes."
-                    : `${metrics.instant.requests} pedidos · primer texto en ${fmtMs(metrics.instant.first_token.avg_ms)} · completa en ${fmtMs(
-                        metrics.instant.total.avg_ms
-                      )} · ${metrics.instant.failures} fallos · ${
-                        metrics.instant.sections_checked
-                          ? Math.round((metrics.instant.sections_ok / metrics.instant.sections_checked) * 100)
-                          : 100
-                      } % trajo las 3 secciones y ${
-                        metrics.instant.quality_checked
-                          ? Math.round((metrics.instant.quality_ok / metrics.instant.quality_checked) * 100)
-                          : 100
-                      } % la observación de calidad sin completar (lo que faltó se agregó solo)`}
-                  {metrics.instant.chats > 0 && ` · ${metrics.instant.chats} mensajes de chat`}
-                </p>
+                <p className="font-bold text-ink-soft">IA inmediata</p>
+                <p className="mt-1 leading-relaxed text-ink-soft">{instantText(metrics.instant)}</p>
               </div>
             </div>
             <Comprehension data={metrics.comprehension} />
@@ -515,24 +508,15 @@ export default function ClassOversight({
         )}
       </Card>
 
-      <Card title="Bitácora de intervenciones (RF-20)" className="rise-in lg:col-span-5" bodyClassName="p-5 pt-3">
+      <Card title="Bitácora de intervenciones" className="rise-in lg:col-span-5" bodyClassName="p-5 pt-3">
         {!audit ? (
           <p className="text-sm text-ink-soft">Cargando...</p>
         ) : audit.length === 0 ? (
           <p className="text-sm text-ink-soft">Aún no hay intervenciones registradas en esta clase.</p>
         ) : (
-          <ul tabIndex={0} aria-label="Bitácora de la clase" className="max-h-72 space-y-1 overflow-auto rounded-xl pr-1 focus:outline-none focus-visible:ring-4 focus-visible:ring-lavender-100">
+          <ul tabIndex={0} aria-label="Bitácora de la clase" className="max-h-96 space-y-1 overflow-auto rounded-xl pr-1 focus:outline-none focus-visible:ring-4 focus-visible:ring-lavender-100">
             {audit.map((e) => (
-              <li key={e.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-xl px-2 py-1.5 text-xs odd:bg-lavender-50/60">
-                <span className="w-32 shrink-0 text-ink-faint">{formatDateTime(e.at)}</span>
-                <span className="font-bold">{ACTION_LABEL[e.action] ?? e.action}</span>
-                <span className="text-ink-soft">
-                  por {e.actor_name}
-                  {e.student_name && ` · ${e.student_name}`}
-                  {e.assignment_title && ` · ${e.assignment_title}`}
-                </span>
-                {e.detail && <span className="text-ink-soft">— {e.detail}</span>}
-              </li>
+              <AuditItem key={e.id} entry={e} className="rounded-xl px-3 py-2 odd:bg-lavender-50/60" />
             ))}
           </ul>
         )}

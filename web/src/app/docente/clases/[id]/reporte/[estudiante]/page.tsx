@@ -47,10 +47,10 @@ function Report() {
       </div>
 
       <header className="border-b-2 border-lavender-200 pb-3">
-        <p className="text-xs font-bold uppercase tracking-wider text-lavender-700">EduTrace · Reporte de seguimiento</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-lavender-700">EduTrace: reporte de seguimiento</p>
         <h1 className="mt-1 text-2xl font-extrabold">{report.name}</h1>
         <p className="text-sm text-ink-soft">
-          {report.email} · {report.course_name} · {report.group_name} · generado el {formatDateTime(report.generated_at)}
+          {report.email}, {report.course_name}, {report.group_name}, generado el {formatDateTime(report.generated_at)}
         </p>
       </header>
 

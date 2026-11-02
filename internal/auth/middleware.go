@@ -53,6 +53,16 @@ func RequireRole(store *Store, role Role, next http.Handler) http.Handler {
 	}))
 }
 
+func RequireLearner(store *Store, next http.Handler) http.Handler {
+	return RequireAuth(store, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !UserFrom(r.Context()).IsLearner() {
+			writeErr(w, http.StatusForbidden, "no tienes permiso para esta sección")
+			return
+		}
+		next.ServeHTTP(w, r)
+	}))
+}
+
 // SingleFlight permite una sola operación en curso por usuario (p. ej. una
 // compilación o una retroalimentación a la vez), para que nadie acapare CPU/GPU.
 type SingleFlight struct {

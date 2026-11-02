@@ -281,7 +281,7 @@ func (s *Store) visibleAssignment(u *User, assignmentID string) (title, statemen
 		JOIN courses c ON c.id = g.course_id
 		WHERE a.id = ? AND (
 			(? = 'teacher' AND c.id IN (SELECT course_id FROM course_staff WHERE teacher_id = ?)) OR
-			(? = 'student' AND EXISTS (SELECT 1 FROM group_students gs
+			(? IN ('student', 'monitor') AND EXISTS (SELECT 1 FROM group_students gs
 				WHERE gs.group_id = a.group_id AND gs.student_id = ?)) OR
 			(? = 'monitor' AND EXISTS (SELECT 1 FROM group_monitors gm
 				WHERE gm.group_id = a.group_id AND gm.monitor_id = ?))

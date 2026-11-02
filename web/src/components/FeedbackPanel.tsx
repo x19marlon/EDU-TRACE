@@ -1,7 +1,7 @@
 import { FeedbackMeta, FeedbackMode, RatingKind } from "@/lib/api";
 import ComprehensionCheck from "@/components/ComprehensionCheck";
 import { Spinner } from "@/components/ui";
-import { formatFeedback } from "@/lib/format";
+import { formatFeedback, informalHeadings } from "@/lib/format";
 
 interface FeedbackPanelProps {
   mode: FeedbackMode;
@@ -15,15 +15,16 @@ interface FeedbackPanelProps {
   rating?: { kind: RatingKind; assignmentId?: string };
 }
 
-/** Textos y colores de cada modalidad de retroalimentación. */
-const MODE_INFO: Record<FeedbackMode, { intro: React.ReactNode; button: string; box: string; rule: string; accent: string }> = {
+const MODE_INFO: Record<FeedbackMode, { intro: React.ReactNode; note: string; button: string; box: string; rule: string; accent: string }> = {
   formal: {
     intro: (
       <>
-        Retroalimentación formativa con tres preguntas: <strong className="text-ink">¿Hacia dónde voy?</strong>,{" "}
-        <strong className="text-ink">¿Cómo voy?</strong> y <strong className="text-ink">¿Qué sigue?</strong>
+        Retroalimentación formativa basada en una teoría educativa ampliamente estudiada y respaldada por la investigación, que se guía por
+        tres preguntas: <strong className="text-ink">¿Hacia dónde voy?</strong>, <strong className="text-ink">¿Cómo voy?</strong> y{" "}
+        <strong className="text-ink">¿Qué sigue?</strong>
       </>
     ),
+    note: "La idea es acompañarte en el proceso: darte pistas y orientarte para que encuentres la solución por tu cuenta, en lugar de dártela directamente. No es una calificación, sino una ayuda para aprender. Tu docente siempre tiene la última palabra.",
     button: "Pedir retroalimentación formal",
     box: "bg-mint-50",
     rule: "border-mint-200",
@@ -32,11 +33,12 @@ const MODE_INFO: Record<FeedbackMode, { intro: React.ReactNode; button: string; 
   informal: {
     intro: (
       <>
-        Consejos prácticos, como los de un monitor, con las mismas tres preguntas:{" "}
-        <strong className="text-ink">qué pide el ejercicio</strong>, <strong className="text-ink">qué ya funciona y qué mejorar</strong>{" "}
-        (nombres, ciclos, funciones, orden…) y <strong className="text-ink">qué sigue</strong>.
+        Orientación práctica, como la que recibirías de un monitor, organizada en tres preguntas:{" "}
+        <strong className="text-ink">¿Qué pide el ejercicio?</strong>, <strong className="text-ink">¿Qué está funcionando y qué puedo mejorar?</strong>{" "}
+        (nombres de variables, ciclos, funciones, organización del código, entre otros) y <strong className="text-ink">¿Qué puedo hacer ahora?</strong>
       </>
     ),
+    note: "La idea es acompañarte mientras aprendes, darte pistas y ayudarte a encontrar tus propios errores, sin resolverte el ejercicio. No es una calificación, sino una herramienta de apoyo. Tu docente siempre tiene la última palabra.",
     button: "Pedir retroalimentación informal",
     box: "bg-peach-50",
     rule: "border-peach-200",
@@ -57,6 +59,7 @@ export default function FeedbackPanel({
 }: FeedbackPanelProps) {
   const hasContent = feedbackText.length > 0;
   const info = MODE_INFO[mode];
+  const text = mode === "informal" ? informalHeadings(feedbackText) : feedbackText;
 
   return (
     <div className="flex h-full min-h-[300px] flex-col">
@@ -73,10 +76,7 @@ export default function FeedbackPanel({
               </svg>
             </span>
             <p className="max-w-sm text-sm text-ink-soft">{info.intro}</p>
-            <p className="max-w-sm text-xs text-ink-faint">
-              Te da pistas para que llegues tú a la solución, no te la resuelve. No es una calificación:
-              tu docente tiene la última palabra.
-            </p>
+            <p className="max-w-sm text-xs text-ink-faint">{info.note}</p>
             {disabledReason ? (
               <p className="max-w-sm rounded-2xl bg-lavender-50 px-4 py-3 text-sm font-semibold text-lavender-700">{disabledReason}</p>
             ) : (
@@ -103,7 +103,7 @@ export default function FeedbackPanel({
               className="text-sm leading-relaxed text-ink"
               dangerouslySetInnerHTML={{
                 __html:
-                  formatFeedback(feedbackText) +
+                  formatFeedback(text) +
                   (isLoading && hasContent ? '<span class="animate-pulse text-lavender-500">▊</span>' : ""),
               }}
             />

@@ -19,6 +19,7 @@ var (
 	ErrNotFound = errors.New("no encontrado")
 	ErrInvalidCode = errors.New("el código de clase no existe")
 	ErrNotEnrolled = errors.New("no estás inscrito en esa clase")
+	ErrMonitorOfCourse = errors.New("ya eres monitor de esta materia, así que no puedes inscribirte en ella como estudiante")
 )
 
 type Course struct {
@@ -474,6 +475,16 @@ func (s *Store) JoinGroup(studentID, code string) (*StudentGroup, error) {
 			err = ErrCourseClosed
 		}
 		return nil, err
+	}
+	var monitoring int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM group_monitors gm
+		JOIN class_groups mg ON mg.id = gm.group_id
+		JOIN class_groups g ON g.course_id = mg.course_id
+		WHERE g.id = ? AND gm.monitor_id = ?`, groupID, studentID).Scan(&monitoring); err != nil {
+		return nil, err
+	}
+	if monitoring > 0 {
+		return nil, ErrMonitorOfCourse
 	}
 	if _, err := s.db.Exec(`INSERT INTO group_students (group_id, student_id, joined_at) VALUES (?, ?, ?)
 		ON CONFLICT DO NOTHING`, groupID, studentID, fmtTime(time.Now())); err != nil {

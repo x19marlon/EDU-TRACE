@@ -113,19 +113,19 @@ echo "=== 5. Publicando talleres en Intro a la Programación - Grupo A ==="
 T1=$(create_assignment "$GROUP1_ID" "Taller 1: promedio de notas" \
   "Lee tres notas (de 0.0 a 5.0) y muestra su promedio con dos decimales.
 Ejemplo: entrada 4.5 3.0 5.0 -> salida Promedio: 4.17" \
-  "Compila (1.0) · Lee bien la entrada (1.0) · Promedio correcto (2.0) · Legibilidad (1.0)" \
+  "Compila (1.0), Lee bien la entrada (1.0), Promedio correcto (2.0), Legibilidad (1.0)" \
   "due_at=$(iso_utc '+5 days')" "allow_late=true" \
   'tests=[{"name":"Ejemplo del enunciado","stdin":"4.5 3.0 5.0","expected":"Promedio: 4.17","match":"contiene","hidden":false},{"name":"Notas enteras","stdin":"4 5 5","expected":"Promedio: 4.67","match":"contiene","hidden":false},{"name":"Promedio bajo","stdin":"0 0 1","expected":"Promedio: 0.33","match":"contiene","hidden":true}]')
 T2=$(create_assignment "$GROUP1_ID" "Taller 2: suma con ciclos" \
   "Lee un entero n y muestra la suma de 1 hasta n usando un ciclo.
 Ejemplo: entrada 5 -> salida Suma: 15" \
-  "Compila (1.0) · Usa un ciclo (1.0) · Resultado correcto (2.0) · Legibilidad (1.0)" \
+  "Compila (1.0), Usa un ciclo (1.0), Resultado correcto (2.0), Legibilidad (1.0)" \
   "due_at=$(iso_utc '+20 hours')" "allow_late=false" \
   'tests=[{"name":"Ejemplo del enunciado","stdin":"5","expected":"Suma: 15","match":"contiene","hidden":false},{"name":"n = 1","stdin":"1","expected":"Suma: 1","match":"contiene","hidden":false},{"name":"n = 10","stdin":"10","expected":"Suma: 55","match":"contiene","hidden":true}]')
 T3=$(create_assignment "$GROUP1_ID" "Taller 3: el mayor de tres" \
   "Lee tres enteros y muestra el mayor usando condicionales.
 Ejemplo: entrada 7 12 3 -> salida Mayor: 12" \
-  "Compila (1.0) · Usa condicionales (1.0) · Resultado correcto (2.0) · Legibilidad (1.0)" \
+  "Compila (1.0), Usa condicionales (1.0), Resultado correcto (2.0), Legibilidad (1.0)" \
   "due_at=$(iso_utc '-27 hours')" "allow_late=true" "late_penalty=0.5" \
   'tests=[{"name":"Ejemplo del enunciado","stdin":"7 12 3","expected":"Mayor: 12","match":"contiene","hidden":false},{"name":"Repetidos","stdin":"5 5 2","expected":"Mayor: 5","match":"contiene","hidden":false},{"name":"Negativos","stdin":"-3 -8 -1","expected":"Mayor: -1","match":"contiene","hidden":true}]')
 echo "  ✓ 3 talleres con 3 casos de prueba cada uno (1 oculto): el 1 vence en 5 días, el 2 en 20 h (sin tardías) y el 3 venció hace 27 h (tardías con −0.5 por día)"

@@ -27,11 +27,11 @@ export default function RecoveryCodeDialog({
   };
 
   const download = () => {
-    const text = `EduTrace · Código de recuperación\n\nCuenta: ${email}\nCódigo: ${code}\n\nÚsalo en «¿Olvidaste tu contraseña?» si no recuerdas tu contraseña. Sirve una sola vez: al usarlo recibirás uno nuevo.\n`;
+    const text = `EduTrace: código de recuperación\n\nCuenta: ${email}\nCódigo: ${code}\n\nÚsalo en «¿Olvidaste tu contraseña?» si no recuerdas tu contraseña. Sirve una sola vez: al usarlo recibirás uno nuevo.\n`;
     const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = "edutrace-codigo-de-recuperacion.txt";
+    a.download = "edutrace_codigo_de_recuperacion.txt";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -42,10 +42,16 @@ export default function RecoveryCodeDialog({
         <h2 id="recovery-title" className="text-xl font-extrabold tracking-tight">
           {title}
         </h2>
-        <p className="text-sm text-ink-soft">
-          Si olvidas tu contraseña, con este código y tu email puedes crear una nueva desde «¿Olvidaste tu contraseña?». Guárdalo en
-          un lugar seguro: <span className="font-semibold text-ink">no se vuelve a mostrar</span> y sirve una sola vez.
-        </p>
+        <div className="space-y-2 text-sm text-ink-soft">
+          <p>
+            Si en algún momento olvidas tu contraseña, podrás usar este código junto con tu correo electrónico para crear una nueva desde
+            la opción «¿Olvidaste tu contraseña?».
+          </p>
+          <p>
+            Guárdalo en un lugar seguro, por favor.{" "}
+            <span className="font-semibold text-ink">Por tu seguridad, este código solo se muestra una vez y no podrás volver a consultarlo.</span>
+          </p>
+        </div>
         <p className="rounded-2xl bg-lavender-50 py-4 text-center font-mono text-2xl font-extrabold tracking-[0.2em] text-lavender-700">
           {code}
         </p>

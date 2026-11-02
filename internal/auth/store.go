@@ -25,6 +25,10 @@ const (
 	RoleMonitor Role = "monitor"
 )
 
+func (u *User) IsLearner() bool {
+	return u.Role == RoleStudent || u.Role == RoleMonitor
+}
+
 var (
 	ErrEmailTaken = errors.New("ya existe una cuenta con ese email")
 	ErrInvalidCredentials = errors.New("email o contraseña incorrectos")

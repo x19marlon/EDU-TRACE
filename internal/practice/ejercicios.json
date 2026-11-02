@@ -1,44 +1,1102 @@
 [
-  {"id": "suma-1-n", "title": "Suma de 1 a n", "topic": "Ciclos", "level": 1,
-   "statement": "Lee un entero n (n ≥ 0) e imprime la suma 1 + 2 + … + n.\n\nImprime solo el resultado, sin mensajes como «Ingrese un número».\n\nEjemplo: con 5 imprime 15.",
-   "tests": [{"name": "n = 5", "stdin": "5", "expected": "15"}, {"name": "n = 0", "stdin": "0", "expected": "0"}, {"name": "n grande", "stdin": "100", "expected": "5050", "hidden": true}]},
-  {"id": "par-impar", "title": "¿Par o impar?", "topic": "Condicionales", "level": 1,
-   "statement": "Lee un entero e imprime exactamente la palabra par o impar.\n\nOjo con los números negativos: en C++, -3 % 2 vale -1.",
-   "tests": [{"name": "4", "stdin": "4", "expected": "par"}, {"name": "7", "stdin": "7", "expected": "impar"}, {"name": "0", "stdin": "0", "expected": "par"}, {"name": "negativo", "stdin": "-3", "expected": "impar", "hidden": true}]},
-  {"id": "mayor-de-tres", "title": "El mayor de tres", "topic": "Condicionales", "level": 1,
-   "statement": "Lee tres enteros e imprime el mayor.\n\nImprime solo el número.",
-   "tests": [{"name": "distintos", "stdin": "3 9 2", "expected": "9"}, {"name": "negativos", "stdin": "-1 -5 -3", "expected": "-1"}, {"name": "repetidos", "stdin": "4 4 1", "expected": "4", "hidden": true}]},
-  {"id": "celsius-fahrenheit", "title": "Celsius a Fahrenheit", "topic": "Entrada y salida", "level": 1,
-   "statement": "Lee una temperatura en grados Celsius (puede tener decimales) e imprime su equivalente en Fahrenheit con un decimal: F = C × 9 / 5 + 32.\n\nPista: usa fixed y setprecision(1) de <iomanip>.",
-   "tests": [{"name": "agua hirviendo", "stdin": "100", "expected": "212.0"}, {"name": "cero", "stdin": "0", "expected": "32.0"}, {"name": "-40", "stdin": "-40", "expected": "-40.0"}, {"name": "decimales", "stdin": "36.6", "expected": "97.9", "hidden": true}]},
-  {"id": "factorial", "title": "Factorial", "topic": "Ciclos", "level": 1,
-   "statement": "Lee un entero n (0 ≤ n ≤ 20) e imprime n!.\n\nRecuerda que 0! = 1. Con n = 20 el resultado no cabe en un int: usa long long.",
-   "tests": [{"name": "5!", "stdin": "5", "expected": "120"}, {"name": "0!", "stdin": "0", "expected": "1"}, {"name": "20!", "stdin": "20", "expected": "2432902008176640000", "hidden": true}]},
-  {"id": "tabla-multiplicar", "title": "Tabla de multiplicar", "topic": "Ciclos", "level": 1,
-   "statement": "Lee un entero n e imprime su tabla del 1 al 10, una línea por multiplicación, con este formato:\n\n7 x 1 = 7\n7 x 2 = 14\n…\n7 x 10 = 70",
-   "tests": [{"name": "tabla del 7", "stdin": "7", "expected": "7 x 1 = 7\n7 x 2 = 14\n7 x 3 = 21\n7 x 4 = 28\n7 x 5 = 35\n7 x 6 = 42\n7 x 7 = 49\n7 x 8 = 56\n7 x 9 = 63\n7 x 10 = 70"}, {"name": "tabla del 1", "stdin": "1", "expected": "1 x 1 = 1\n1 x 2 = 2\n1 x 3 = 3\n1 x 4 = 4\n1 x 5 = 5\n1 x 6 = 6\n1 x 7 = 7\n1 x 8 = 8\n1 x 9 = 9\n1 x 10 = 10", "hidden": true}]},
-  {"id": "bisiesto", "title": "Año bisiesto", "topic": "Condicionales", "level": 2,
-   "statement": "Lee un año e imprime si o no según sea bisiesto.\n\nUn año es bisiesto si es divisible entre 4, excepto los divisibles entre 100 que no lo son entre 400.",
-   "tests": [{"name": "2024", "stdin": "2024", "expected": "si"}, {"name": "2023", "stdin": "2023", "expected": "no"}, {"name": "1900", "stdin": "1900", "expected": "no"}, {"name": "2000", "stdin": "2000", "expected": "si", "hidden": true}]},
-  {"id": "contar-digitos", "title": "Contar dígitos", "topic": "Ciclos", "level": 2,
-   "statement": "Lee un entero n (n ≥ 0) e imprime cuántos dígitos tiene.\n\n¿Qué pasa con el 0?",
-   "tests": [{"name": "12345", "stdin": "12345", "expected": "5"}, {"name": "0", "stdin": "0", "expected": "1"}, {"name": "un millón", "stdin": "1000000", "expected": "7", "hidden": true}]},
-  {"id": "invertir-numero", "title": "Invertir un número", "topic": "Ciclos", "level": 2,
-   "statement": "Lee un entero n (n ≥ 0) e imprime sus dígitos al revés, como número.\n\nEjemplo: 1234 da 4321 y 1200 da 21.",
-   "tests": [{"name": "1234", "stdin": "1234", "expected": "4321"}, {"name": "un dígito", "stdin": "7", "expected": "7"}, {"name": "ceros al final", "stdin": "1200", "expected": "21", "hidden": true}]},
-  {"id": "es-primo", "title": "¿Es primo?", "topic": "Ciclos", "level": 2,
-   "statement": "Lee un entero n (n ≥ 1) e imprime si o no según sea primo.\n\nRecuerda: el 1 no es primo.",
-   "tests": [{"name": "7", "stdin": "7", "expected": "si"}, {"name": "9", "stdin": "9", "expected": "no"}, {"name": "1", "stdin": "1", "expected": "no"}, {"name": "97", "stdin": "97", "expected": "si", "hidden": true}]},
-  {"id": "fibonacci", "title": "Sucesión de Fibonacci", "topic": "Ciclos", "level": 2,
-   "statement": "Lee un entero n (1 ≤ n ≤ 40) e imprime los primeros n términos de la sucesión de Fibonacci separados por un espacio, empezando por 0 1.\n\nEjemplo: con 7 imprime 0 1 1 2 3 5 8.",
-   "tests": [{"name": "7 términos", "stdin": "7", "expected": "0 1 1 2 3 5 8"}, {"name": "1 término", "stdin": "1", "expected": "0"}, {"name": "2 términos", "stdin": "2", "expected": "0 1", "hidden": true}]},
-  {"id": "promedio-notas", "title": "Promedio de notas", "topic": "Arreglos", "level": 2,
-   "statement": "Lee un entero n y después n notas (pueden tener decimales). Imprime el promedio con dos decimales.\n\nPista: fixed y setprecision(2) de <iomanip>.",
-   "tests": [{"name": "tres notas", "stdin": "3\n3.5 4.0 5.0", "expected": "4.17"}, {"name": "una nota", "stdin": "1\n2.5", "expected": "2.50"}, {"name": "enteros", "stdin": "4\n1 2 3 4", "expected": "2.50", "hidden": true}]},
-  {"id": "maximo-arreglo", "title": "Máximo y su posición", "topic": "Arreglos", "level": 2,
-   "statement": "Lee un entero n y después n enteros. Imprime el mayor y la posición (desde 1) donde aparece por primera vez, separados por un espacio.\n\nEjemplo: con 5 y 3 8 1 8 2 imprime 8 2.",
-   "tests": [{"name": "repetido", "stdin": "5\n3 8 1 8 2", "expected": "8 2"}, {"name": "uno solo", "stdin": "1\n-4", "expected": "-4 1"}, {"name": "negativos", "stdin": "4\n-1 -7 -2 -9", "expected": "-1 1", "hidden": true}]},
-  {"id": "palindromo", "title": "¿Palíndromo?", "topic": "Cadenas", "level": 3,
-   "statement": "Lee una palabra en minúsculas, sin espacios, e imprime si o no según se lea igual al derecho y al revés.\n\nEjemplos: radar es palíndromo; casa no.",
-   "tests": [{"name": "radar", "stdin": "radar", "expected": "si"}, {"name": "casa", "stdin": "casa", "expected": "no"}, {"name": "una letra", "stdin": "a", "expected": "si"}, {"name": "reconocer", "stdin": "reconocer", "expected": "si", "hidden": true}]}
+ {
+  "id": "saludo",
+  "title": "Saludo",
+  "topic": "Entrada y salida",
+  "level": 1,
+  "statement": "Lee tu nombre (una sola palabra) e imprime exactamente:\n\nHola, Ana!\n\ncambiando Ana por el nombre que leíste.",
+  "tests": [
+   {
+    "name": "Ana",
+    "stdin": "Ana",
+    "expected": "Hola, Ana!"
+   },
+   {
+    "name": "Luis",
+    "stdin": "Luis",
+    "expected": "Hola, Luis!"
+   },
+   {
+    "name": "Otro nombre",
+    "stdin": "Sofia",
+    "expected": "Hola, Sofia!",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "orden-inverso",
+  "title": "Tres números al revés",
+  "topic": "Entrada y salida",
+  "level": 1,
+  "statement": "Lee tres enteros e imprímelos en orden inverso, separados por un espacio.\n\nEjemplo: con 1 2 3 imprime 3 2 1.",
+  "tests": [
+   {
+    "name": "1 2 3",
+    "stdin": "1 2 3",
+    "expected": "3 2 1"
+   },
+   {
+    "name": "Negativos",
+    "stdin": "-1 0 5",
+    "expected": "5 0 -1"
+   },
+   {
+    "name": "Repetidos",
+    "stdin": "7 7 2",
+    "expected": "2 7 7",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "datos-estudiante",
+  "title": "Datos de un estudiante",
+  "topic": "Entrada y salida",
+  "level": 1,
+  "statement": "Lee una edad (entero) y una estatura en metros (decimal). Imprime dos líneas, con este formato:\n\nEdad: 20\nEstatura: 1.75",
+  "tests": [
+   {
+    "name": "20 y 1.75",
+    "stdin": "20 1.75",
+    "expected": "Edad: 20\nEstatura: 1.75"
+   },
+   {
+    "name": "18 y 1.6",
+    "stdin": "18\n1.6",
+    "expected": "Edad: 18\nEstatura: 1.6"
+   },
+   {
+    "name": "Otro",
+    "stdin": "33 1.82",
+    "expected": "Edad: 33\nEstatura: 1.82",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "intercambiar",
+  "title": "Intercambiar dos variables",
+  "topic": "Variables",
+  "level": 1,
+  "statement": "Lee dos enteros en las variables a y b. Intercambia sus valores usando una tercera variable e imprime a y b separados por un espacio.\n\nEjemplo: con 3 8 imprime 8 3.",
+  "tests": [
+   {
+    "name": "3 8",
+    "stdin": "3 8",
+    "expected": "8 3"
+   },
+   {
+    "name": "Iguales",
+    "stdin": "5 5",
+    "expected": "5 5"
+   },
+   {
+    "name": "Negativos",
+    "stdin": "-2 9",
+    "expected": "9 -2",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "parte-entera",
+  "title": "Parte entera",
+  "topic": "Variables",
+  "level": 1,
+  "statement": "Lee un número con decimales en una variable double y guárdalo en una variable int. Imprime la variable int.\n\n¿Qué pasa con los decimales?",
+  "tests": [
+   {
+    "name": "3.99",
+    "stdin": "3.99",
+    "expected": "3"
+   },
+   {
+    "name": "7",
+    "stdin": "7",
+    "expected": "7"
+   },
+   {
+    "name": "Negativo",
+    "stdin": "-2.5",
+    "expected": "-2",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "saldo",
+  "title": "Saldo de una cuenta",
+  "topic": "Variables",
+  "level": 1,
+  "statement": "Lee el saldo inicial, un depósito y un retiro (enteros). Actualiza una sola variable saldo con cada movimiento e imprime el saldo final.\n\nEjemplo: con 100 50 30 imprime 120.",
+  "tests": [
+   {
+    "name": "100 50 30",
+    "stdin": "100 50 30",
+    "expected": "120"
+   },
+   {
+    "name": "Sin movimientos",
+    "stdin": "80 0 0",
+    "expected": "80"
+   },
+   {
+    "name": "Queda en cero",
+    "stdin": "10 5 15",
+    "expected": "0",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "division-residuo",
+  "title": "Cociente y residuo",
+  "topic": "Aritmética",
+  "level": 1,
+  "statement": "Lee dos enteros a y b (b distinto de 0). Imprime el cociente entero y el residuo de a entre b, separados por un espacio.\n\nEjemplo: con 17 5 imprime 3 2.",
+  "tests": [
+   {
+    "name": "17 y 5",
+    "stdin": "17 5",
+    "expected": "3 2"
+   },
+   {
+    "name": "Exacta",
+    "stdin": "20 4",
+    "expected": "5 0"
+   },
+   {
+    "name": "Menor",
+    "stdin": "3 7",
+    "expected": "0 3",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "celsius-fahrenheit",
+  "title": "Celsius a Fahrenheit",
+  "topic": "Aritmética",
+  "level": 1,
+  "statement": "Lee una temperatura en grados Celsius (puede tener decimales) e imprime su equivalente en Fahrenheit con un decimal: F = C × 9 / 5 + 32.\n\nPista: usa fixed y setprecision(1) de <iomanip>.",
+  "tests": [
+   {
+    "name": "agua hirviendo",
+    "stdin": "100",
+    "expected": "212.0"
+   },
+   {
+    "name": "cero",
+    "stdin": "0",
+    "expected": "32.0"
+   },
+   {
+    "name": "-40",
+    "stdin": "-40",
+    "expected": "-40.0"
+   },
+   {
+    "name": "decimales",
+    "stdin": "36.6",
+    "expected": "97.9",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "area-circulo",
+  "title": "Área de un círculo",
+  "topic": "Aritmética",
+  "level": 1,
+  "statement": "Lee el radio de un círculo (puede tener decimales) e imprime su área con dos decimales. Usa 3.14159 como valor de π.\n\nPista: fixed y setprecision(2) de <iomanip>.",
+  "tests": [
+   {
+    "name": "Radio 1",
+    "stdin": "1",
+    "expected": "3.14"
+   },
+   {
+    "name": "Radio 2.5",
+    "stdin": "2.5",
+    "expected": "19.63"
+   },
+   {
+    "name": "Radio 10",
+    "stdin": "10",
+    "expected": "314.16",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "segundos-hms",
+  "title": "Segundos a horas, minutos y segundos",
+  "topic": "Aritmética",
+  "level": 2,
+  "statement": "Lee una cantidad de segundos e imprime cuántas horas, minutos y segundos son, separados por un espacio.\n\nEjemplo: con 3661 imprime 1 1 1.",
+  "tests": [
+   {
+    "name": "3661",
+    "stdin": "3661",
+    "expected": "1 1 1"
+   },
+   {
+    "name": "Menos de un minuto",
+    "stdin": "59",
+    "expected": "0 0 59"
+   },
+   {
+    "name": "Casi un día",
+    "stdin": "86399",
+    "expected": "23 59 59",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "par-impar",
+  "title": "¿Par o impar?",
+  "topic": "Condicionales",
+  "level": 1,
+  "statement": "Lee un entero e imprime exactamente la palabra par o impar.\n\nOjo con los números negativos: en C++, -3 % 2 vale -1.",
+  "tests": [
+   {
+    "name": "4",
+    "stdin": "4",
+    "expected": "par"
+   },
+   {
+    "name": "7",
+    "stdin": "7",
+    "expected": "impar"
+   },
+   {
+    "name": "0",
+    "stdin": "0",
+    "expected": "par"
+   },
+   {
+    "name": "negativo",
+    "stdin": "-3",
+    "expected": "impar",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "aprobado",
+  "title": "¿Aprobó?",
+  "topic": "Condicionales",
+  "level": 1,
+  "statement": "Lee una nota de 0.0 a 5.0 e imprime exactamente aprobado si es mayor o igual a 3.0, o reprobado si no.",
+  "tests": [
+   {
+    "name": "3.0",
+    "stdin": "3.0",
+    "expected": "aprobado"
+   },
+   {
+    "name": "2.9",
+    "stdin": "2.9",
+    "expected": "reprobado"
+   },
+   {
+    "name": "5",
+    "stdin": "5",
+    "expected": "aprobado",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "mayor-de-tres",
+  "title": "El mayor de tres",
+  "topic": "Condicionales",
+  "level": 1,
+  "statement": "Lee tres enteros e imprime el mayor.\n\nImprime solo el número.",
+  "tests": [
+   {
+    "name": "distintos",
+    "stdin": "3 9 2",
+    "expected": "9"
+   },
+   {
+    "name": "negativos",
+    "stdin": "-1 -5 -3",
+    "expected": "-1"
+   },
+   {
+    "name": "repetidos",
+    "stdin": "4 4 1",
+    "expected": "4",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "bisiesto",
+  "title": "Año bisiesto",
+  "topic": "Condicionales",
+  "level": 2,
+  "statement": "Lee un año e imprime si o no según sea bisiesto.\n\nUn año es bisiesto si es divisible entre 4, excepto los divisibles entre 100 que no lo son entre 400.",
+  "tests": [
+   {
+    "name": "2024",
+    "stdin": "2024",
+    "expected": "si"
+   },
+   {
+    "name": "2023",
+    "stdin": "2023",
+    "expected": "no"
+   },
+   {
+    "name": "1900",
+    "stdin": "1900",
+    "expected": "no"
+   },
+   {
+    "name": "2000",
+    "stdin": "2000",
+    "expected": "si",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "tipo-triangulo",
+  "title": "Tipo de triángulo",
+  "topic": "Condicionales",
+  "level": 2,
+  "statement": "Lee los tres lados de un triángulo (enteros) e imprime exactamente equilatero, isosceles o escaleno, sin tildes.",
+  "tests": [
+   {
+    "name": "3 3 3",
+    "stdin": "3 3 3",
+    "expected": "equilatero"
+   },
+   {
+    "name": "3 4 5",
+    "stdin": "3 4 5",
+    "expected": "escaleno"
+   },
+   {
+    "name": "Dos iguales",
+    "stdin": "3 5 3",
+    "expected": "isosceles"
+   },
+   {
+    "name": "Otro orden",
+    "stdin": "5 3 3",
+    "expected": "isosceles",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "suma-1-n",
+  "title": "Suma de 1 a n",
+  "topic": "Ciclos",
+  "level": 1,
+  "statement": "Lee un entero n (n ≥ 0) e imprime la suma 1 + 2 + … + n.\n\nImprime solo el resultado, sin mensajes como «Ingrese un número».\n\nEjemplo: con 5 imprime 15.",
+  "tests": [
+   {
+    "name": "n = 5",
+    "stdin": "5",
+    "expected": "15"
+   },
+   {
+    "name": "n = 0",
+    "stdin": "0",
+    "expected": "0"
+   },
+   {
+    "name": "n grande",
+    "stdin": "100",
+    "expected": "5050",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "factorial",
+  "title": "Factorial",
+  "topic": "Ciclos",
+  "level": 1,
+  "statement": "Lee un entero n (0 ≤ n ≤ 20) e imprime n!.\n\nRecuerda que 0! = 1. Con n = 20 el resultado no cabe en un int: usa long long.",
+  "tests": [
+   {
+    "name": "5!",
+    "stdin": "5",
+    "expected": "120"
+   },
+   {
+    "name": "0!",
+    "stdin": "0",
+    "expected": "1"
+   },
+   {
+    "name": "20!",
+    "stdin": "20",
+    "expected": "2432902008176640000",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "tabla-multiplicar",
+  "title": "Tabla de multiplicar",
+  "topic": "Ciclos",
+  "level": 1,
+  "statement": "Lee un entero n e imprime su tabla del 1 al 10, una línea por multiplicación, con este formato:\n\n7 x 1 = 7\n7 x 2 = 14\n…\n7 x 10 = 70",
+  "tests": [
+   {
+    "name": "tabla del 7",
+    "stdin": "7",
+    "expected": "7 x 1 = 7\n7 x 2 = 14\n7 x 3 = 21\n7 x 4 = 28\n7 x 5 = 35\n7 x 6 = 42\n7 x 7 = 49\n7 x 8 = 56\n7 x 9 = 63\n7 x 10 = 70"
+   },
+   {
+    "name": "tabla del 1",
+    "stdin": "1",
+    "expected": "1 x 1 = 1\n1 x 2 = 2\n1 x 3 = 3\n1 x 4 = 4\n1 x 5 = 5\n1 x 6 = 6\n1 x 7 = 7\n1 x 8 = 8\n1 x 9 = 9\n1 x 10 = 10",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "contar-digitos",
+  "title": "Contar dígitos",
+  "topic": "Ciclos",
+  "level": 2,
+  "statement": "Lee un entero n (n ≥ 0) e imprime cuántos dígitos tiene.\n\n¿Qué pasa con el 0?",
+  "tests": [
+   {
+    "name": "12345",
+    "stdin": "12345",
+    "expected": "5"
+   },
+   {
+    "name": "0",
+    "stdin": "0",
+    "expected": "1"
+   },
+   {
+    "name": "un millón",
+    "stdin": "1000000",
+    "expected": "7",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "invertir-numero",
+  "title": "Invertir un número",
+  "topic": "Ciclos",
+  "level": 2,
+  "statement": "Lee un entero n (n ≥ 0) e imprime sus dígitos al revés, como número.\n\nEjemplo: 1234 da 4321 y 1200 da 21.",
+  "tests": [
+   {
+    "name": "1234",
+    "stdin": "1234",
+    "expected": "4321"
+   },
+   {
+    "name": "un dígito",
+    "stdin": "7",
+    "expected": "7"
+   },
+   {
+    "name": "ceros al final",
+    "stdin": "1200",
+    "expected": "21",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "es-primo",
+  "title": "¿Es primo?",
+  "topic": "Ciclos",
+  "level": 2,
+  "statement": "Lee un entero n (n ≥ 1) e imprime si o no según sea primo.\n\nRecuerda: el 1 no es primo.",
+  "tests": [
+   {
+    "name": "7",
+    "stdin": "7",
+    "expected": "si"
+   },
+   {
+    "name": "9",
+    "stdin": "9",
+    "expected": "no"
+   },
+   {
+    "name": "1",
+    "stdin": "1",
+    "expected": "no"
+   },
+   {
+    "name": "97",
+    "stdin": "97",
+    "expected": "si",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "fibonacci",
+  "title": "Sucesión de Fibonacci",
+  "topic": "Ciclos",
+  "level": 2,
+  "statement": "Lee un entero n (1 ≤ n ≤ 40) e imprime los primeros n términos de la sucesión de Fibonacci separados por un espacio, empezando por 0 1.\n\nEjemplo: con 7 imprime 0 1 1 2 3 5 8.",
+  "tests": [
+   {
+    "name": "7 términos",
+    "stdin": "7",
+    "expected": "0 1 1 2 3 5 8"
+   },
+   {
+    "name": "1 término",
+    "stdin": "1",
+    "expected": "0"
+   },
+   {
+    "name": "2 términos",
+    "stdin": "2",
+    "expected": "0 1",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "cuadrado-funcion",
+  "title": "Función cuadrado",
+  "topic": "Funciones",
+  "level": 1,
+  "statement": "Escribe una función int cuadrado(int x) que devuelva x al cuadrado. En main, lee un entero, llama a la función e imprime el resultado.",
+  "tests": [
+   {
+    "name": "5",
+    "stdin": "5",
+    "expected": "25"
+   },
+   {
+    "name": "0",
+    "stdin": "0",
+    "expected": "0"
+   },
+   {
+    "name": "Negativo",
+    "stdin": "-3",
+    "expected": "9",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "potencia-funcion",
+  "title": "Función potencia",
+  "topic": "Funciones",
+  "level": 2,
+  "statement": "Escribe una función long long potencia(int base, int exponente) que calcule la potencia con un ciclo, sin usar pow. Lee la base y el exponente (exponente ≥ 0) e imprime el resultado.",
+  "tests": [
+   {
+    "name": "2 a la 10",
+    "stdin": "2 10",
+    "expected": "1024"
+   },
+   {
+    "name": "Exponente 0",
+    "stdin": "5 0",
+    "expected": "1"
+   },
+   {
+    "name": "3 a la 4",
+    "stdin": "3 4",
+    "expected": "81",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "mcd-funcion",
+  "title": "Máximo común divisor",
+  "topic": "Funciones",
+  "level": 2,
+  "statement": "Escribe una función int mcd(int a, int b) que devuelva el máximo común divisor de dos enteros positivos. Lee a y b e imprime el resultado.",
+  "tests": [
+   {
+    "name": "12 y 18",
+    "stdin": "12 18",
+    "expected": "6"
+   },
+   {
+    "name": "Sin divisores comunes",
+    "stdin": "7 13",
+    "expected": "1"
+   },
+   {
+    "name": "100 y 75",
+    "stdin": "100 75",
+    "expected": "25",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "primos-rango",
+  "title": "Primos en un rango",
+  "topic": "Funciones",
+  "level": 3,
+  "statement": "Escribe una función bool esPrimo(int n). Lee dos enteros a y b (a ≤ b) e imprime los primos entre a y b, incluidos, separados por un espacio. En cada caso de prueba hay al menos un primo.",
+  "tests": [
+   {
+    "name": "1 a 10",
+    "stdin": "1 10",
+    "expected": "2 3 5 7"
+   },
+   {
+    "name": "10 a 20",
+    "stdin": "10 20",
+    "expected": "11 13 17 19"
+   },
+   {
+    "name": "Un solo número",
+    "stdin": "2 2",
+    "expected": "2",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "invertir-arreglo",
+  "title": "Invertir un arreglo",
+  "topic": "Arreglos",
+  "level": 1,
+  "statement": "Lee un entero n y después n enteros en un arreglo. Imprímelos del último al primero, separados por un espacio.",
+  "tests": [
+   {
+    "name": "Cuatro",
+    "stdin": "4\n1 2 3 4",
+    "expected": "4 3 2 1"
+   },
+   {
+    "name": "Uno",
+    "stdin": "1\n9",
+    "expected": "9"
+   },
+   {
+    "name": "Con negativos",
+    "stdin": "3\n-1 0 1",
+    "expected": "1 0 -1",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "cuantos-aprobaron",
+  "title": "¿Cuántos aprobaron?",
+  "topic": "Arreglos",
+  "level": 1,
+  "statement": "Lee un entero n y después n notas (pueden tener decimales). Imprime cuántas notas son mayores o iguales a 3.0.",
+  "tests": [
+   {
+    "name": "Tres notas",
+    "stdin": "3\n2.5 3.0 4.8",
+    "expected": "2"
+   },
+   {
+    "name": "Ninguna",
+    "stdin": "2\n1 2.9",
+    "expected": "0"
+   },
+   {
+    "name": "Todas",
+    "stdin": "3\n3 4 5",
+    "expected": "3",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "promedio-notas",
+  "title": "Promedio de notas",
+  "topic": "Arreglos",
+  "level": 2,
+  "statement": "Lee un entero n y después n notas (pueden tener decimales). Imprime el promedio con dos decimales.\n\nPista: fixed y setprecision(2) de <iomanip>.",
+  "tests": [
+   {
+    "name": "tres notas",
+    "stdin": "3\n3.5 4.0 5.0",
+    "expected": "4.17"
+   },
+   {
+    "name": "una nota",
+    "stdin": "1\n2.5",
+    "expected": "2.50"
+   },
+   {
+    "name": "enteros",
+    "stdin": "4\n1 2 3 4",
+    "expected": "2.50",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "maximo-arreglo",
+  "title": "Máximo y su posición",
+  "topic": "Arreglos",
+  "level": 2,
+  "statement": "Lee un entero n y después n enteros. Imprime el mayor y la posición (desde 1) donde aparece por primera vez, separados por un espacio.\n\nEjemplo: con 5 y 3 8 1 8 2 imprime 8 2.",
+  "tests": [
+   {
+    "name": "repetido",
+    "stdin": "5\n3 8 1 8 2",
+    "expected": "8 2"
+   },
+   {
+    "name": "uno solo",
+    "stdin": "1\n-4",
+    "expected": "-4 1"
+   },
+   {
+    "name": "negativos",
+    "stdin": "4\n-1 -7 -2 -9",
+    "expected": "-1 1",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "palindromo",
+  "title": "¿Palíndromo?",
+  "topic": "Arreglos",
+  "level": 3,
+  "statement": "Lee una palabra en minúsculas, sin espacios, e imprime si o no según se lea igual al derecho y al revés.\n\nEjemplos: radar es palíndromo; casa no.",
+  "tests": [
+   {
+    "name": "radar",
+    "stdin": "radar",
+    "expected": "si"
+   },
+   {
+    "name": "casa",
+    "stdin": "casa",
+    "expected": "no"
+   },
+   {
+    "name": "una letra",
+    "stdin": "a",
+    "expected": "si"
+   },
+   {
+    "name": "reconocer",
+    "stdin": "reconocer",
+    "expected": "si",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "suma-arreglo-funcion",
+  "title": "Suma con una función",
+  "topic": "Arreglos y funciones",
+  "level": 1,
+  "statement": "Escribe una función int suma(int datos[], int n) que devuelva la suma del arreglo. En main, lee n y después n enteros, llama a la función e imprime el resultado.",
+  "tests": [
+   {
+    "name": "Cinco",
+    "stdin": "5\n1 2 3 4 5",
+    "expected": "15"
+   },
+   {
+    "name": "Uno",
+    "stdin": "1\n-7",
+    "expected": "-7"
+   },
+   {
+    "name": "Se cancelan",
+    "stdin": "4\n1 -1 2 -2",
+    "expected": "0",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "buscar-elemento",
+  "title": "Buscar en un arreglo",
+  "topic": "Arreglos y funciones",
+  "level": 2,
+  "statement": "Escribe una función int buscar(int datos[], int n, int x) que devuelva la primera posición de x, contando desde 1, o -1 si no está. Lee n, luego n enteros y luego x. Imprime el resultado.",
+  "tests": [
+   {
+    "name": "Está",
+    "stdin": "5\n4 8 15 16 23\n15",
+    "expected": "3"
+   },
+   {
+    "name": "No está",
+    "stdin": "3\n1 2 3\n9",
+    "expected": "-1"
+   },
+   {
+    "name": "Repetido",
+    "stdin": "4\n7 7 7 7\n7",
+    "expected": "1",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "ordenar-arreglo",
+  "title": "Ordenar un arreglo",
+  "topic": "Arreglos y funciones",
+  "level": 3,
+  "statement": "Escribe una función void ordenar(int datos[], int n) que ordene el arreglo de menor a mayor, sin usar sort. Lee n y después n enteros, ordénalos e imprímelos separados por un espacio.",
+  "tests": [
+   {
+    "name": "Cinco",
+    "stdin": "5\n5 2 9 1 7",
+    "expected": "1 2 5 7 9"
+   },
+   {
+    "name": "Con repetidos",
+    "stdin": "3\n3 3 1",
+    "expected": "1 3 3"
+   },
+   {
+    "name": "Ya ordenado",
+    "stdin": "4\n1 2 3 4",
+    "expected": "1 2 3 4",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "suma-matriz",
+  "title": "Suma de una matriz",
+  "topic": "Matrices",
+  "level": 2,
+  "statement": "Lee las filas f y las columnas c, y después los valores de la matriz fila por fila. Imprime la suma de todos sus elementos.",
+  "tests": [
+   {
+    "name": "2 por 3",
+    "stdin": "2 3\n1 2 3\n4 5 6",
+    "expected": "21"
+   },
+   {
+    "name": "1 por 1",
+    "stdin": "1 1\n-4",
+    "expected": "-4"
+   },
+   {
+    "name": "Se cancelan",
+    "stdin": "2 2\n1 -1\n2 -2",
+    "expected": "0",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "diagonal-principal",
+  "title": "Diagonal principal",
+  "topic": "Matrices",
+  "level": 2,
+  "statement": "Lee n y después una matriz cuadrada de n por n. Imprime la suma de su diagonal principal.",
+  "tests": [
+   {
+    "name": "3 por 3",
+    "stdin": "3\n1 2 3\n4 5 6\n7 8 9",
+    "expected": "15"
+   },
+   {
+    "name": "1 por 1",
+    "stdin": "1\n5",
+    "expected": "5"
+   },
+   {
+    "name": "2 por 2",
+    "stdin": "2\n1 9\n9 1",
+    "expected": "2",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "transpuesta",
+  "title": "Matriz transpuesta",
+  "topic": "Matrices",
+  "level": 3,
+  "statement": "Lee las filas f y las columnas c, y después la matriz. Imprime su transpuesta: las columnas pasan a ser filas. Separa los valores de cada fila con un espacio.",
+  "tests": [
+   {
+    "name": "2 por 3",
+    "stdin": "2 3\n1 2 3\n4 5 6",
+    "expected": "1 4\n2 5\n3 6"
+   },
+   {
+    "name": "1 por 2",
+    "stdin": "1 2\n7 8",
+    "expected": "7\n8"
+   },
+   {
+    "name": "2 por 2",
+    "stdin": "2 2\n1 2\n3 4",
+    "expected": "1 3\n2 4",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "rectangulo-struct",
+  "title": "Rectángulo con struct",
+  "topic": "Estructuras",
+  "level": 1,
+  "statement": "Define un struct Rectangulo con ancho y alto (enteros). Lee ambos valores e imprime el área y el perímetro separados por un espacio.",
+  "tests": [
+   {
+    "name": "3 por 4",
+    "stdin": "3 4",
+    "expected": "12 14"
+   },
+   {
+    "name": "Cuadrado",
+    "stdin": "5 5",
+    "expected": "25 20"
+   },
+   {
+    "name": "1 por 10",
+    "stdin": "1 10",
+    "expected": "10 22",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "distancia-puntos",
+  "title": "Distancia entre puntos",
+  "topic": "Estructuras",
+  "level": 2,
+  "statement": "Define un struct Punto con x e y (decimales). Lee dos puntos e imprime la distancia entre ellos con dos decimales.\n\nPista: sqrt de <cmath>, y fixed y setprecision(2) de <iomanip>.",
+  "tests": [
+   {
+    "name": "3-4-5",
+    "stdin": "0 0 3 4",
+    "expected": "5.00"
+   },
+   {
+    "name": "Mismo punto",
+    "stdin": "1 1 1 1",
+    "expected": "0.00"
+   },
+   {
+    "name": "Diagonal",
+    "stdin": "0 0 1 1",
+    "expected": "1.41",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "mejor-estudiante",
+  "title": "Mejor estudiante",
+  "topic": "Estructuras",
+  "level": 3,
+  "statement": "Define un struct Estudiante con nombre (una palabra) y nota. Lee n y después n estudiantes, cada uno con su nombre y su nota. Imprime el nombre del que tiene la nota más alta; si hay empate, el primero.",
+  "tests": [
+   {
+    "name": "Tres",
+    "stdin": "3\nAna 4.5\nLuis 3.2\nSofia 4.8",
+    "expected": "Sofia"
+   },
+   {
+    "name": "Empate",
+    "stdin": "2\nAna 4.0\nLuis 4.0",
+    "expected": "Ana"
+   },
+   {
+    "name": "Uno",
+    "stdin": "1\nMarta 2.0",
+    "expected": "Marta",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "guardar-y-sumar",
+  "title": "Guardar y sumar",
+  "topic": "Archivos de texto",
+  "level": 2,
+  "statement": "Lee n y después n enteros. Escríbelos en el archivo /tmp/numeros.txt con ofstream y ciérralo. Vuelve a abrirlo con ifstream, léelos e imprime su suma.\n\nEn EduTrace, los archivos solo se pueden crear dentro de la carpeta /tmp, así que usa exactamente la ruta que indica el enunciado.",
+  "tests": [
+   {
+    "name": "Tres",
+    "stdin": "3\n1 2 3",
+    "expected": "6"
+   },
+   {
+    "name": "Uno",
+    "stdin": "1\n-5",
+    "expected": "-5"
+   },
+   {
+    "name": "Cuatro",
+    "stdin": "4\n10 20 30 40",
+    "expected": "100",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "contar-lineas",
+  "title": "Contar líneas",
+  "topic": "Archivos de texto",
+  "level": 2,
+  "statement": "Lee líneas con getline hasta que se acabe la entrada y escríbelas en el archivo /tmp/lineas.txt. Ciérralo, vuelve a abrirlo y cuenta cuántas líneas tiene. Imprime esa cantidad.\n\nEn EduTrace, los archivos solo se pueden crear dentro de la carpeta /tmp, así que usa exactamente la ruta que indica el enunciado.",
+  "tests": [
+   {
+    "name": "Dos",
+    "stdin": "hola\nmundo\n",
+    "expected": "2"
+   },
+   {
+    "name": "Una",
+    "stdin": "una sola",
+    "expected": "1"
+   },
+   {
+    "name": "Tres",
+    "stdin": "a b\nc d\ne f\n",
+    "expected": "3",
+    "hidden": true
+   }
+  ]
+ },
+ {
+  "id": "palabra-mas-larga",
+  "title": "Palabra más larga",
+  "topic": "Archivos de texto",
+  "level": 3,
+  "statement": "Lee palabras hasta que se acabe la entrada y guárdalas en el archivo /tmp/palabras.txt, una por línea. Ciérralo, vuelve a abrirlo e imprime la palabra más larga; si hay empate, la primera.\n\nEn EduTrace, los archivos solo se pueden crear dentro de la carpeta /tmp, así que usa exactamente la ruta que indica el enunciado.",
+  "tests": [
+   {
+    "name": "Tres",
+    "stdin": "sol luna estrella",
+    "expected": "estrella"
+   },
+   {
+    "name": "Empate",
+    "stdin": "ala ojo",
+    "expected": "ala"
+   },
+   {
+    "name": "Una",
+    "stdin": "programar",
+    "expected": "programar",
+    "hidden": true
+   }
+  ]
+ }
 ]

@@ -7,15 +7,19 @@ Plataforma de retroalimentación formativa para **Introducción a la Programaci�
 ## Qué hace
 
 **Estudiante**
-- Editor C++ con compilación y ejecución aisladas (`g++ -std=c++17` dentro de `bubblewrap`), con entrada estándar.
+- Editor C++ con compilación y ejecución aisladas (`g++ -std=c++17` dentro de `bubblewrap`), con entrada estándar. Cuando un programa lee con `cin` después de mostrar un mensaje, la salida salta de línea sola, como en una terminal.
 - Talleres con enunciado, archivos, fecha límite y casos de prueba: al compilar ve qué casos pasa; de los ocultos, solo si pasan.
 - Si no compila o falla al ejecutar, ve en español qué significa cada error y en qué línea, sin usar la IA.
 - Agrega sus propios casos de prueba, que corren con los del profesor y se guardan en su navegador.
-- Practica con un banco de 14 ejercicios que se corrigen solos, y ve su progreso: notas, niveles por RAE y ejercicios resueltos.
+- Practica con un banco de 43 ejercicios que se corrigen solos, desde entrada y salida hasta archivos de texto, y ve su progreso: notas, niveles por RAE y ejercicios resueltos.
 - Entregas oficiales y su historial, con la revisión del profesor, el nivel por RAE y quién la aprobó.
 - Puede preguntar sobre cada retroalimentación y responder si la entendió.
 - Si la clase está en modo inmediato, también puede pedir retroalimentación formal o informal, pistas graduadas (de la más general a la más concreta, sin la solución) y chatear con un tutor de IA (hasta `AI_REQUESTS_PER_HOUR` pedidos por hora).
 - Recibe avisos en la campana, y por correo si lo permite, cuando le devuelven o actualizan una revisión, le responden una pregunta o un monitor comenta su código.
+
+**Para todos**
+- Página de inicio pública en `/inicio`, con qué es EduTrace, cómo funciona y cómo se cuidan los datos. Quien entra a `/` sin sesión llega allí.
+- Barra de búsqueda en la parte superior (`Ctrl+K`). Sin importar tildes ni mayúsculas, encuentra lo que cada rol puede ver: estudiantes, clases, talleres, materias, ejercicios y secciones.
 
 **Profesor**
 - Materias, clases con código de ingreso, talleres, casos de prueba y los 4 RAE oficiales del curso 33698.
@@ -26,8 +30,9 @@ Plataforma de retroalimentación formativa para **Introducción a la Programaci�
   - indicadores de tiempos, cola y comprensión con sus metas;
   - tiempo estimado de revisión por taller;
   - errores frecuentes;
-  - diagrama de rendimiento por RAE;
+  - rendimiento por RAE: el nivel lo marca el profesor y la nota también pesa. Si se aleja un poco del rango habitual del nivel, se señala con una flecha; si se aleja medio punto o más, queda en «Para revisar»;
   - exportación de notas y revisiones en CSV.
+- **Historial de cursos** con las materias en curso y las de periodos anteriores, y **Cómo va el curso** con la participación, las revisiones pendientes, las notas y los RAE de todas las clases de una materia.
 - Responde las preguntas de los estudiantes, y recibe un aviso si la IA falla.
 - Marca un taller como **evaluación**: hasta su fecha límite, los estudiantes de la clase no pueden usar la IA ni el chat.
 - Genera un código de un solo uso para que un estudiante que olvidó la contraseña la restablezca.
@@ -36,13 +41,14 @@ Plataforma de retroalimentación formativa para **Introducción a la Programaci�
 - **Cierra el periodo** de una materia: ya no recibe entregas ni inscripciones y sus datos se borran solos después del plazo de conservación (`RETENTION_DAYS`).
 
 **Monitor**
-- Ve las entregas de las clases asignadas, comenta y marca el código, y responde preguntas. No califica.
+- Ve las entregas de las clases asignadas, comenta y marca el código, y responde preguntas. No califica ni ve las notas de los demás.
+- Para su propio trabajo tiene todo lo de un estudiante: se inscribe con código, compila, entrega, practica y consulta su historial y su progreso, con los mismos límites de IA. No puede ser estudiante y monitor de la misma materia, porque para ser monitor ya debió cursarla; cada periodo copiado es una materia aparte.
 
 **IA**
 - Modelo local por Ollama (por defecto `llama3.1:8b`). Ningún dato sale del servidor y el modelo nunca recibe el nombre ni el email del estudiante.
 - La retroalimentación sigue las tres preguntas de Hattie y Timperley e incluye observaciones de legibilidad, mantenibilidad y documentación. Si el modelo omite algo, se completa solo.
 - Un filtro impide que la respuesta incluya la solución del ejercicio.
-- Cada propuesta guarda qué modelo y qué versión del prompt la generó; la clase muestra cuántas propuestas de cada modelo se aprobaron sin cambios, se editaron o se descartaron.
+- Cada propuesta guarda qué modelo y qué versión del prompt la generó. No se muestra en pantalla; la exportación de revisiones de la clase incluye el modelo.
 
 ## Arquitectura
 

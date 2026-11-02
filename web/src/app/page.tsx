@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { Suspense, useState, useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import OutputPanel from "@/components/OutputPanel";
 import FeedbackPanel from "@/components/FeedbackPanel";
 import ChatPanel from "@/components/ChatPanel";
@@ -13,6 +14,7 @@ import StudentClasses from "@/components/StudentClasses";
 import StudentAssignments from "@/components/StudentAssignments";
 import { useNow } from "@/components/Deadline";
 import { deadlineState, formatDateTime } from "@/lib/format";
+import { isLearnerRole } from "@/lib/role";
 import MySubmissions from "@/components/MySubmissions";
 
 import { TestsEditor } from "@/components/TeacherAssignments";
@@ -58,7 +60,9 @@ export default function Home() {
   return (
     <RequireAuth>
       <AppShell>
-        <CompilerPage />
+        <Suspense>
+          <CompilerPage />
+        </Suspense>
       </AppShell>
     </RequireAuth>
   );
@@ -166,7 +170,7 @@ function CompilerPage() {
   const anyFeedbackLoading = feedback.formal.loading || feedback.informal.loading;
 
   // Clases, talleres y envío al profesor.
-  const isStudent = user?.role === "student";
+  const isLearner = !!user && isLearnerRole(user.role);
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [groupId, setGroupId] = useState<string | null>(null);
   const [assignments, setAssignments] = useState<StudentAssignment[]>([]);
@@ -183,7 +187,7 @@ function CompilerPage() {
   }, []);
 
   useEffect(() => {
-    if (!isStudent) return;
+    if (!isLearner) return;
     listMyGroups()
       .then((gs) => {
         setGroups(gs);
@@ -191,7 +195,7 @@ function CompilerPage() {
       })
       .catch(() => setGroups([]));
     loadAssignments();
-  }, [isStudent, loadAssignments]);
+  }, [isLearner, loadAssignments]);
 
   const groupAssignments = assignments.filter((a) => a.group_id === groupId);
   // Al cambiar de clase, el taller elegido deja de valer si no es de esa clase.
@@ -203,14 +207,27 @@ function CompilerPage() {
 
   const [activeTab, setActiveTab] = useState<"output" | FeedbackMode | "chat" | "pista">("output");
 
+  const params = useSearchParams();
+  const wantedExercise = params.get("ejercicio");
+  const wantedGroup = params.get("clase");
+  const wantedAssignment = params.get("taller");
   const [exercise, setExercise] = useState<Exercise | null>(null);
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("ejercicio");
-    if (!id) return;
+    if (!wantedExercise) {
+      setExercise(null);
+      return;
+    }
     listExercises()
-      .then((list) => setExercise(list.find((e) => e.id === id) ?? null))
+      .then((list) => setExercise(list.find((e) => e.id === wantedExercise) ?? null))
       .catch(() => setExercise(null));
-  }, []);
+  }, [wantedExercise]);
+  useEffect(() => {
+    if (!wantedGroup || !groups.some((g) => g.id === wantedGroup)) return;
+    if (wantedAssignment && !assignments.some((a) => a.id === wantedAssignment)) return;
+    setGroupId(wantedGroup);
+    setAssignmentId(wantedAssignment);
+    window.history.replaceState(null, "", "/");
+  }, [wantedGroup, wantedAssignment, groups, assignments]);
   const leaveExercise = () => {
     setExercise(null);
     window.history.replaceState(null, "", "/");
@@ -262,7 +279,7 @@ function CompilerPage() {
         .map((t) => ({ id: "", name: t.name, stdin: t.stdin, expected: t.expected, match: t.match, hidden: false }));
       const context = exercise
         ? { exercise_id: exercise.id, own_tests: own }
-        : { ...(isStudent && groupId ? { group_id: groupId, assignment_id: assignmentId ?? undefined } : {}), own_tests: own };
+        : { ...(isLearner && groupId ? { group_id: groupId, assignment_id: assignmentId ?? undefined } : {}), own_tests: own };
       const result = await compileCode(code, stdin, context);
       setCompileResult(result);
       setCompiledRun({ code, stdin });
@@ -274,14 +291,14 @@ function CompilerPage() {
     } finally {
       setIsCompiling(false);
     }
-  }, [code, stdin, setUser, isStudent, groupId, assignmentId, exercise, ownTests]);
+  }, [code, stdin, setUser, isLearner, groupId, assignmentId, exercise, ownTests]);
 
   const aiContext = (mode: AIRequestMode): FeedbackContext => {
     const upToDate = compileResult !== null && compiledRun?.code === code;
     const base = {
       mode,
       code,
-      assignment_id: (isStudent && contextAssignment) || undefined,
+      assignment_id: (isLearner && contextAssignment) || undefined,
       exercise_id: exercise?.id,
       tests: undefined as CompileResult["tests"],
     };
@@ -383,7 +400,7 @@ function CompilerPage() {
       setSendStatus({
         ok: true,
         text:
-          `Enviado a ${group.course_name} · ${group.name}${assignment ? ` (${assignment.title})` : ""}. ` +
+          `Enviado a ${group.course_name}, ${group.name}${assignment ? ` (${assignment.title})` : ""}. ` +
           `Tu profesor ya puede verlo${extras.length ? ` junto con ${extras.join(" y ")}` : ""}.${tests}${next}`,
       });
     } catch (err) {
@@ -398,14 +415,14 @@ function CompilerPage() {
   const firstName = user.name.split(" ")[0];
   const openGroups = groups.filter((g) => !g.closed_at);
   const currentGroup = openGroups.find((g) => g.id === groupId);
-  const exam = isStudent
+  const exam = isLearner
     ? openGroups.map((g) => g.evaluation).find((e) => e && new Date(e.until).getTime() > now)
     : undefined;
   const examNote = exam
     ? `Hay una evaluación en curso («${exam.title}»): la IA y el chat están desactivados hasta el ${formatDateTime(exam.until)}.`
     : "";
   const aiAllowed =
-    !isStudent ||
+    !isLearner ||
     (!exam && (contextAssignment ? currentGroup?.ai_mode === "inmediata" : openGroups.every((g) => g.ai_mode === "inmediata")));
   const anyAILoading = anyFeedbackLoading || hints.loading;
   const hintsLeft = hints.code === code && !hints.error ? 3 - hints.items.length : 3;
@@ -431,8 +448,16 @@ function CompilerPage() {
             </div>
           </div>
           <div className="flex gap-3">
-            <StatChip value={stats.compiles} label="compilaciones" tone="mint" />
-            <StatChip value={stats.feedbacks} label="retroalimentaciones" tone="peach" />
+            <StatChip
+              value={stats.compiles}
+              label={stats.compiles === 1 ? "vez que has compilado" : "veces que has compilado"}
+              tone="mint"
+            />
+            <StatChip
+              value={stats.feedbacks}
+              label={stats.feedbacks === 1 ? "retroalimentación pedida" : "retroalimentaciones pedidas"}
+              tone="peach"
+            />
           </div>
         </div>
         {!online && (
@@ -446,7 +471,7 @@ function CompilerPage() {
             {examNote} Puedes compilar, probar tu código con los casos y enviarlo.
           </p>
         )}
-        {isStudent && (
+        {isLearner && (
           <div className="mt-4">
             <StudentClasses
               groups={openGroups}
@@ -471,7 +496,7 @@ function CompilerPage() {
           </div>
         )}
       </section>
-      {isStudent && <MySubmissions refreshKey={sentCount} />}
+      {isLearner && <MySubmissions refreshKey={sentCount} />}
       {exercise ? (
         <Card
           className="rise-in"
@@ -506,7 +531,7 @@ function CompilerPage() {
           </div>
         </Card>
       ) : (
-        isStudent &&
+        isLearner &&
         groupAssignments.length > 0 && <StudentAssignments assignments={groupAssignments} selectedId={assignmentId} onSelect={setAssignmentId} />
       )}
 
@@ -570,7 +595,7 @@ function CompilerPage() {
                 )}
                 {isCompiling ? "Compilando..." : "Compilar"}
               </button>
-              {isStudent && !exercise && (
+              {isLearner && !exercise && (
                 <button
                   onClick={handleSend}
                   disabled={sending || !groupId || !code.trim() || closed}
@@ -609,19 +634,24 @@ function CompilerPage() {
           <section className="rise-in rounded-3xl bg-peach-100 p-5 shadow-soft">
             <div className="mb-2 flex items-center justify-between">
               <h2 className="font-bold">Entrada</h2>
-              <span className="text-xs font-semibold text-peach-700">datos para cin / scanf</span>
+              <span className="text-xs font-semibold text-peach-700">datos para leer</span>
             </div>
+            <p className="mb-2 text-xs leading-relaxed text-ink">
+              Si tu programa le pide datos a la persona que lo usa (con <code className="font-mono font-bold">cin</code>), escríbelos aquí antes de
+              compilar, en el mismo orden en que los pide. Pon cada dato en su propia línea.
+            </p>
             <textarea
               value={stdin}
               onChange={(e) => setStdin(e.target.value)}
-              placeholder="Escribe aquí la entrada para tu programa..."
+              aria-label="Datos que leerá tu programa"
+              placeholder={"Por ejemplo, si pide dos números:\n5\n3"}
               className="h-24 w-full resize-y rounded-2xl border border-peach-200 bg-white/80 p-3 font-mono text-sm
                 text-ink placeholder-ink-faint focus:border-peach-400 focus:outline-none focus:ring-2 focus:ring-peach-200"
               spellCheck={false}
             />
           </section>
 
-          {isStudent && (
+          {isLearner && (
             <details className="rise-in rounded-3xl bg-white p-4 shadow-soft" open={ownTests.length > 0}>
               <summary className="cursor-pointer text-sm font-bold">
                 Mis casos de prueba{ownTests.length > 0 ? ` (${ownTests.length})` : ""}
@@ -681,18 +711,19 @@ function CompilerPage() {
               />
             ) : activeTab === "pista" ? (
               <div className="space-y-3 p-5" aria-live="polite">
-                <p className="text-xs text-ink-soft">
-                  Cada pista es más concreta que la anterior, hasta 3 por versión de tu código. Ninguna te da la solución. Si cambias el
-                  código, empiezas de nuevo por la más general.
-                </p>
-                {hints.items.length === 0 && !hints.loading && (
-                  <p className="text-sm text-ink-soft">Pide una pista con el botón «Pista» cuando no sepas cómo seguir.</p>
-                )}
+                <div className="space-y-2 text-sm text-ink-soft">
+                  <p>
+                    Las pistas van de la más general a la más específica. Puedes pedir hasta 3 pistas por cada versión de tu código. Ninguna te
+                    dará la respuesta directamente; la idea es ayudarte a descubrir cómo resolverlo por tu cuenta.
+                  </p>
+                  <p>Si haces cambios en tu código, las pistas empiezan de nuevo, comenzando por la más general.</p>
+                  <p>Cuando no sepas cómo continuar, haz clic en el botón «Pista» y recibe una orientación para dar el siguiente paso.</p>
+                </div>
                 <ol className="space-y-2">
                   {hints.items.map((text, i) => (
                     <li key={i} className="rounded-2xl bg-amber-50 p-3 text-sm leading-relaxed">
                       <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-amber-900">
-                        Pista {i + 1} · {["general", "más concreta", "muy concreta"][i]}
+                        Pista {i + 1}: {["general", "más concreta", "muy concreta"][i]}
                       </span>
                       {text || <Spinner className="h-4 w-4 border-amber-700" />}
                     </li>
@@ -709,7 +740,9 @@ function CompilerPage() {
                     {hints.code === code ? "Otra pista, más concreta" : "Pista para mi código nuevo"}
                   </button>
                 )}
-                <p className="text-[11px] text-ink-soft">Generado por IA: úsalo como orientación y verifica con tus casos de prueba.</p>
+                <p className="text-xs text-ink-soft">
+                  Contenido generado por IA. Tómalo como una guía para orientar tu trabajo y recuerda comprobar tus resultados con tus propios casos de prueba.
+                </p>
               </div>
             ) : (
               <FeedbackPanel
@@ -722,7 +755,7 @@ function CompilerPage() {
                 canRequestFeedback={!anyAILoading && !!code.trim() && aiAllowed}
                 disabledReason={aiAllowed ? undefined : aiNote}
                 rating={
-                  isStudent
+                  isLearner
                     ? { kind: activeTab === "formal" ? "retro_formal" : "retro_informal", assignmentId: contextAssignment ?? undefined }
                     : undefined
                 }

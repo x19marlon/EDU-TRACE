@@ -75,7 +75,7 @@ export function ReviewPill({ meta }: { meta: SubmissionMeta }) {
     <>
       {extras}
       <span className="rounded-full bg-mint-100 px-2.5 py-0.5 text-[11px] font-bold text-mint-700">
-        Aprobada y devuelta{r.grade !== undefined ? ` · ${r.grade.toFixed(1)}` : ""}
+        Aprobada y devuelta{r.grade !== undefined ? `: ${r.grade.toFixed(1)}` : ""}
       </span>
     </>
   );
@@ -238,7 +238,6 @@ export function SubmissionDetail({
           >
             {rerunning ? "Ejecutando casos..." : (sub.tests?.length ?? 0) > 0 ? "Volver a ejecutar los casos de prueba" : "Ejecutar los casos de prueba del taller"}
           </button>
-          <span className="text-[11px] text-ink-faint">Útil si cambiaste los casos del taller después de esta entrega.</span>
           {rerunError && <span className="text-xs font-semibold text-peach-700">{rerunError}</span>}
         </div>
       )}
