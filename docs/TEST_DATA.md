@@ -133,3 +133,7 @@ Las cuentas de prueba se registran con la autorización de tratamiento de datos.
 ## Ejemplos de sintaxis
 
 El Grupo A de Introducción a la Programación tiene 9 ejemplos activos (estructura, variables, entrada y salida, operadores, condicionales, `for` y `while`), para ver la sección **Ejemplos** como estudiante. El docente puede agregar o quitar más en la tarjeta **Ejemplos de sintaxis** de la clase. El Grupo B no tiene ninguno, para ver el aviso de clase sin ejemplos.
+
+## Gráfico Nota vs. esfuerzo
+
+Está en la página de cada clase del docente. Solo cuentan las notas que puso el docente, en borrador o devueltas: las propuestas de la IA sin revisar no cuentan. Quien no tiene nota aparece en el panel de categorías, no en el gráfico.

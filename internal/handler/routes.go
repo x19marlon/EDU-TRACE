@@ -51,6 +51,7 @@ func NewRouter(cfg *config.Config, comp *compiler.Compiler, ollama *ai.OllamaCli
 	mux.Handle("POST /api/teacher/courses/{id}/groups", teacher(classes.CreateGroup))
 	mux.Handle("GET /api/teacher/groups/{id}", teacher(classes.Group))
 	mux.Handle("GET /api/teacher/groups/{id}/submissions", teacher(classes.GroupSubmissions))
+	mux.Handle("GET /api/teacher/groups/{id}/performance", teacher(classes.Performance))
 	mux.Handle("GET /api/teacher/submissions/{id}", teacher(classes.Submission))
 	mux.Handle("POST /api/teacher/groups/{id}/assignments", teacher(classes.CreateAssignment))
 	mux.Handle("GET /api/teacher/groups/{id}/assignments", teacher(classes.GroupAssignments))

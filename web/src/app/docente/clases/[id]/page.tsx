@@ -9,6 +9,7 @@ import { Avatar, Card, ProgressRing, RenameForm, SmallButton } from "@/component
 import { MonitorsCard } from "@/components/ClassAdmin";
 import TeacherAssignments from "@/components/TeacherAssignments";
 import ClassExamplesCard from "@/components/ClassExamplesCard";
+import PerformanceChart from "@/components/PerformanceChart";
 import StudentProcess from "@/components/StudentProcess";
 import RaeLevels from "@/components/RaeLevels";
 import ClassOversight from "@/components/ClassOversight";
@@ -300,6 +301,17 @@ function GroupView() {
           </div>
         </Card>
       </div>
+
+      <PerformanceChart
+        groupId={group.id}
+        assignments={assignments}
+        refreshKey={matrixKey}
+        onSelectStudent={(sid) => {
+          setStudentId(sid);
+          setSubmissionId(null);
+          document.getElementById("estudiantes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      />
 
       <ReviewTimeCard groupId={group.id} refreshKey={matrixKey} />
 

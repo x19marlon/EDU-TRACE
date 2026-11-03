@@ -263,3 +263,19 @@ func (h *ClassesHandler) MySubmission(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, submissionView{Submission: sub, Annotations: h.store.AnnotationsFor(user, sub.ID), Questions: h.store.QuestionsFor(sub.ID)})
 }
+
+// Performance maneja GET /api/teacher/groups/{id}/performance?assignment=: nota y
+// esfuerzo de cada estudiante, con las categorías que explican cómo va y qué necesita.
+func (h *ClassesHandler) Performance(w http.ResponseWriter, r *http.Request) {
+	students, err := h.store.GroupPerformance(auth.UserFrom(r.Context()).ID, r.PathValue("id"), r.URL.Query().Get("assignment"))
+	if err != nil {
+		writeStoreErr(w, err, "calcular el rendimiento de la clase")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"students":    students,
+		"categories":  auth.PerformanceCategories,
+		"grade_cuts":  auth.PerformanceGradeCuts,
+		"effort_cuts": auth.PerformanceEffortCuts,
+	})
+}

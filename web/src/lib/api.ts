@@ -563,6 +563,37 @@ export const deleteRAE = (raeId: string) => deleteReq(`/api/teacher/raes/${enc(r
 export const getRAEMatrix = (groupId: string) => getJSON<RAEMatrix>(`/api/teacher/groups/${enc(groupId)}/rae-matrix`);
 export const deleteMonitorFeedbackAsTeacher = (feedbackId: string) =>
   deleteReq(`/api/teacher/monitor-feedback/${enc(feedbackId)}`);
+export type PerformanceAttention = "prioritaria" | "seguimiento" | "va_bien" | "pendiente";
+export interface PerformanceCategory {
+  key: string;
+  title: string;
+  status: string;
+  needs: string;
+  attention: PerformanceAttention;
+  effort_band: number;
+  grade_band: number;
+}
+export interface StudentPerformance {
+  id: string;
+  name: string;
+  grade: number | null;
+  graded_count: number;
+  attempts: number;
+  submissions: number;
+  assignments: number;
+  effort: number;
+  category: string;
+}
+export interface GroupPerformance {
+  students: StudentPerformance[];
+  categories: PerformanceCategory[];
+  grade_cuts: [number, number];
+  effort_cuts: [number, number];
+}
+export const getGroupPerformance = (groupId: string, assignmentId?: string) =>
+  getJSON<GroupPerformance>(
+    `/api/teacher/groups/${enc(groupId)}/performance${assignmentId ? `?assignment=${enc(assignmentId)}` : ""}`
+  );
 export const setGroupAIMode = (groupId: string, aiMode: AIMode) =>
   sendJSON<{ ai_mode: AIMode }>("PATCH", `/api/teacher/groups/${enc(groupId)}/ai-mode`, { ai_mode: aiMode });
 export const getGroupMetrics = (groupId: string) => getJSON<GroupMetrics>(`/api/teacher/groups/${enc(groupId)}/metrics`);
