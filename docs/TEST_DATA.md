@@ -137,3 +137,9 @@ El Grupo A de Introducción a la Programación tiene 9 ejemplos activos (estruct
 ## Gráfico Nota vs. esfuerzo
 
 Está en la página de cada clase del docente. Solo cuentan las notas que puso el docente, en borrador o devueltas: las propuestas de la IA sin revisar no cuentan. Quien no tiene nota aparece en el panel de categorías, no en el gráfico.
+
+Para ver todos los cuadrantes, agrega 11 estudiantes con perfiles variados al Grupo A (contraseña `Alumno2026!`):
+
+```bash
+python3 scripts/seed_activity.py
+```
