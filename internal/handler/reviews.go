@@ -119,6 +119,7 @@ func (h *ReviewsHandler) generate(ctx context.Context, teacherID, id string, aut
 		RunError: sub.RunError,
 		ExitCode: sub.ExitCode,
 		Tests: sub.Tests,
+		Course: h.store.GroupCourseName(sub.GroupID),
 	}
 	for _, r := range current.RAEs {
 		in.RAEs = append(in.RAEs, ai.RAEInput{Code: r.Code, Description: r.Description})

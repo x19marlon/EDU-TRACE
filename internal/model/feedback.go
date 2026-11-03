@@ -7,6 +7,8 @@ package model
 type FeedbackRequest struct {
 	Mode string `json:"mode"` // "formal" (por defecto) o "informal"
 	AssignmentID string `json:"assignment_id"` // taller elegido (opcional): su enunciado da contexto a la IA
+	GroupID string `json:"group_id,omitempty"` // clase elegida: su curso elige los documentos de la materia
+	Course string `json:"-"` // nombre del curso, resuelto por el servidor
 	Code string `json:"code"`
 	Compiled bool `json:"compiled"`
 	Success bool `json:"success"`

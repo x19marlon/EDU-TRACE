@@ -25,6 +25,7 @@ type ReviewInput struct {
 	ExitCode int
 	RAEs []RAEInput
 	Tests []model.TestResult
+	Course string // nombre del curso: elige los documentos de la materia
 }
 
 type RAEInput struct {
@@ -125,7 +126,7 @@ func (o *OllamaClient) SuggestReview(ctx context.Context, in ReviewInput) (*Revi
 	quality := AnalyzeQuality(in.Code)
 	writeStyle(&b, quality.Problems())
 	messages := []chatMessage{
-		{Role: "system", Content: fmt.Sprintf(systemPromptReview, o.syllabus)},
+		{Role: "system", Content: fmt.Sprintf(systemPromptReview, o.courseDocs(in.Course))},
 		{Role: "user", Content: b.String()},
 	}
 	reqBody, err := o.newChatRequest(messages, false, 0)

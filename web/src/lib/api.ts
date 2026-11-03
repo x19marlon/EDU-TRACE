@@ -920,6 +920,7 @@ export type AIRequestMode = FeedbackMode | "pista";
 
 export interface FeedbackContext {
   mode: AIRequestMode;
+  group_id?: string;
   assignment_id?: string;
   exercise_id?: string;
   level?: number;
@@ -1014,6 +1015,7 @@ export interface ChatMessage {
 }
 
 export interface ChatContext {
+  group_id?: string;
   assignment_id?: string;
   exercise_id?: string;
   code?: string;

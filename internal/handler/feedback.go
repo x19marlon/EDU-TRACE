@@ -91,6 +91,7 @@ func (h *FeedbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		statement = exerciseStatement(req.ExerciseID)
 	}
 
+	req.Course = h.store.CourseName(user, req.GroupID, req.AssignmentID)
 	h.store.RecordFeedback(user.ID)
 
 	slog.Info("streaming feedback request received",

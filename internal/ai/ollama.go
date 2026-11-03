@@ -11,8 +11,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -21,7 +19,7 @@ import (
 type OllamaClient struct {
 	cfg *config.Config
 	client *http.Client
-	syllabus string
+	syllabus *Syllabus
 	think bool 
 	prompt string
 }
@@ -56,13 +54,13 @@ type chatResponse struct {
 
 // NewOllamaClient creates a client and loads syllabus documents.
 func NewOllamaClient(cfg *config.Config) (*OllamaClient, error) {
-	syllabus, err := loadSyllabusDocuments()
+	syllabus, err := LoadSyllabus(findSyllabusDir())
 	if err != nil {
 		return nil, fmt.Errorf("loading syllabus: %w", err)
 	}
 
 	slog.Info("syllabus loaded",
-		"length", len(syllabus),
+		"subjects", syllabus.Subjects(),
 		"model", cfg.OllamaModel,
 		"url", cfg.OllamaBaseURL,
 	)
@@ -73,7 +71,7 @@ func NewOllamaClient(cfg *config.Config) (*OllamaClient, error) {
 			Timeout: time.Duration(cfg.OllamaTimeout) * time.Second,
 		},
 		syllabus: syllabus,
-		prompt: promptVersion(syllabus),
+		prompt: promptVersion(syllabus.Version()),
 	}
 	o.think = o.resolveThink()
 	return o, nil
@@ -138,41 +136,13 @@ func (o *OllamaClient) resolveThink() bool {
 	}
 }
 
-// loadSyllabusDocuments reads all .md files from the syllabus/ directory.
-func loadSyllabusDocuments() (string, error) {
-	// Find syllabus directory relative to the binary or working directory.
-	syllabusDir := "syllabus"
-
-	// Try from executable location if not found in cwd.
-	if _, err := os.Stat(syllabusDir); os.IsNotExist(err) {
-		execPath, _ := os.Executable()
-		syllabusDir = filepath.Join(filepath.Dir(execPath), "syllabus")
+// courseDocs devuelve los documentos de la materia del curso para el prompt de sistema.
+func (o *OllamaClient) courseDocs(course string) string {
+	docs, subject := o.syllabus.For(course)
+	if subject == "" && strings.TrimSpace(course) != "" {
+		slog.Warn("el curso no coincide con ninguna materia de syllabus/", "course", course)
 	}
-
-	entries, err := os.ReadDir(syllabusDir)
-	if err != nil {
-		return "", fmt.Errorf("reading syllabus directory %q: %w", syllabusDir, err)
-	}
-
-	var parts []string
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-
-		content, err := os.ReadFile(filepath.Join(syllabusDir, entry.Name()))
-		if err != nil {
-			return "", fmt.Errorf("reading %s: %w", entry.Name(), err)
-		}
-
-		parts = append(parts, fmt.Sprintf("--- %s ---\n%s", entry.Name(), string(content)))
-	}
-
-	if len(parts) == 0 {
-		return "", fmt.Errorf("no .md files found in %q", syllabusDir)
-	}
-
-	return strings.Join(parts, "\n\n"), nil
+	return docs
 }
 
 // Modos de retroalimentación disponibles para el estudiante.
@@ -346,7 +316,7 @@ func (o *OllamaClient) BuildMessages(req model.FeedbackRequest, statement, rubri
 	}
 
 	return []chatMessage{
-		{Role: "system", Content: fmt.Sprintf(prompt, o.syllabus)},
+		{Role: "system", Content: fmt.Sprintf(prompt, o.courseDocs(req.Course))},
 		{Role: "user", Content: b.String()},
 	}
 }

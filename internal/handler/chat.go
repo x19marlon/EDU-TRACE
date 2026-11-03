@@ -56,6 +56,8 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		statement = exerciseStatement(req.ExerciseID)
 	}
 
+	req.Course = h.store.CourseName(user, req.GroupID, req.AssignmentID)
+
 	slog.Info("chat message received",
 		"user_id", user.ID,
 		"messages_count", len(req.Messages),

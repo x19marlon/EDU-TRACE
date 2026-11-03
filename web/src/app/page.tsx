@@ -355,6 +355,7 @@ function CompilerPage() {
     const base = {
       mode,
       code,
+      group_id: (isLearner && !exercise && !exampleOpen && groupId) || undefined,
       assignment_id: (isLearner && contextAssignment) || undefined,
       exercise_id: exercise?.id,
       tests: undefined as CompileResult["tests"],
@@ -777,6 +778,7 @@ function CompilerPage() {
               <ChatPanel
                 code={code}
                 stdin={stdin}
+                groupId={(isLearner && !exercise && !exampleOpen && groupId) || undefined}
                 assignmentId={contextAssignment ?? undefined}
                 exerciseId={exercise?.id}
                 disabledReason={aiAllowed ? undefined : aiNote}

@@ -74,6 +74,7 @@ Es un monolito modular en Go:
 | `internal/mail` | Envío de avisos por SMTP |
 | `internal/backup` | Respaldo cifrado, verificación y restauración de `data/` |
 | `internal/practice` | Banco de ejercicios de práctica |
+| `syllabus/` | Documentos del curso para la IA, una carpeta por materia ([cómo funciona](syllabus/README.md)) |
 | `internal/examples` | Catálogo de ejemplos de sintaxis; una prueba compila cada uno y comprueba su salida |
 | `internal/similarity` | Detección de código similar |
 | `internal/config` | Variables de entorno |
@@ -162,6 +163,7 @@ GitHub Actions corre esas mismas pruebas en cada *push* y pull request, además 
 | Script | Para qué |
 |---|---|
 | `scripts/seed_test_data.sh` | Datos de prueba |
+| `scripts/seed_activity.py` | Agrega estudiantes con perfiles variados para llenar el gráfico Nota vs. esfuerzo |
 | `scripts/seed_rae_levels.py` | Carga los RAE oficiales y los niveles en una base que ya tenía datos de prueba |
 | `scripts/prueba_carga.py N` | Envía N entregas y mide cuánto tarda la cola (RNF-10) |
 | `scripts/medir_ancho_banda.py` | Peso de las páginas y de la API (RNF-12) |

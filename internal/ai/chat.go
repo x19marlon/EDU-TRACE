@@ -31,7 +31,7 @@ func (o *OllamaClient) StreamChat(ctx context.Context, req model.ChatRequest, st
 	var chatMsgs []chatMessage
 
 	// 1. System Prompt
-	sysPrompt := fmt.Sprintf(systemPromptChat, o.syllabus)
+	sysPrompt := fmt.Sprintf(systemPromptChat, o.courseDocs(req.Course))
 	chatMsgs = append(chatMsgs, chatMessage{
 		Role: "system",
 		Content: sysPrompt,
