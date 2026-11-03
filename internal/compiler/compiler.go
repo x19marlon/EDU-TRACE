@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/marlon/edu-trace/internal/config"
@@ -164,11 +165,13 @@ func (c *Compiler) run(ctx context.Context, tmpDir, stdin string, display bool) 
 	out.output = programOutput
 
 	if runErr != nil {
-		out.exitCode = exitCodeFrom(runCmd)
+		out.exitCode = runExitCode(runCmd)
+		// Success sigue en true: compiló bien, el problema fue al ejecutar.
 		if runCtx.Err() == context.DeadlineExceeded {
-			// Success sigue en true: compiló bien, el problema fue al ejecutar.
 			out.err = "se agotó el tiempo de ejecución (¿un ciclo infinito o esperando entrada?)"
 			out.timedOut = true
+		} else {
+			out.err = crashMessage(out.exitCode)
 		}
 	}
 	return out
@@ -265,4 +268,47 @@ func exitCodeFrom(cmd *exec.Cmd) int {
 		return cmd.ProcessState.ExitCode()
 	}
 	return -1
+}
+
+// runExitCode es como exitCodeFrom, pero si el programa murió por una señal devuelve
+// 128 + señal, igual que bwrap y la shell (SIGABRT → 134, SIGSEGV → 139).
+func runExitCode(cmd *exec.Cmd) int {
+	if cmd.ProcessState != nil {
+		if ws, ok := cmd.ProcessState.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
+			return 128 + int(ws.Signal())
+		}
+	}
+	return exitCodeFrom(cmd)
+}
+
+const (
+	crashAbort       = "el programa se detuvo abruptamente (abort): suele ser una excepción no capturada, por ejemplo un acceso fuera de rango con .at()"
+	crashMemory      = "acceso inválido a memoria (segmentation fault): revisa los índices de los arreglos y los punteros"
+	crashDivision    = "error aritmético: probablemente una división entera entre cero"
+	crashStack       = "se agotó la memoria de la pila: suele ser una función que se llama a sí misma sin fin"
+)
+
+// crashMessage explica por qué terminó el programa si el código de salida corresponde
+// a una falla; vacío si es una salida normal (return o exit). Las señales van con su
+// número de Linux, y los códigos 0xC... son los de las mismas fallas en Windows.
+func crashMessage(exitCode int) string {
+	switch exitCode {
+	case 128 + 6:
+		return crashAbort
+	case 128 + 7:
+		return "acceso inválido a memoria (bus error)"
+	case 128 + 8, 0xC0000094:
+		return crashDivision
+	case 128 + 9:
+		return "el sistema detuvo el programa (posiblemente superó el límite de memoria)"
+	case 128 + 11, 0xC0000005:
+		return crashMemory
+	case 128 + 24:
+		return "el programa superó el límite de tiempo de CPU"
+	case 128 + 25:
+		return "el programa intentó escribir un archivo más grande de lo permitido"
+	case 0xC00000FD:
+		return crashStack
+	}
+	return ""
 }

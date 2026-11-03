@@ -15,7 +15,7 @@ import (
 func TestOutputMatches(t *testing.T) {
 	cases := []struct {
 		expected, output, match string
-		want bool
+		want                    bool
 	}{
 		{"Suma: 15", "Ingrese n: Suma: 15\n", model.MatchContains, true},
 		{"Suma: 15", "Ingrese n: Suma:   15\r\n", model.MatchContains, true},
@@ -227,5 +227,60 @@ int main() {
 		if got := Explain(broken); len(got) == 0 || got[0].Line != 4 {
 			t.Errorf("%s: los errores deben seguir apuntando a la línea correcta: %+v", sandbox, got)
 		}
+	}
+}
+
+func TestCrashMessage(t *testing.T) {
+	tests := []struct {
+		code int
+		want string // fragmento esperado; vacío = sin mensaje
+	}{
+		{0, ""},
+		{1, ""},
+		{3, ""},
+		{128, ""},
+		{134, "abort"},
+		{136, "división"},
+		{137, "memoria"},
+		{139, "segmentation fault"},
+		{255, ""},
+		{0xC0000005, "segmentation fault"},
+		{0xC0000094, "división"},
+	}
+	for _, tt := range tests {
+		got := crashMessage(tt.code)
+		if tt.want == "" && got != "" || !strings.Contains(got, tt.want) {
+			t.Errorf("crashMessage(%d) = %q; quería %q", tt.code, got, tt.want)
+		}
+	}
+}
+
+func TestCompileExplainsRuntimeCrashes(t *testing.T) {
+	if _, err := exec.LookPath("g++"); err != nil {
+		t.Skip("g++ no está instalado")
+	}
+	c := New(&config.Config{GppPath: "g++", Sandbox: "none", MaxOutputSize: 10240, CompileTimeout: 30 * time.Second, RunTimeout: 5 * time.Second})
+	tests := []struct {
+		name, code string
+		exitCode   int
+		errHas     string
+	}{
+		{"excepción no capturada", "#include <vector>\nint main() { std::vector<int> v(2); return v.at(5); }", 134, "abort"},
+		{"acceso inválido", "int main() { int *p = nullptr; *p = 1; return 0; }", 139, "segmentation fault"},
+		{"return distinto de 0", "int main() { return 3; }", 3, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := c.Compile(context.Background(), tt.code, "")
+			if !res.Success {
+				t.Fatalf("no compiló: %s", res.CompilerOutput)
+			}
+			if res.ExitCode != tt.exitCode {
+				t.Errorf("código de salida = %d; quería %d", res.ExitCode, tt.exitCode)
+			}
+			if tt.errHas == "" && res.Error != "" || !strings.Contains(res.Error, tt.errHas) {
+				t.Errorf("error = %q; quería %q", res.Error, tt.errHas)
+			}
+		})
 	}
 }
