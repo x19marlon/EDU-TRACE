@@ -16,3 +16,16 @@ web/out/
 /data.restaurando-*/
 /respaldos/
 /CREDENCIALES.txt
+
+# Editores y sistema operativo
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Archivos auxiliares de LaTeX
+docs/proyecto/*.aux
+docs/proyecto/*.fdb_latexmk
+docs/proyecto/*.fls
+docs/proyecto/*.log
+docs/proyecto/*.synctex.gz
