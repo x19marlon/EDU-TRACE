@@ -312,3 +312,10 @@ CREATE TABLE IF NOT EXISTS practice_results (
   last_at TEXT NOT NULL,
   PRIMARY KEY (student_id, exercise_id)
 );
+
+CREATE TABLE IF NOT EXISTS group_examples (
+  group_id   TEXT NOT NULL REFERENCES class_groups(id) ON DELETE CASCADE,
+  example_id TEXT NOT NULL,
+  added_at   TEXT NOT NULL,
+  PRIMARY KEY (group_id, example_id)
+);

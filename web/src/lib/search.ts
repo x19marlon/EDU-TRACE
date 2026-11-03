@@ -45,6 +45,7 @@ const COMMON_SECTIONS = [
 const STUDY_SECTIONS = [
   section("Mi historial", "Tus entregas, intentos y retroalimentación", "/historial", "revisiones notas"),
   section("Práctica", "Ejercicios para practicar y prepararte para el parcial", "/practica", "banco"),
+  section("Ejemplos", "Ejemplos de sintaxis que dejó tu profesor", "/ejemplos", "ciclos if arreglos matrices struct archivos cmath operadores palabras reservadas"),
   section("Mi progreso", "Tus notas y tu avance en cada RAE", "/progreso", "resultados aprendizaje"),
 ];
 

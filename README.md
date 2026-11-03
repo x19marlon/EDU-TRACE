@@ -36,7 +36,8 @@ Plataforma de retroalimentación formativa para **Introducción a la Programaci�
 - Responde las preguntas de los estudiantes, y recibe un aviso si la IA falla.
 - Marca un taller como **evaluación**: hasta su fecha límite, los estudiantes de la clase no pueden usar la IA ni el chat.
 - Genera un código de un solo uso para que un estudiante que olvidó la contraseña la restablezca.
-- Comparte la materia con otros profesores y la copia para el siguiente periodo (clases, talleres, casos, rúbricas y RAE).
+- Comparte la materia con otros profesores y la copia para el siguiente periodo (clases, talleres, casos, rúbricas, RAE y ejemplos).
+- Elige, clase por clase, qué **ejemplos de sintaxis** ven sus estudiantes (ciclos, condicionales, arreglos, matrices, struct, archivos, `cmath`, operadores, palabras reservadas y más) y los va agregando a medida que avanza el curso.
 - Ve **alertas tempranas** (talleres vencidos sin entregar, inactividad, muchos errores seguidos, nivel bajo en RAE), detecta **código similar** entre entregas y genera un **reporte por estudiante** listo para imprimir o guardar en PDF.
 - **Cierra el periodo** de una materia: ya no recibe entregas ni inscripciones y sus datos se borran solos después del plazo de conservación (`RETENTION_DAYS`).
 
@@ -72,6 +73,7 @@ Es un monolito modular en Go:
 | `internal/mail` | Envío de avisos por SMTP |
 | `internal/backup` | Respaldo cifrado, verificación y restauración de `data/` |
 | `internal/practice` | Banco de ejercicios de práctica |
+| `internal/examples` | Catálogo de ejemplos de sintaxis; una prueba compila cada uno y comprueba su salida |
 | `internal/similarity` | Detección de código similar |
 | `internal/config` | Variables de entorno |
 

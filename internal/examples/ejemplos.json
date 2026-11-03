@@ -1,0 +1,434 @@
+[
+  {
+    "id": "estructura-programa",
+    "topic": "Estructura y variables",
+    "title": "Estructura de un programa",
+    "explanation": "Todo programa en C++ tiene esta forma:\n- #include trae las herramientas que vas a usar (iostream sirve para mostrar y leer datos).\n- using namespace std; te deja escribir cout en lugar de std::cout.\n- main es la función donde empieza el programa, y return 0 indica que terminó bien.\n- Cada instrucción termina en punto y coma, y las llaves { } agrupan instrucciones.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    // Esto es un comentario: el compilador lo ignora\n    cout << \"Hola, mundo\" << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "Hola, mundo\n"
+  },
+  {
+    "id": "variables-tipos",
+    "topic": "Estructura y variables",
+    "title": "Variables y tipos de datos",
+    "explanation": "Una variable guarda un dato y debe declararse con su tipo antes de usarse:\n- int: números enteros.\n- double: números con decimales.\n- char: un solo carácter, entre comillas simples.\n- string: texto, entre comillas dobles (necesita #include <string>).\n- bool: verdadero o falso (se imprime como 1 o 0).\nCon const declaras un valor que no puede cambiar.",
+    "code": "#include <iostream>\n#include <string>\nusing namespace std;\n\nint main() {\n    const double PI = 3.14159;\n\n    int edad = 19;\n    double estatura = 1.72;\n    char grupo = 'A';\n    string nombre = \"Ana\";\n    bool activo = true;\n\n    cout << nombre << \" tiene \" << edad << \" años\" << endl;\n    cout << \"Estatura: \" << estatura << endl;\n    cout << \"Grupo: \" << grupo << endl;\n    cout << \"Activo: \" << activo << endl;\n    cout << \"PI: \" << PI << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "Ana tiene 19 años\nEstatura: 1.72\nGrupo: A\nActivo: 1\nPI: 3.14159\n"
+  },
+  {
+    "id": "entrada-salida",
+    "topic": "Estructura y variables",
+    "title": "Leer y mostrar datos: cin y cout",
+    "explanation": "cout << muestra datos en pantalla y cin >> los lee del teclado.\ncin >> se detiene en el primer espacio; para leer una línea completa, con espacios, usa getline.\nCuando combines los dos, usa cin.ignore() antes de getline para saltar el salto de línea que dejó cin.",
+    "code": "#include <iostream>\n#include <string>\nusing namespace std;\n\nint main() {\n    int edad;\n    string nombreCompleto;\n\n    cin >> edad;\n    cin.ignore();\n    getline(cin, nombreCompleto);\n\n    cout << nombreCompleto << \" tiene \" << edad << \" años\" << endl;\n    return 0;\n}\n",
+    "stdin": "19\nAna Maria Gomez\n",
+    "output": "Ana Maria Gomez tiene 19 años\n"
+  },
+  {
+    "id": "formato-decimales",
+    "topic": "Estructura y variables",
+    "title": "Mostrar decimales con iomanip",
+    "explanation": "La librería iomanip controla el formato de la salida.\nfixed junto con setprecision(n) muestra siempre n decimales. El formato se mantiene para los siguientes cout.",
+    "code": "#include <iostream>\n#include <iomanip>\nusing namespace std;\n\nint main() {\n    double promedio = 10.0 / 3;\n\n    cout << promedio << endl;\n    cout << fixed << setprecision(2) << promedio << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "3.33333\n3.33\n"
+  },
+  {
+    "id": "reservadas-tipos",
+    "topic": "Palabras reservadas",
+    "title": "Palabras para tipos y valores",
+    "explanation": "Las palabras reservadas tienen un significado fijo en C++, así que no puedes usarlas como nombres de variables o funciones.\nPara datos:\n- int, double, float, char, bool: tipos de datos.\n- void: indica que una función no devuelve nada.\n- const: el valor no puede cambiar.\n- true, false: los valores de un bool.\n- struct: define un tipo propio con varios campos.\nAunque se usan todo el tiempo, string, cin, cout, endl y main no son palabras reservadas: son nombres que vienen de la librería o del programa.",
+    "code": "#include <iostream>\nusing namespace std;\n\nstruct Punto {\n    int x;\n    int y;\n};\n\nvoid mostrar(Punto p) {\n    cout << p.x << \", \" << p.y << endl;\n}\n\nint main() {\n    const int LIMITE = 10;\n    float precio = 2.5f;\n    double total = precio * 2;\n    char letra = 'Z';\n    bool listo = false;\n    Punto origen = {0, LIMITE};\n\n    mostrar(origen);\n    cout << total << \" \" << letra << \" \" << listo << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "0, 10\n5 Z 0\n"
+  },
+  {
+    "id": "reservadas-control",
+    "topic": "Palabras reservadas",
+    "title": "Palabras para controlar el flujo",
+    "explanation": "Estas palabras deciden qué se ejecuta y cuántas veces:\n- if, else: decidir según una condición.\n- switch, case, default: elegir entre varias opciones.\n- for, while, do: repetir.\n- break: salir del ciclo o del switch.\n- continue: saltar a la siguiente vuelta del ciclo.\n- return: terminar la función y devolver un valor.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    for (int i = 1; i <= 5; i++) {\n        if (i == 2) {\n            continue;   // salta esta vuelta\n        }\n        if (i == 4) {\n            break;      // termina el ciclo\n        }\n        cout << i << endl;\n    }\n\n    int opcion = 2;\n    switch (opcion) {\n        case 1:\n            cout << \"Uno\" << endl;\n            break;\n        case 2:\n            cout << \"Dos\" << endl;\n            break;\n        default:\n            cout << \"Otro\" << endl;\n    }\n\n    int n = 0;\n    do {\n        n++;\n    } while (n < 3);\n\n    if (n == 3) {\n        cout << \"n vale 3\" << endl;\n    } else {\n        cout << \"n no vale 3\" << endl;\n    }\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "1\n3\nDos\nn vale 3\n"
+  },
+  {
+    "id": "reservadas-nombres",
+    "topic": "Palabras reservadas",
+    "title": "Otras reservadas y nombres válidos",
+    "explanation": "using y namespace también son reservadas: las usas en using namespace std;\nOtras que existen pero no se ven en este curso son class, new, delete, template, try y catch. Aunque no las uses, tampoco sirven como nombres de variables.\nUn nombre válido empieza con letra o guion bajo, no lleva espacios ni tildes, y distingue mayúsculas de minúsculas. Por eso int for = 3; no compila, pero int Total y int total son dos variables distintas.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    // int for = 3;      Error: for es una palabra reservada\n    // int mi nota = 4;  Error: un nombre no lleva espacios\n\n    int total = 3;\n    int Total = 5;       // otra variable: cambia la mayúscula\n    int notaFinal = 4;\n    int nota_final = 2;\n\n    cout << total << \" \" << Total << endl;\n    cout << notaFinal << \" \" << nota_final << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "3 5\n4 2\n"
+  },
+  {
+    "id": "operadores-aritmeticos",
+    "topic": "Operadores",
+    "title": "Operadores aritméticos",
+    "explanation": "+ suma, - resta, * multiplica, / divide y % da el residuo de una división entre enteros.\nCuidado: si los dos números son enteros, / descarta los decimales. Por eso 7 / 2 da 3 y no 3.5.\nLas operaciones siguen el orden matemático: primero *, / y %, y luego + y -. Usa paréntesis para cambiarlo.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int a = 7, b = 2;\n\n    cout << a + b << endl;\n    cout << a - b << endl;\n    cout << a * b << endl;\n    cout << a / b << endl;      // división entera\n    cout << a % b << endl;      // residuo\n    cout << 7.0 / 2 << endl;    // con decimales\n\n    cout << 2 + 3 * 4 << endl;\n    cout << (2 + 3) * 4 << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "9\n5\n14\n3\n1\n3.5\n14\n20\n"
+  },
+  {
+    "id": "operadores-asignacion",
+    "topic": "Operadores",
+    "title": "Asignación e incremento",
+    "explanation": "= guarda un valor en una variable.\n+=, -=, *=, /= y %= operan sobre la misma variable: x += 5 es lo mismo que x = x + 5.\n++ suma 1 y -- resta 1. Son muy comunes en los contadores de los ciclos.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int x = 10;\n\n    x += 5;\n    cout << x << endl;\n    x -= 3;\n    cout << x << endl;\n    x *= 2;\n    cout << x << endl;\n    x /= 4;\n    cout << x << endl;\n    x %= 4;\n    cout << x << endl;\n\n    x++;\n    cout << x << endl;\n    x--;\n    cout << x << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "15\n12\n24\n6\n2\n3\n2\n"
+  },
+  {
+    "id": "operadores-relacionales",
+    "topic": "Operadores",
+    "title": "Operadores de comparación",
+    "explanation": "Comparan dos valores y dan true (1) o false (0):\n== igual, != distinto, > mayor, < menor, >= mayor o igual, <= menor o igual.\nError muy común: = asigna y == compara. Dentro de un if casi siempre necesitas ==.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int a = 5, b = 8;\n\n    cout << (a == b) << endl;\n    cout << (a != b) << endl;\n    cout << (a > b) << endl;\n    cout << (a < b) << endl;\n    cout << (a >= 5) << endl;\n    cout << (b <= 5) << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "0\n1\n0\n1\n1\n0\n"
+  },
+  {
+    "id": "operadores-logicos",
+    "topic": "Operadores",
+    "title": "Operadores lógicos",
+    "explanation": "Combinan condiciones:\n- && (y): es verdadero si las dos condiciones lo son.\n- || (o): es verdadero si al menos una lo es.\n- ! (no): invierte el resultado.\nPara revisar un rango escribe nota >= 0 && nota <= 5. La forma 0 <= nota <= 5 compila, pero no hace lo que parece.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    double nota = 3.5;\n    int asistencias = 8;\n\n    if (nota >= 3.0 && asistencias >= 10) {\n        cout << \"Aprueba con asistencia\" << endl;\n    }\n    if (nota >= 3.0 || asistencias >= 10) {\n        cout << \"Cumple al menos una condición\" << endl;\n    }\n    if (!(nota < 3.0)) {\n        cout << \"La nota no es menor que 3\" << endl;\n    }\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "Cumple al menos una condición\nLa nota no es menor que 3\n"
+  },
+  {
+    "id": "conversion-tipos",
+    "topic": "Operadores",
+    "title": "Conversión de tipos (casting)",
+    "explanation": "Con (tipo) valor conviertes un dato a otro tipo.\nSirve, por ejemplo, para que una división entre enteros conserve los decimales. Si pasas un double a int, se pierde la parte decimal: no se redondea.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int suma = 7, cantidad = 2;\n\n    double malo = suma / cantidad;\n    double bueno = (double) suma / cantidad;\n\n    cout << malo << endl;\n    cout << bueno << endl;\n    cout << (int) 3.9 << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "3\n3.5\n3\n"
+  },
+  {
+    "id": "if-simple",
+    "topic": "Condicionales",
+    "title": "if",
+    "explanation": "if ejecuta su bloque solo si la condición es verdadera. Si no lo es, el programa sigue después de la llave de cierre.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int edad;\n    cin >> edad;\n\n    if (edad >= 18) {\n        cout << \"Es mayor de edad\" << endl;\n    }\n    cout << \"Fin del programa\" << endl;\n    return 0;\n}\n",
+    "stdin": "20\n",
+    "output": "Es mayor de edad\nFin del programa\n"
+  },
+  {
+    "id": "if-else",
+    "topic": "Condicionales",
+    "title": "if y else",
+    "explanation": "else se ejecuta cuando la condición del if es falsa. Siempre se ejecuta exactamente uno de los dos bloques.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    double nota;\n    cin >> nota;\n\n    if (nota >= 3.0) {\n        cout << \"Aprobado\" << endl;\n    } else {\n        cout << \"Reprobado\" << endl;\n    }\n    return 0;\n}\n",
+    "stdin": "2.5\n",
+    "output": "Reprobado\n"
+  },
+  {
+    "id": "else-if",
+    "topic": "Condicionales",
+    "title": "Varias opciones con else if",
+    "explanation": "Las condiciones se revisan en orden y solo se ejecuta el primer bloque que se cumpla. El else final atrapa todo lo demás.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    double nota;\n    cin >> nota;\n\n    if (nota >= 4.5) {\n        cout << \"Excelente\" << endl;\n    } else if (nota >= 3.5) {\n        cout << \"Bueno\" << endl;\n    } else if (nota >= 3.0) {\n        cout << \"Aceptable\" << endl;\n    } else {\n        cout << \"Insuficiente\" << endl;\n    }\n    return 0;\n}\n",
+    "stdin": "3.7\n",
+    "output": "Bueno\n"
+  },
+  {
+    "id": "if-anidado",
+    "topic": "Condicionales",
+    "title": "Condicionales anidados",
+    "explanation": "Un if puede ir dentro de otro. El interno solo se revisa si se cumplió el externo.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int numero;\n    cin >> numero;\n\n    if (numero != 0) {\n        if (numero > 0) {\n            cout << \"Positivo\" << endl;\n        } else {\n            cout << \"Negativo\" << endl;\n        }\n    } else {\n        cout << \"Es cero\" << endl;\n    }\n    return 0;\n}\n",
+    "stdin": "-4\n",
+    "output": "Negativo\n"
+  },
+  {
+    "id": "switch-case",
+    "topic": "Condicionales",
+    "title": "switch",
+    "explanation": "switch compara una variable entera o char con varios valores. Cada case termina en break; si lo olvidas, el programa sigue ejecutando el case siguiente.\ndefault se ejecuta si ningún case coincide.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int dia;\n    cin >> dia;\n\n    switch (dia) {\n        case 1:\n            cout << \"Lunes\" << endl;\n            break;\n        case 2:\n            cout << \"Martes\" << endl;\n            break;\n        case 3:\n            cout << \"Miércoles\" << endl;\n            break;\n        default:\n            cout << \"Otro dia\" << endl;\n    }\n    return 0;\n}\n",
+    "stdin": "2\n",
+    "output": "Martes\n"
+  },
+  {
+    "id": "ciclo-for",
+    "topic": "Ciclos",
+    "title": "for",
+    "explanation": "for es ideal cuando sabes cuántas veces repetir. Tiene tres partes:\nfor (inicio; condición; cambio)\nPrimero ejecuta el inicio. Luego, mientras la condición sea verdadera, ejecuta el bloque y después el cambio.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    for (int i = 1; i <= 5; i++) {\n        cout << i << endl;\n    }\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "1\n2\n3\n4\n5\n"
+  },
+  {
+    "id": "ciclo-while",
+    "topic": "Ciclos",
+    "title": "while",
+    "explanation": "while repite mientras la condición sea verdadera, y la revisa antes de cada vuelta, así que puede no ejecutarse nunca.\nDentro del bloque debe cambiar algo que afecte a la condición. Si no, el ciclo no termina (ciclo infinito).",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int cuenta = 3;\n\n    while (cuenta > 0) {\n        cout << cuenta << endl;\n        cuenta--;\n    }\n    cout << \"Despegue\" << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "3\n2\n1\nDespegue\n"
+  },
+  {
+    "id": "ciclo-do-while",
+    "topic": "Ciclos",
+    "title": "do-while",
+    "explanation": "do-while revisa la condición al final, así que el bloque se ejecuta al menos una vez. Sirve, por ejemplo, para validar la entrada. Lleva punto y coma después del while.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int nota;\n\n    do {\n        cin >> nota;\n        cout << \"Leído: \" << nota << endl;\n    } while (nota < 0 || nota > 5);\n\n    cout << \"Nota válida: \" << nota << endl;\n    return 0;\n}\n",
+    "stdin": "9\n-1\n4\n",
+    "output": "Leído: 9\nLeído: -1\nLeído: 4\nNota válida: 4\n"
+  },
+  {
+    "id": "contador-acumulador",
+    "topic": "Ciclos",
+    "title": "Contadores y acumuladores",
+    "explanation": "Un contador suma 1 cada vez que ocurre algo. Un acumulador va sumando valores.\nLos dos deben empezar en 0 antes del ciclo.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int n;\n    cin >> n;\n\n    int suma = 0;      // acumulador\n    int pares = 0;     // contador\n\n    for (int i = 0; i < n; i++) {\n        int numero;\n        cin >> numero;\n        suma += numero;\n        if (numero % 2 == 0) {\n            pares++;\n        }\n    }\n\n    cout << \"Suma: \" << suma << endl;\n    cout << \"Pares: \" << pares << endl;\n    return 0;\n}\n",
+    "stdin": "4\n3 8 5 6\n",
+    "output": "Suma: 22\nPares: 2\n"
+  },
+  {
+    "id": "ciclo-centinela",
+    "topic": "Ciclos",
+    "title": "Ciclo con centinela",
+    "explanation": "Un centinela es un valor especial que indica el fin de los datos. Se usa cuando no sabes de antemano cuántos datos vendrán. El centinela no se procesa como un dato más.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    const int FIN = -1;\n    int numero;\n    int suma = 0;\n\n    cin >> numero;\n    while (numero != FIN) {\n        suma += numero;\n        cin >> numero;\n    }\n\n    cout << \"Suma: \" << suma << endl;\n    return 0;\n}\n",
+    "stdin": "4 10 6 -1\n",
+    "output": "Suma: 20\n"
+  },
+  {
+    "id": "ciclos-anidados",
+    "topic": "Ciclos",
+    "title": "Ciclos anidados",
+    "explanation": "Un ciclo dentro de otro: por cada vuelta del externo, el interno se ejecuta completo. Usa nombres distintos para sus variables, normalmente i y j.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    for (int i = 1; i <= 3; i++) {\n        for (int j = 1; j <= 4; j++) {\n            cout << i * j << \" \";\n        }\n        cout << endl;\n    }\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "1 2 3 4 \n2 4 6 8 \n3 6 9 12 \n"
+  },
+  {
+    "id": "mayor-menor",
+    "topic": "Ciclos",
+    "title": "Encontrar el mayor y el menor",
+    "explanation": "Toma el primer dato como mayor y menor iniciales, y compara cada dato siguiente con ellos.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int n, numero;\n    cin >> n >> numero;\n\n    int mayor = numero;\n    int menor = numero;\n\n    for (int i = 1; i < n; i++) {\n        cin >> numero;\n        if (numero > mayor) {\n            mayor = numero;\n        }\n        if (numero < menor) {\n            menor = numero;\n        }\n    }\n\n    cout << \"Mayor: \" << mayor << endl;\n    cout << \"Menor: \" << menor << endl;\n    return 0;\n}\n",
+    "stdin": "5\n7 2 9 4 6\n",
+    "output": "Mayor: 9\nMenor: 2\n"
+  },
+  {
+    "id": "funcion-retorno",
+    "topic": "Funciones",
+    "title": "Función con parámetros y retorno",
+    "explanation": "Una función tiene tipo de retorno, nombre y parámetros. return devuelve el resultado a quien la llamó.\nSepara una tarea en una función para no repetir código.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint sumar(int a, int b) {\n    return a + b;\n}\n\nint main() {\n    int resultado = sumar(4, 6);\n    cout << resultado << endl;\n    cout << sumar(1, 2) << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "10\n3\n"
+  },
+  {
+    "id": "funcion-void",
+    "topic": "Funciones",
+    "title": "Función void",
+    "explanation": "void indica que la función no devuelve ningún valor: hace su tarea, como mostrar algo en pantalla, y termina.",
+    "code": "#include <iostream>\n#include <string>\nusing namespace std;\n\nvoid saludar(string nombre) {\n    cout << \"Hola, \" << nombre << endl;\n}\n\nint main() {\n    saludar(\"Ana\");\n    saludar(\"Luis\");\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "Hola, Ana\nHola, Luis\n"
+  },
+  {
+    "id": "funcion-prototipo",
+    "topic": "Funciones",
+    "title": "Prototipo de una función",
+    "explanation": "El prototipo anuncia la función antes de main, y su definición puede ir después. Termina en punto y coma.",
+    "code": "#include <iostream>\nusing namespace std;\n\ndouble promedio(double a, double b);   // prototipo\n\nint main() {\n    cout << promedio(3.0, 4.0) << endl;\n    return 0;\n}\n\ndouble promedio(double a, double b) {\n    return (a + b) / 2;\n}\n",
+    "stdin": "",
+    "output": "3.5\n"
+  },
+  {
+    "id": "paso-por-valor",
+    "topic": "Funciones",
+    "title": "Paso por valor",
+    "explanation": "Al pasar una variable por valor, la función recibe una copia. Los cambios dentro de la función no afectan a la variable original.",
+    "code": "#include <iostream>\nusing namespace std;\n\nvoid duplicar(int numero) {\n    numero = numero * 2;\n    cout << \"Dentro de la función: \" << numero << endl;\n}\n\nint main() {\n    int x = 5;\n    duplicar(x);\n    cout << \"En main: \" << x << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "Dentro de la función: 10\nEn main: 5\n"
+  },
+  {
+    "id": "arreglo-basico",
+    "topic": "Arreglos",
+    "title": "Declarar y recorrer un arreglo",
+    "explanation": "Un arreglo guarda varios datos del mismo tipo. Sus posiciones van de 0 a tamaño - 1.\nUsar una posición fuera de ese rango es un error que el compilador no detecta. Recórrelo con un for.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    const int TAM = 5;\n    int notas[TAM] = {30, 45, 28, 50, 39};\n\n    cout << \"Primera: \" << notas[0] << endl;\n    cout << \"Última: \" << notas[TAM - 1] << endl;\n\n    notas[2] = 35;\n\n    for (int i = 0; i < TAM; i++) {\n        cout << notas[i] << \" \";\n    }\n    cout << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "Primera: 30\nÚltima: 39\n30 45 35 50 39 \n"
+  },
+  {
+    "id": "arreglo-leer-sumar",
+    "topic": "Arreglos",
+    "title": "Leer un arreglo y calcular su promedio",
+    "explanation": "Primero se llena el arreglo con un ciclo, y luego se recorre para operar con sus datos. Convierte a double para no perder los decimales del promedio.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    const int MAX = 100;\n    int datos[MAX];\n    int n;\n    cin >> n;\n\n    for (int i = 0; i < n; i++) {\n        cin >> datos[i];\n    }\n\n    int suma = 0;\n    for (int i = 0; i < n; i++) {\n        suma += datos[i];\n    }\n\n    cout << \"Promedio: \" << (double) suma / n << endl;\n    return 0;\n}\n",
+    "stdin": "4\n2 4 6 9\n",
+    "output": "Promedio: 5.25\n"
+  },
+  {
+    "id": "arreglos-paralelos",
+    "topic": "Arreglos",
+    "title": "Arreglos paralelos",
+    "explanation": "Son varios arreglos en los que la misma posición corresponde al mismo elemento: nombres[i] y notas[i] hablan del mismo estudiante.",
+    "code": "#include <iostream>\n#include <string>\nusing namespace std;\n\nint main() {\n    const int TAM = 3;\n    string nombres[TAM] = {\"Ana\", \"Luis\", \"Sofia\"};\n    double notas[TAM] = {4.5, 2.8, 3.9};\n\n    for (int i = 0; i < TAM; i++) {\n        if (notas[i] >= 3.0) {\n            cout << nombres[i] << \" aprueba con \" << notas[i] << endl;\n        }\n    }\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "Ana aprueba con 4.5\nSofia aprueba con 3.9\n"
+  },
+  {
+    "id": "arreglo-parametro",
+    "topic": "Arreglos",
+    "title": "Arreglo como parámetro",
+    "explanation": "Al pasar un arreglo a una función, usa corchetes vacíos y pasa también su tamaño.\nA diferencia de una variable normal, los cambios que la función haga en el arreglo sí se ven afuera.",
+    "code": "#include <iostream>\nusing namespace std;\n\nvoid duplicar(int datos[], int n) {\n    for (int i = 0; i < n; i++) {\n        datos[i] = datos[i] * 2;\n    }\n}\n\nvoid mostrar(int datos[], int n) {\n    for (int i = 0; i < n; i++) {\n        cout << datos[i] << \" \";\n    }\n    cout << endl;\n}\n\nint main() {\n    int numeros[4] = {1, 2, 3, 4};\n    duplicar(numeros, 4);\n    mostrar(numeros, 4);\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "2 4 6 8 \n"
+  },
+  {
+    "id": "busqueda-lineal",
+    "topic": "Arreglos",
+    "title": "Búsqueda en un arreglo",
+    "explanation": "La búsqueda lineal revisa las posiciones una por una hasta encontrar el dato. Si no lo encuentra, se acostumbra devolver -1, porque no es una posición válida.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint buscar(int datos[], int n, int valor) {\n    for (int i = 0; i < n; i++) {\n        if (datos[i] == valor) {\n            return i;\n        }\n    }\n    return -1;\n}\n\nint main() {\n    int numeros[5] = {7, 3, 9, 1, 5};\n\n    cout << buscar(numeros, 5, 9) << endl;\n    cout << buscar(numeros, 5, 8) << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "2\n-1\n"
+  },
+  {
+    "id": "ordenamiento-burbuja",
+    "topic": "Arreglos",
+    "title": "Ordenamiento burbuja",
+    "explanation": "Compara cada par de datos vecinos y los intercambia si están en desorden. En cada pasada, el mayor queda al final.\nPara intercambiar dos valores necesitas una variable temporal.",
+    "code": "#include <iostream>\nusing namespace std;\n\nvoid ordenar(int datos[], int n) {\n    for (int i = 0; i < n - 1; i++) {\n        for (int j = 0; j < n - 1 - i; j++) {\n            if (datos[j] > datos[j + 1]) {\n                int temp = datos[j];\n                datos[j] = datos[j + 1];\n                datos[j + 1] = temp;\n            }\n        }\n    }\n}\n\nint main() {\n    int numeros[5] = {5, 1, 4, 2, 3};\n    ordenar(numeros, 5);\n\n    for (int i = 0; i < 5; i++) {\n        cout << numeros[i] << \" \";\n    }\n    cout << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "1 2 3 4 5 \n"
+  },
+  {
+    "id": "matriz-basica",
+    "topic": "Matrices",
+    "title": "Declarar y recorrer una matriz",
+    "explanation": "Una matriz es un arreglo de dos dimensiones: matriz[fila][columna], y las dos empiezan en 0. Se recorre con dos ciclos anidados: el externo para las filas y el interno para las columnas.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    const int FILAS = 2;\n    const int COLUMNAS = 3;\n    int matriz[FILAS][COLUMNAS] = {\n        {1, 2, 3},\n        {4, 5, 6}\n    };\n\n    cout << matriz[1][2] << endl;\n\n    for (int i = 0; i < FILAS; i++) {\n        for (int j = 0; j < COLUMNAS; j++) {\n            cout << matriz[i][j] << \" \";\n        }\n        cout << endl;\n    }\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "6\n1 2 3 \n4 5 6 \n"
+  },
+  {
+    "id": "matriz-leer-filas",
+    "topic": "Matrices",
+    "title": "Leer una matriz y sumar cada fila",
+    "explanation": "Para sumar por filas, reinicia el acumulador antes de empezar cada fila.",
+    "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    const int FILAS = 2;\n    const int COLUMNAS = 3;\n    int matriz[FILAS][COLUMNAS];\n\n    for (int i = 0; i < FILAS; i++) {\n        for (int j = 0; j < COLUMNAS; j++) {\n            cin >> matriz[i][j];\n        }\n    }\n\n    for (int i = 0; i < FILAS; i++) {\n        int suma = 0;\n        for (int j = 0; j < COLUMNAS; j++) {\n            suma += matriz[i][j];\n        }\n        cout << \"Fila \" << i << \": \" << suma << endl;\n    }\n    return 0;\n}\n",
+    "stdin": "1 2 3\n4 5 6\n",
+    "output": "Fila 0: 6\nFila 1: 15\n"
+  },
+  {
+    "id": "matriz-funcion",
+    "topic": "Matrices",
+    "title": "Matriz como parámetro",
+    "explanation": "Al pasar una matriz a una función, debes indicar el número de columnas en los corchetes. El de filas se pasa como otro parámetro.",
+    "code": "#include <iostream>\nusing namespace std;\n\nconst int COLUMNAS = 2;\n\nint sumarTodo(int matriz[][COLUMNAS], int filas) {\n    int suma = 0;\n    for (int i = 0; i < filas; i++) {\n        for (int j = 0; j < COLUMNAS; j++) {\n            suma += matriz[i][j];\n        }\n    }\n    return suma;\n}\n\nint main() {\n    int datos[3][COLUMNAS] = {{1, 2}, {3, 4}, {5, 6}};\n    cout << sumarTodo(datos, 3) << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "21\n"
+  },
+  {
+    "id": "struct-basico",
+    "topic": "Estructuras (struct)",
+    "title": "Definir y usar un struct",
+    "explanation": "Un struct agrupa datos relacionados, de tipos distintos, en un solo tipo propio. Se define antes de main y termina en punto y coma. A cada campo se accede con un punto: estudiante.nota.",
+    "code": "#include <iostream>\n#include <string>\nusing namespace std;\n\nstruct Estudiante {\n    string nombre;\n    int edad;\n    double nota;\n};\n\nint main() {\n    Estudiante e;\n    e.nombre = \"Ana\";\n    e.edad = 19;\n    e.nota = 4.5;\n\n    cout << e.nombre << \" tiene \" << e.edad << \" años\" << endl;\n    cout << \"Nota: \" << e.nota << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "Ana tiene 19 años\nNota: 4.5\n"
+  },
+  {
+    "id": "struct-arreglo",
+    "topic": "Estructuras (struct)",
+    "title": "Arreglo de struct",
+    "explanation": "Un arreglo de struct guarda varios registros, y reemplaza a los arreglos paralelos: cada posición tiene todos los datos de un elemento.",
+    "code": "#include <iostream>\n#include <string>\nusing namespace std;\n\nstruct Producto {\n    string nombre;\n    double precio;\n};\n\nint main() {\n    const int TAM = 3;\n    Producto productos[TAM] = {\n        {\"Cuaderno\", 5.5},\n        {\"Lápiz\", 1.2},\n        {\"Regla\", 2.3}\n    };\n\n    double total = 0;\n    for (int i = 0; i < TAM; i++) {\n        cout << productos[i].nombre << \": \" << productos[i].precio << endl;\n        total += productos[i].precio;\n    }\n    cout << \"Total: \" << total << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "Cuaderno: 5.5\nLápiz: 1.2\nRegla: 2.3\nTotal: 9\n"
+  },
+  {
+    "id": "struct-funcion",
+    "topic": "Estructuras (struct)",
+    "title": "Struct y funciones",
+    "explanation": "Un struct se puede pasar a una función y también devolver desde ella. Como pasa por valor, la función recibe una copia: para cambiarlo, devuelve el struct modificado.",
+    "code": "#include <iostream>\nusing namespace std;\n\nstruct Punto {\n    int x;\n    int y;\n};\n\nPunto mover(Punto p, int dx, int dy) {\n    p.x += dx;\n    p.y += dy;\n    return p;\n}\n\nvoid mostrar(Punto p) {\n    cout << \"(\" << p.x << \", \" << p.y << \")\" << endl;\n}\n\nint main() {\n    Punto a = {1, 2};\n    Punto b = mover(a, 3, 4);\n\n    mostrar(a);\n    mostrar(b);\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "(1, 2)\n(4, 6)\n"
+  },
+  {
+    "id": "archivo-escribir",
+    "topic": "Archivos de texto",
+    "title": "Escribir en un archivo",
+    "explanation": "La librería fstream trabaja con archivos. ofstream abre un archivo para escribir y lo crea si no existe; si ya existe, borra su contenido.\nSe escribe con <<, igual que con cout. Al terminar, ciérralo con close().\nEn EduTrace, los archivos solo se pueden crear dentro de la carpeta /tmp y se borran al terminar el programa.",
+    "code": "#include <iostream>\n#include <fstream>\nusing namespace std;\n\nint main() {\n    ofstream archivo(\"/tmp/notas.txt\");\n\n    archivo << \"Ana 4.5\" << endl;\n    archivo << \"Luis 3.2\" << endl;\n    archivo.close();\n\n    cout << \"Archivo guardado\" << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "Archivo guardado\n"
+  },
+  {
+    "id": "archivo-leer",
+    "topic": "Archivos de texto",
+    "title": "Leer un archivo",
+    "explanation": "ifstream abre un archivo para leer. Comprueba con is_open() que se pudo abrir.\nEl ciclo while (archivo >> dato) lee hasta que se acaban los datos. Para poder mostrarlo completo, este ejemplo primero crea el archivo.\nEn EduTrace, los archivos solo se pueden crear dentro de la carpeta /tmp y se borran al terminar el programa.",
+    "code": "#include <iostream>\n#include <fstream>\n#include <string>\nusing namespace std;\n\nint main() {\n    ofstream salida(\"/tmp/notas.txt\");\n    salida << \"Ana 4.5\" << endl;\n    salida << \"Luis 3.2\" << endl;\n    salida.close();\n\n    ifstream entrada(\"/tmp/notas.txt\");\n    if (!entrada.is_open()) {\n        cout << \"No se pudo abrir el archivo\" << endl;\n        return 1;\n    }\n\n    string nombre;\n    double nota;\n    while (entrada >> nombre >> nota) {\n        cout << nombre << \" sacó \" << nota << endl;\n    }\n    entrada.close();\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "Ana sacó 4.5\nLuis sacó 3.2\n"
+  },
+  {
+    "id": "archivo-lineas",
+    "topic": "Archivos de texto",
+    "title": "Leer un archivo línea por línea",
+    "explanation": "getline lee una línea completa, con sus espacios. Se usa en la condición del while para seguir hasta el final del archivo.\nEn EduTrace, los archivos solo se pueden crear dentro de la carpeta /tmp y se borran al terminar el programa.",
+    "code": "#include <iostream>\n#include <fstream>\n#include <string>\nusing namespace std;\n\nint main() {\n    ofstream salida(\"/tmp/frases.txt\");\n    salida << \"Primera línea del archivo\" << endl;\n    salida << \"Segunda línea\" << endl;\n    salida.close();\n\n    ifstream entrada(\"/tmp/frases.txt\");\n    string linea;\n    int contador = 0;\n    while (getline(entrada, linea)) {\n        contador++;\n        cout << contador << \": \" << linea << endl;\n    }\n    entrada.close();\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "1: Primera línea del archivo\n2: Segunda línea\n"
+  },
+  {
+    "id": "archivo-agregar",
+    "topic": "Archivos de texto",
+    "title": "Agregar al final de un archivo",
+    "explanation": "Al abrir con ios::app, lo que escribas se agrega al final y no se borra lo que ya había.\nEn EduTrace, los archivos solo se pueden crear dentro de la carpeta /tmp y se borran al terminar el programa.",
+    "code": "#include <iostream>\n#include <fstream>\n#include <string>\nusing namespace std;\n\nint main() {\n    ofstream nuevo(\"/tmp/registro.txt\");\n    nuevo << \"Primer dato\" << endl;\n    nuevo.close();\n\n    ofstream agregar(\"/tmp/registro.txt\", ios::app);\n    agregar << \"Segundo dato\" << endl;\n    agregar.close();\n\n    ifstream lectura(\"/tmp/registro.txt\");\n    string linea;\n    while (getline(lectura, linea)) {\n        cout << linea << endl;\n    }\n    lectura.close();\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "Primer dato\nSegundo dato\n"
+  },
+  {
+    "id": "cmath-potencia-raiz",
+    "topic": "Librería cmath",
+    "title": "Potencias y raíces",
+    "explanation": "Con #include <cmath> tienes funciones matemáticas:\n- pow(base, exponente): potencia.\n- sqrt(x): raíz cuadrada.\nCuidado: en C++, ^ no es potencia. Usa pow.",
+    "code": "#include <iostream>\n#include <cmath>\nusing namespace std;\n\nint main() {\n    cout << pow(2, 10) << endl;\n    cout << sqrt(81) << endl;\n    cout << pow(27, 1.0 / 3) << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "1024\n9\n3\n"
+  },
+  {
+    "id": "cmath-redondeo",
+    "topic": "Librería cmath",
+    "title": "Redondear y valor absoluto",
+    "explanation": "- round(x): redondea al entero más cercano.\n- floor(x): redondea hacia abajo.\n- ceil(x): redondea hacia arriba.\n- fabs(x): valor absoluto de un número con decimales.",
+    "code": "#include <iostream>\n#include <cmath>\nusing namespace std;\n\nint main() {\n    double x = 3.6;\n\n    cout << round(x) << endl;\n    cout << floor(x) << endl;\n    cout << ceil(3.2) << endl;\n    cout << fabs(-7.5) << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "4\n3\n4\n7.5\n"
+  },
+  {
+    "id": "cmath-trigonometria",
+    "topic": "Librería cmath",
+    "title": "Trigonometría, exponencial y logaritmos",
+    "explanation": "- sin, cos y tan reciben el ángulo en radianes, no en grados.\n- exp(x): e elevado a x.\n- log(x): logaritmo natural.\n- log10(x): logaritmo en base 10.",
+    "code": "#include <iostream>\n#include <cmath>\nusing namespace std;\n\nint main() {\n    const double PI = 3.14159265358979;\n    double grados = 30;\n    double radianes = grados * PI / 180;\n\n    cout << sin(radianes) << endl;\n    cout << cos(0.0) << endl;\n    cout << exp(0.0) << endl;\n    cout << log(1.0) << endl;\n    cout << log10(1000.0) << endl;\n    return 0;\n}\n",
+    "stdin": "",
+    "output": "0.5\n1\n1\n0\n3\n"
+  },
+  {
+    "id": "cmath-distancia",
+    "topic": "Librería cmath",
+    "title": "Ejemplo completo: distancia entre dos puntos",
+    "explanation": "Las funciones de cmath se combinan como en una fórmula matemática. Aquí se calcula la distancia entre dos puntos en el plano.",
+    "code": "#include <iostream>\n#include <cmath>\nusing namespace std;\n\nint main() {\n    double x1, y1, x2, y2;\n    cin >> x1 >> y1 >> x2 >> y2;\n\n    double distancia = sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));\n\n    cout << \"Distancia: \" << distancia << endl;\n    return 0;\n}\n",
+    "stdin": "1 1 4 5\n",
+    "output": "Distancia: 5\n"
+  }
+]

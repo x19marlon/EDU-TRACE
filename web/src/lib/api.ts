@@ -1076,3 +1076,25 @@ export interface Exercise {
   result?: { attempts: number; best_passed: number; total: number; solved_at?: string; last_at: string };
 }
 export const listExercises = () => getJSON<Exercise[]>("/api/practice");
+
+export interface SyntaxExample {
+  id: string;
+  topic: string;
+  title: string;
+  explanation: string;
+  code: string;
+  stdin: string;
+  output: string;
+}
+export type GroupSyntaxExample = SyntaxExample & { enabled: boolean };
+export interface ClassExamples {
+  id: string;
+  name: string;
+  course_name: string;
+  examples: SyntaxExample[];
+}
+export const listGroupExamples = (groupId: string) =>
+  getJSON<GroupSyntaxExample[]>(`/api/teacher/groups/${enc(groupId)}/examples`);
+export const setGroupExamples = (groupId: string, ids: string[], enabled: boolean) =>
+  sendJSON<GroupSyntaxExample[]>("PATCH", `/api/teacher/groups/${enc(groupId)}/examples`, { ids, enabled });
+export const listMyExamples = () => getJSON<ClassExamples[]>("/api/student/examples");

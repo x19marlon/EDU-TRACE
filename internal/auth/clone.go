@@ -179,6 +179,10 @@ func (s *Store) CloneCourse(teacherID, courseID, name string, closeOld bool) (st
 			return fail(err)
 		}
 		groups[g.oldID] = id
+		if _, err := tx.Exec(`INSERT INTO group_examples (group_id, example_id, added_at)
+			SELECT ?, example_id, ? FROM group_examples WHERE group_id = ?`, id, now, g.oldID); err != nil {
+			return fail(err)
+		}
 		if err := logAudit(tx, teacherID, AuditCourseCloned, id, "", "Copiada de "+quoted(oldName)); err != nil {
 			return fail(err)
 		}

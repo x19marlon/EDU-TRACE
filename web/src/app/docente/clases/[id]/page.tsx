@@ -8,6 +8,7 @@ import AppShell from "@/components/AppShell";
 import { Avatar, Card, ProgressRing, RenameForm, SmallButton } from "@/components/ui";
 import { MonitorsCard } from "@/components/ClassAdmin";
 import TeacherAssignments from "@/components/TeacherAssignments";
+import ClassExamplesCard from "@/components/ClassExamplesCard";
 import StudentProcess from "@/components/StudentProcess";
 import RaeLevels from "@/components/RaeLevels";
 import ClassOversight from "@/components/ClassOversight";
@@ -356,6 +357,8 @@ function GroupView() {
         }}
       />
       </div>
+
+      <ClassExamplesCard groupId={group.id} />
 
       <MonitorsCard groupId={group.id} monitors={group.monitors} onChange={(monitors) => setGroup({ ...group, monitors })} />
 

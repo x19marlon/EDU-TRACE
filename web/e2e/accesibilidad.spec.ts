@@ -97,7 +97,7 @@ test("páginas públicas", async ({ page }) => {
 
 test("estudiante", async ({ browser }) => {
   const page = await pageAs(browser, student);
-  for (const path of ["/", "/historial", "/cuenta", "/practica", "/progreso", "/?ejercicio=suma-1-n"]) {
+  for (const path of ["/", "/historial", "/cuenta", "/practica", "/ejemplos", "/progreso", "/?ejercicio=suma-1-n"]) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expectAccessible(page, path);

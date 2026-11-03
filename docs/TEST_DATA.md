@@ -130,3 +130,6 @@ El script envía 20 entregas al Taller 1, espera a que la IA prepare todas las p
 
 Las cuentas de prueba se registran con la autorización de tratamiento de datos. Si una cuenta antigua no la tiene, al entrar ve primero el aviso «Autorización de tratamiento de datos».
 
+## Ejemplos de sintaxis
+
+El Grupo A de Introducción a la Programación tiene 9 ejemplos activos (estructura, variables, entrada y salida, operadores, condicionales, `for` y `while`), para ver la sección **Ejemplos** como estudiante. El docente puede agregar o quitar más en la tarjeta **Ejemplos de sintaxis** de la clase. El Grupo B no tiene ninguno, para ver el aviso de clase sin ejemplos.
