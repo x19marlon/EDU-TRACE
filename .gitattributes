@@ -1,0 +1,3 @@
+# Git para Windows convierte los saltos de línea a CRLF al descargar, y bash no
+# puede ejecutar un script con CRLF.
+*.sh text eol=lf

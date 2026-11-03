@@ -130,6 +130,12 @@ Ejemplo: entrada 7 12 3 -> salida Mayor: 12" \
   'tests=[{"name":"Ejemplo del enunciado","stdin":"7 12 3","expected":"Mayor: 12","match":"contiene","hidden":false},{"name":"Repetidos","stdin":"5 5 2","expected":"Mayor: 5","match":"contiene","hidden":false},{"name":"Negativos","stdin":"-3 -8 -1","expected":"Mayor: -1","match":"contiene","hidden":true}]')
 echo "  ✓ 3 talleres con 3 casos de prueba cada uno (1 oculto): el 1 vence en 5 días, el 2 en 20 h (sin tardías) y el 3 venció hace 27 h (tardías con −0.5 por día)"
 
+echo "=== Agregando ejemplos de sintaxis a Intro a la Programación - Grupo A ==="
+curl -s -o /dev/null -X PATCH -b "edutrace_session=$PROF_COOKIE" "$API/api/teacher/groups/$GROUP1_ID/examples" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled":true,"ids":["estructura-programa","variables-tipos","entrada-salida","operadores-aritmeticos","operadores-relacionales","if-else","else-if","ciclo-for","ciclo-while"]}'
+echo "  ✓ 9 ejemplos visibles para los estudiantes"
+
 ANA_COOKIE=$(login_cookie "ana.rodriguez@est.edu.co" "Alumno2026!")
 CARLOS_COOKIE=$(login_cookie "carlos.perez@est.edu.co" "Alumno2026!")
 LUIS_COOKIE=$(login_cookie "luis.martinez@est.edu.co" "Alumno2026!")

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"syscall"
 	"time"
 
 	"github.com/marlon/edu-trace/internal/auth"
@@ -19,17 +18,6 @@ type HealthHandler struct {
 
 func NewHealthHandler(store *auth.Store, drafts *DraftQueue, dataDir string, minFree int) *HealthHandler {
 	return &HealthHandler{store: store, drafts: drafts, dataDir: dataDir, minFree: minFree}
-}
-
-func freePercent(dir string) (float64, error) {
-	var st syscall.Statfs_t
-	if err := syscall.Statfs(dir, &st); err != nil {
-		return 0, err
-	}
-	if st.Blocks == 0 {
-		return 0, nil
-	}
-	return 100 * float64(st.Bavail) / float64(st.Blocks), nil
 }
 
 func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

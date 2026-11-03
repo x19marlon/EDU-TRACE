@@ -46,9 +46,10 @@ interface CodeEditorProps {
   onChange: (value: string) => void;
   readOnly?: boolean;
   label?: string;
+  compact?: boolean; // alto según el contenido, para mostrar fragmentos cortos
 }
 
-export default function CodeEditor({ value, onChange, readOnly = false, label = "Editor de código C++" }: CodeEditorProps) {
+export default function CodeEditor({ value, onChange, readOnly = false, label = "Editor de código C++", compact = false }: CodeEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 
@@ -86,10 +87,18 @@ export default function CodeEditor({ value, onChange, readOnly = false, label = 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Lo que escribe el usuario ya está en el editor; esto solo aplica los cambios que
+  // vienen de afuera, como restaurar el borrador o abrir un ejemplo.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || view.state.doc.toString() === value) return;
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value } });
+  }, [value]);
+
   return (
     <div
       ref={editorRef}
-      className="w-full h-full min-h-[400px] overflow-hidden"
+      className={`w-full overflow-hidden ${compact ? "" : "h-full min-h-[400px]"}`}
     />
   );
 }

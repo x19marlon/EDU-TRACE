@@ -36,7 +36,9 @@ Plataforma de retroalimentación formativa para **Introducción a la Programaci�
 - Responde las preguntas de los estudiantes, y recibe un aviso si la IA falla.
 - Marca un taller como **evaluación**: hasta su fecha límite, los estudiantes de la clase no pueden usar la IA ni el chat.
 - Genera un código de un solo uso para que un estudiante que olvidó la contraseña la restablezca.
-- Comparte la materia con otros profesores y la copia para el siguiente periodo (clases, talleres, casos, rúbricas y RAE).
+- Comparte la materia con otros profesores y la copia para el siguiente periodo (clases, talleres, casos, rúbricas, RAE y ejemplos).
+- Elige, clase por clase, qué **ejemplos de sintaxis** ven sus estudiantes (ciclos, condicionales, arreglos, matrices, struct, archivos, `cmath`, operadores, palabras reservadas y más) y los va agregando a medida que avanza el curso.
+- Ve el gráfico **Nota vs. esfuerzo**: ubica a cada estudiante en 9 cuadrantes según sus notas e intentos, y explica por categorías cómo va y qué necesita.
 - Ve **alertas tempranas** (talleres vencidos sin entregar, inactividad, muchos errores seguidos, nivel bajo en RAE), detecta **código similar** entre entregas y genera un **reporte por estudiante** listo para imprimir o guardar en PDF.
 - **Cierra el periodo** de una materia: ya no recibe entregas ni inscripciones y sus datos se borran solos después del plazo de conservación (`RETENTION_DAYS`).
 
@@ -72,6 +74,8 @@ Es un monolito modular en Go:
 | `internal/mail` | Envío de avisos por SMTP |
 | `internal/backup` | Respaldo cifrado, verificación y restauración de `data/` |
 | `internal/practice` | Banco de ejercicios de práctica |
+| `syllabus/` | Documentos del curso para la IA, una carpeta por materia ([cómo funciona](syllabus/README.md)) |
+| `internal/examples` | Catálogo de ejemplos de sintaxis; una prueba compila cada uno y comprueba su salida |
 | `internal/similarity` | Detección de código similar |
 | `internal/config` | Variables de entorno |
 
@@ -99,6 +103,17 @@ En `.env`, define `TEACHER_CODE`: es el código para crear cuentas de profesor.
 - levanta el backend en `http://127.0.0.1:8080` y el frontend en `http://localhost:3000`.
 
 `start.sh` reinstala las dependencias del frontend y reconstruye su caché solo cuando cambian; `./start.sh --limpio` la borra a la fuerza.
+
+### En Windows
+
+Solo para desarrollo. Abre **Git Bash** en la carpeta del proyecto y ejecuta:
+
+```bash
+cp .env.example .env
+./startW.sh
+```
+
+`startW.sh` hace lo mismo que `start.sh`, y si falta Go, Node.js, `g++` u Ollama los instala con `winget`. En Windows no hay `bubblewrap`, así que el código de los estudiantes corre **sin aislamiento** (`SANDBOX=none`): no lo uses para recibir código de otras personas ni en producción.
 
 Para cargar datos de prueba (un profesor, 5 estudiantes, talleres y entregas):
 
@@ -148,6 +163,7 @@ GitHub Actions corre esas mismas pruebas en cada *push* y pull request, además 
 | Script | Para qué |
 |---|---|
 | `scripts/seed_test_data.sh` | Datos de prueba |
+| `scripts/seed_activity.py` | Agrega estudiantes con perfiles variados para llenar el gráfico Nota vs. esfuerzo |
 | `scripts/seed_rae_levels.py` | Carga los RAE oficiales y los niveles en una base que ya tenía datos de prueba |
 | `scripts/prueba_carga.py N` | Envía N entregas y mide cuánto tarda la cola (RNF-10) |
 | `scripts/medir_ancho_banda.py` | Peso de las páginas y de la API (RNF-12) |
@@ -168,6 +184,5 @@ GitHub Actions corre esas mismas pruebas en cada *push* y pull request, además 
 
 ## Herramientas de seguimiento de grupos (Python)
 
-`src/classroom`, `src/telegram`, `src/rag`, `requirements.txt` y el workflow `.github/workflows/jirafales.yaml` no forman parte de EduTrace, y el CI no los revisa. Son las herramientas de x19marlon para seguir los repositorios de los grupos del curso:
-- el workflow corre cada lunes, analiza los commits de cada grupo y guarda los reportes en MongoDB;
-- el bot de Telegram consulta esos reportes.
+`src/classroom`, `src/rag`, `requirements.txt` y el workflow `.github/workflows/jirafales.yaml` no forman parte de EduTrace, y el CI no los revisa. Son las herramientas de x19marlon para seguir los repositorios de los grupos del curso:
+el workflow corre cada lunes, analiza los commits de cada grupo y guarda los reportes en MongoDB.

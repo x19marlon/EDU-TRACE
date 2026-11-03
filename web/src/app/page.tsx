@@ -28,6 +28,8 @@ import {
   FeedbackMeta,
   FeedbackMode,
   listExercises,
+  listMyExamples,
+  SyntaxExample,
   listMyAssignments,
   TestCase,
   listMyGroups,
@@ -112,21 +114,31 @@ function useOnline(): boolean {
   return online;
 }
 
-function useDraft(userId: string | undefined, code: string, stdin: string, restore: (code: string, stdin: string) => void) {
+const draftKey = (userId: string) => `edutrace:borrador:${userId}`;
+
+function readDraft(userId: string): { code: string; stdin: string } | null {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(draftKey(userId)) ?? "null");
+    if (saved && typeof saved.code === "string") return { code: saved.code, stdin: typeof saved.stdin === "string" ? saved.stdin : "" };
+  } catch {
+    /* sin almacenamiento local: se sigue sin borrador */
+  }
+  return null;
+}
+
+// paused deja de guardar el editor: mientras se prueba un ejemplo, el borrador del
+// estudiante queda intacto.
+function useDraft(userId: string | undefined, code: string, stdin: string, restore: (code: string, stdin: string) => void, paused: boolean) {
   const restored = useRef(false);
-  const key = userId ? `edutrace:borrador:${userId}` : null;
+  const key = userId ? draftKey(userId) : null;
   useEffect(() => {
-    if (!key || restored.current) return;
+    if (!userId || restored.current) return;
     restored.current = true;
-    try {
-      const saved = JSON.parse(window.localStorage.getItem(key) ?? "null");
-      if (saved && typeof saved.code === "string") restore(saved.code, typeof saved.stdin === "string" ? saved.stdin : "");
-    } catch {
-      /* sin almacenamiento local: se sigue sin borrador */
-    }
-  }, [key, restore]);
+    const saved = readDraft(userId);
+    if (saved) restore(saved.code, saved.stdin);
+  }, [userId, restore]);
   useEffect(() => {
-    if (!key || !restored.current) return;
+    if (!key || !restored.current || paused) return;
     const id = window.setTimeout(() => {
       try {
         window.localStorage.setItem(key, JSON.stringify({ code, stdin }));
@@ -135,7 +147,7 @@ function useDraft(userId: string | undefined, code: string, stdin: string, resto
       }
     }, 800);
     return () => window.clearTimeout(id);
-  }, [key, code, stdin]);
+  }, [key, code, stdin, paused]);
 }
 
 const SUPERVISED_NOTE =
@@ -156,7 +168,11 @@ function CompilerPage() {
     setCode(savedCode);
     setStdin(savedStdin);
   }, []);
-  useDraft(user?.id, code, stdin, restoreDraft);
+  const params = useSearchParams();
+  const wantedExample = params.get("ejemplo");
+  const [exampleOpen, setExampleOpen] = useState(!!wantedExample);
+  const [example, setExample] = useState<SyntaxExample | null>(null);
+  useDraft(user?.id, code, stdin, restoreDraft, exampleOpen);
 
   // Una retroalimentación por modalidad; las dos están siempre disponibles.
   const [feedback, setFeedback] = useState<Record<FeedbackMode, FeedbackState>>({
@@ -207,7 +223,6 @@ function CompilerPage() {
 
   const [activeTab, setActiveTab] = useState<"output" | FeedbackMode | "chat" | "pista">("output");
 
-  const params = useSearchParams();
   const wantedExercise = params.get("ejercicio");
   const wantedGroup = params.get("clase");
   const wantedAssignment = params.get("taller");
@@ -232,7 +247,49 @@ function CompilerPage() {
     setExercise(null);
     window.history.replaceState(null, "", "/");
   };
-  const contextAssignment = exercise ? null : assignmentId;
+  const leaveExample = useCallback(() => {
+    const saved = user ? readDraft(user.id) : null;
+    restoreDraft(saved?.code ?? DEFAULT_CODE, saved?.stdin ?? "");
+    setExample(null);
+    setExampleOpen(false);
+    setCompileResult(null);
+    setCompiledRun(null);
+    window.history.replaceState(null, "", "/");
+  }, [user, restoreDraft]);
+  // Por refs: si cambia la sesión mientras se prueba un ejemplo, no debe recargarse y
+  // borrar lo que el estudiante le haya cambiado.
+  const exampleOpenRef = useRef(exampleOpen);
+  exampleOpenRef.current = exampleOpen;
+  const leaveExampleRef = useRef(leaveExample);
+  leaveExampleRef.current = leaveExample;
+  useEffect(() => {
+    if (!wantedExample) {
+      if (exampleOpenRef.current) leaveExampleRef.current();
+      return;
+    }
+    let cancelled = false;
+    setExampleOpen(true);
+    listMyExamples()
+      .then((classes) => {
+        if (cancelled) return;
+        const found = classes.flatMap((c) => c.examples).find((e) => e.id === wantedExample);
+        if (!found) {
+          leaveExampleRef.current();
+          return;
+        }
+        setExample(found);
+        restoreDraft(found.code, found.stdin);
+        setCompileResult(null);
+        setCompiledRun(null);
+      })
+      .catch(() => {
+        if (!cancelled) leaveExampleRef.current();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [wantedExample, restoreDraft]);
+  const contextAssignment = exercise || exampleOpen ? null : assignmentId;
 
   const testsKey = user ? `edutrace:casos:${user.id}:${exercise?.id ?? contextAssignment ?? "libre"}` : null;
   const [ownTests, setOwnTests] = useState<TestCase[]>([]);
@@ -279,7 +336,7 @@ function CompilerPage() {
         .map((t) => ({ id: "", name: t.name, stdin: t.stdin, expected: t.expected, match: t.match, hidden: false }));
       const context = exercise
         ? { exercise_id: exercise.id, own_tests: own }
-        : { ...(isLearner && groupId ? { group_id: groupId, assignment_id: assignmentId ?? undefined } : {}), own_tests: own };
+        : { ...(isLearner && groupId && !exampleOpen ? { group_id: groupId, assignment_id: assignmentId ?? undefined } : {}), own_tests: own };
       const result = await compileCode(code, stdin, context);
       setCompileResult(result);
       setCompiledRun({ code, stdin });
@@ -291,13 +348,14 @@ function CompilerPage() {
     } finally {
       setIsCompiling(false);
     }
-  }, [code, stdin, setUser, isLearner, groupId, assignmentId, exercise, ownTests]);
+  }, [code, stdin, setUser, isLearner, groupId, assignmentId, exercise, exampleOpen, ownTests]);
 
   const aiContext = (mode: AIRequestMode): FeedbackContext => {
     const upToDate = compileResult !== null && compiledRun?.code === code;
     const base = {
       mode,
       code,
+      group_id: (isLearner && !exercise && !exampleOpen && groupId) || undefined,
       assignment_id: (isLearner && contextAssignment) || undefined,
       exercise_id: exercise?.id,
       tests: undefined as CompileResult["tests"],
@@ -471,7 +529,7 @@ function CompilerPage() {
             {examNote} Puedes compilar, probar tu código con los casos y enviarlo.
           </p>
         )}
-        {isLearner && (
+        {isLearner && !exampleOpen && (
           <div className="mt-4">
             <StudentClasses
               groups={openGroups}
@@ -529,6 +587,21 @@ function CompilerPage() {
               <p className="text-xs text-ink-soft">La práctica no se envía a tu profesor: compila y mira cuántos casos pasas.</p>
             </div>
           </div>
+        </Card>
+      ) : exampleOpen ? (
+        <Card
+          className="rise-in"
+          title={
+            <span className="flex flex-wrap items-center gap-2">
+              Ejemplo: {example?.title ?? "cargando..."}
+              {example && <span className="rounded-full bg-mint-100 px-2.5 py-0.5 text-[11px] font-bold text-mint-700">{example.topic}</span>}
+            </span>
+          }
+          action={<SmallButton onClick={leaveExample}>Volver a mi código</SmallButton>}
+        >
+          <p className="text-sm text-ink-soft">
+            Cámbialo y compílalo para ver qué pasa. Tu código sigue guardado, y esto no se envía a tu profesor ni cuenta como intento.
+          </p>
         </Card>
       ) : (
         isLearner &&
@@ -595,7 +668,7 @@ function CompilerPage() {
                 )}
                 {isCompiling ? "Compilando..." : "Compilar"}
               </button>
-              {isLearner && !exercise && (
+              {isLearner && !exercise && !exampleOpen && (
                 <button
                   onClick={handleSend}
                   disabled={sending || !groupId || !code.trim() || closed}
@@ -705,6 +778,7 @@ function CompilerPage() {
               <ChatPanel
                 code={code}
                 stdin={stdin}
+                groupId={(isLearner && !exercise && !exampleOpen && groupId) || undefined}
                 assignmentId={contextAssignment ?? undefined}
                 exerciseId={exercise?.id}
                 disabledReason={aiAllowed ? undefined : aiNote}

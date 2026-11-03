@@ -8,12 +8,13 @@ import { formatFeedback } from "@/lib/format";
 interface ChatPanelProps {
   code: string;
   stdin: string;
+  groupId?: string;
   assignmentId?: string;
   exerciseId?: string;
   disabledReason?: string;
 }
 
-export default function ChatPanel({ code, stdin, assignmentId, exerciseId, disabledReason }: ChatPanelProps) {
+export default function ChatPanel({ code, stdin, groupId, assignmentId, exerciseId, disabledReason }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +48,7 @@ export default function ChatPanel({ code, stdin, assignmentId, exerciseId, disab
     try {
       await streamChat(
         {
+          group_id: groupId,
           assignment_id: assignmentId,
           exercise_id: exerciseId,
           code,

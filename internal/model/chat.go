@@ -8,7 +8,9 @@ type ChatMessage struct {
 
 // ChatRequest is the request payload for student-LLM interactive chat.
 type ChatRequest struct {
+	GroupID string `json:"group_id,omitempty"` // clase elegida: su curso elige los documentos de la materia
 	AssignmentID string `json:"assignment_id,omitempty"` // Context of the current assignment
+	Course string `json:"-"` // nombre del curso, resuelto por el servidor
 	ExerciseID string `json:"exercise_id,omitempty"`
 	Code string `json:"code,omitempty"` // Current student code
 	Stdin string `json:"stdin,omitempty"` // Current input

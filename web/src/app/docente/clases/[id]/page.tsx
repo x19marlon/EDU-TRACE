@@ -8,6 +8,8 @@ import AppShell from "@/components/AppShell";
 import { Avatar, Card, ProgressRing, RenameForm, SmallButton } from "@/components/ui";
 import { MonitorsCard } from "@/components/ClassAdmin";
 import TeacherAssignments from "@/components/TeacherAssignments";
+import ClassExamplesCard from "@/components/ClassExamplesCard";
+import PerformanceChart from "@/components/PerformanceChart";
 import StudentProcess from "@/components/StudentProcess";
 import RaeLevels from "@/components/RaeLevels";
 import ClassOversight from "@/components/ClassOversight";
@@ -300,6 +302,17 @@ function GroupView() {
         </Card>
       </div>
 
+      <PerformanceChart
+        groupId={group.id}
+        assignments={assignments}
+        refreshKey={matrixKey}
+        onSelectStudent={(sid) => {
+          setStudentId(sid);
+          setSubmissionId(null);
+          document.getElementById("estudiantes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      />
+
       <ReviewTimeCard groupId={group.id} refreshKey={matrixKey} />
 
       <ClassOversight
@@ -356,6 +369,8 @@ function GroupView() {
         }}
       />
       </div>
+
+      <ClassExamplesCard groupId={group.id} />
 
       <MonitorsCard groupId={group.id} monitors={group.monitors} onChange={(monitors) => setGroup({ ...group, monitors })} />
 

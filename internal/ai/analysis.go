@@ -70,8 +70,8 @@ func entryStatus(e ProcessEntry) string {
 
 // buildAnalysisMessages describe el proceso; si no cabe en el contexto, descarta los
 // registros más antiguos (se conserva siempre el último código completo).
-func (o *OllamaClient) buildAnalysisMessages(entries []ProcessEntry) []chatMessage {
-	system := chatMessage{Role: "system", Content: fmt.Sprintf(systemPromptAnalysis, o.syllabus)}
+func (o *OllamaClient) buildAnalysisMessages(entries []ProcessEntry, course string) []chatMessage {
+	system := chatMessage{Role: "system", Content: fmt.Sprintf(systemPromptAnalysis, o.courseDocs(course))}
 	for {
 		msgs := []chatMessage{system, {Role: "user", Content: describeProcess(entries)}}
 		if len(entries) <= 1 || estimateTokens(msgs)+o.outputTokens() <= o.contextLimit() {
@@ -119,11 +119,11 @@ func describeProcess(entries []ProcessEntry) string {
 }
 
 // StreamAnalysis genera, para el profesor, un análisis del proceso de un estudiante.
-func (o *OllamaClient) StreamAnalysis(ctx context.Context, entries []ProcessEntry, onToken func(token string)) error {
+func (o *OllamaClient) StreamAnalysis(ctx context.Context, entries []ProcessEntry, course string, onToken func(token string)) error {
 	if len(entries) == 0 {
 		return fmt.Errorf("este estudiante todavía no tiene intentos ni entregas en la clase")
 	}
-	messages := o.buildAnalysisMessages(entries)
+	messages := o.buildAnalysisMessages(entries, course)
 	slog.Info("sending process analysis request to Ollama",
 		"model", o.cfg.OllamaModel,
 		"entries", len(entries),
