@@ -168,6 +168,5 @@ GitHub Actions corre esas mismas pruebas en cada *push* y pull request, además 
 
 ## Herramientas de seguimiento de grupos (Python)
 
-`src/classroom`, `src/telegram`, `src/rag`, `requirements.txt` y el workflow `.github/workflows/jirafales.yaml` no forman parte de EduTrace, y el CI no los revisa. Son las herramientas de x19marlon para seguir los repositorios de los grupos del curso:
-- el workflow corre cada lunes, analiza los commits de cada grupo y guarda los reportes en MongoDB;
-- el bot de Telegram consulta esos reportes.
+`src/classroom`, `src/rag`, `requirements.txt` y el workflow `.github/workflows/jirafales.yaml` no forman parte de EduTrace, y el CI no los revisa. Son las herramientas de x19marlon para seguir los repositorios de los grupos del curso:
+el workflow corre cada lunes, analiza los commits de cada grupo y guarda los reportes en MongoDB.

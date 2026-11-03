@@ -29,3 +29,6 @@ docs/proyecto/*.fdb_latexmk
 docs/proyecto/*.fls
 docs/proyecto/*.log
 docs/proyecto/*.synctex.gz
+
+# Bot de Telegram: herramienta local, fuera del repo
+/telegram_bot/
