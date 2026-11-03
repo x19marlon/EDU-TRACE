@@ -29,7 +29,7 @@
 %\usepackage{amssymb}  % assumes amsmath package installed
 
 \title{\LARGE \bf
-EduTrace - Contextualización del problema y análisis de la solución desde un enfoque multidimensional
+EduTrace - Una plataforma para la retroalimentación formativa en cursos introductorios de programación
 }
 
 \author{
@@ -362,9 +362,9 @@ Los requisitos funcionales se clasificaron según el modelo FURPS+ y se prioriza
 		\hline
 		\textbf{ID} & \textbf{Descripción} & \textbf{Prioridad} \\
 		\hline
-		RF-01 & Generar retroalimentación formativa adaptada al nivel de Introducción a la Programación. & Must \\
+		RF-01 & Generar retroalimentación formativa para cada entrega de código. & Must \\
 		RF-02 & Estructurar la retroalimentación según las tres preguntas de Hattie y Timperley. & Must \\
-		RF-03 & Priorizar la etapa “¿Qué sigue?” en la retroalimentación generada. & Must \\
+		RF-03 & Priorizar la etapa “¿Qué sigue?”, presente en el 100~\% de las salidas. & Must \\
 		RF-04 & Evaluar la corrección funcional del código entregado mediante casos de prueba. & Must \\
 		RF-05 & Evaluar la legibilidad del código entregado. & Should \\
 		RF-06 & Evaluar la mantenibilidad del código entregado. & Should \\
@@ -390,7 +390,7 @@ Los requisitos funcionales se clasificaron según el modelo FURPS+ y se prioriza
 \end{table}
 
 \subsubsection{Requisitos no funcionales}
-De la misma forma, los requisitos no funcionales priorizados según el modelo MoSCoW se presentan organizados en la Tabla \ref{tab:req_nofuncional}.
+De la misma forma, los requisitos no funcionales priorizados según el modelo MoSCoW se presentan organizados en la Tabla \ref{tab:req_nofuncional}. Los umbrales de RNF-08, RNF-10, RNF-11 y RNF-12, que inicialmente quedaron por definir, se precisaron durante la construcción de la plataforma.
 
 \begin{table}[ht]
 	\centering
@@ -405,14 +405,14 @@ De la misma forma, los requisitos no funcionales priorizados según el modelo Mo
 		RNF-03 & Garantizar la confidencialidad del código del estudiante. & Must \\
 		RNF-04 & Garantizar la confidencialidad de los datos personales del estudiante. & Must \\
 		RNF-05 & Controlar la información enviada a servicios de IA externos. & Must \\
-		RNF-06 & Someter toda retroalimentación automática a validación docente previa. & Must \\
+		RNF-06 & Someter la retroalimentación automática a validación docente previa, salvo en las clases donde el docente active el modo inmediato. & Must \\
 		RNF-07 & Preservar al docente como decisor final del proceso. & Must \\
-		RNF-08 & Mantener el tiempo de revisión docente por entrega bajo un umbral definido. & Must \\
-		RNF-09 & Expresar la retroalimentación en lenguaje comprensible para el estudiante. & Should \\
-		RNF-10 & Procesar el volumen total de entregas dentro del plazo definido. & Must \\
-		RNF-11 & Entregar la retroalimentación dentro del plazo que preserva su valor formativo. & Should \\
-		RNF-12 & Operar bajo condiciones de conectividad limitadas. & Should \\
-		RNF-13 & Integrarse con la plataforma institucional existente. & Could \\
+		RNF-08 & Mantener el tiempo de revisión docente por entrega bajo el umbral que define el docente, con la estimación de la IA como referencia. & Must \\
+		RNF-09 & Expresar la retroalimentación en lenguaje comprensible para un estudiante de Introducción a la Programación. & Should \\
+		RNF-10 & Procesar el volumen total de entregas de un curso dentro del plazo definido (5 h por lote). & Must \\
+		RNF-11 & Entregar la retroalimentación dentro del plazo que preserva su valor formativo (5 h desde la entrega). & Should \\
+		RNF-12 & Operar bajo condiciones de conectividad limitada, con un ancho de banda de referencia de 60--70 Mbps simétricos. & Should \\
+		RNF-13 & Integrarse con la plataforma institucional existente. & Should \\
 		RNF-14 & Conservar la entrega del estudiante ante fallo del componente de IA. & Should \\
 		RNF-15 & Notificar al docente ante fallo del componente de IA. & Could \\
 		RNF-16 & Preservar el vínculo docente-estudiante manteniendo un canal humano identificable. & Should \\
@@ -485,8 +485,281 @@ Finalmente, se identificaron los impulsores que sustentan la hoja de ruta del pr
 	\item \textbf{Sostenibilidad:} Financiación institucional.
 \end{itemize}
 
+\section{Fase de Diseño y Construcción del Prototipo}
+Para la fase 3 se definió un plan de trabajo para la construcción y ejecución de un prototipo funcional de la plataforma, que concluye con su desarrollo y con una validación inicial con usuarios.
+Siguiendo la ciencia del diseño, este prototipo se trata como un artefacto que se evalúa frente a los requisitos definidos en la fase de análisis, y la fase se divide en las siguientes subfases.
+Primero, se presenta la metodología de desarrollo, la cual se enmarca en la ciencia del diseño; posteriormente, se describe la plataforma y lo que se hizo para su desarrollo, y se identifican sus usuarios y el rol que cumple cada uno dentro de ella.
+Luego, se describe la arquitectura utilizada y cómo esta permite cumplir los requisitos funcionales y no funcionales necesarios para su funcionamiento, junto con las tecnologías, frameworks, librerías y lenguajes de programación empleados; después, se analizan los elementos que componen la plataforma y la razón de su desarrollo, así como el cumplimiento de los requisitos con respecto a la fase de análisis.
+Finalmente, se desarrolla un plan de pruebas y una validación inicial con usuarios, de alcance reducido, para determinar en qué medida la plataforma cumple los objetivos planteados
+\subsection{Metodología de Desarrollo, Ciencia del Diseño}
+En la ciencia del diseño es una metodología investigativa que genera conocimiento mediante la construcción y evaluación de artefactos que resuelven un problema real, aplicada a un contexto específico.
+Para el desarrollo de este proyecto se utilizó el artefacto EduTrace, cuya utilidad se evalúa en función del problema y los requisitos identificados en las fases anteriores.
+De esta forma la plataforma servirá para comprobar que la Inteligencia Artificial puede apoyar la retroalimentación formativa sin desplazar al docente, y que la retroalimentación generada por la plataforma sea de calidad y cumpla con los objetivos establecidos en la fase de análisis.
+y que sea efectivo en la lucha contra la problematica identificada.
 
-\addtolength{\textheight}{-12cm}   % This command serves to balance the column lengths
+La metodología de ciencia de diseño complementa directamente la metodología de Design Thinking empleada en la fase de análisis, ya que con ella se logró entender el problema desde la experiencia del profesor y de los estudiantes, e idear así una solución que satisfaga las necesidades de los usuarios y que pueda ser evaluada frente a los requisitos planteados en la fase de análisis.
+La ciencia del diseño, sin embargo, guio la construcción de la solución y su evaluación convirtiéndolo directamente en un artefacto verificable y evaluable frente a los objetivos planteados, y permitiendo que la solución pueda ser mejorada iterativamente.
+
+Seis actividades diferentes estructuraron el proceso. Inicialmente la identificación del problema y la motivación impulsaron la sección de contextualización y proporcionaron las pautas necesarias a las cuales 
+El artefacto se captura para cumplir los objetivos y mitigar la problemática identificada, luego la definición de los objetivos de la solución corresponde a los requisitos funcionales y no funcionales de la plataforma a la que la solución. 
+me adapto y desarrollo de manera efectiva. En esta fase se realiza el diseño y desarrollo del artefacto donde con la construccion de la plataforma y los elementos que la componen, se realiza la demostracion del prototipo funcional el cual muestra su funcionamiento.
+con código y feedback generado por la plataforma con diferentes artefactos que comprueban dicha validación. La evaluación consiste en analizar el cumplimiento de los requisitos funcionales y no funcionales de la plataforma y en presentar los artefactos de validación con los usuarios sobre la plataforma realizada.
+
+El desarrollo de la plataforma se realizó mediante un proceso iterativo y de mejora continua, evaluando la plataforma y mejorándola a partir de versiones intermedias. En primer lugar, se adaptaron los textos de la retroalimentación, para que fueran comprensibles para estudiantes de primer semestre y de diferentes carreras, por ejemplo, en el modo informal las tres preguntas de Hattie y Timperley se muestran como «¿Qué pide el ejercicio?», «¿Qué está funcionando y qué puedo mejorar?» y «¿Qué puedo hacer ahora?» 
+siguiendo la teoria afirmada por Hattie y Timperley, se ajsutaron los modos de aprendizaje de la IA, los elementos de muestra en plataforma y la forma de mostrar la retroalimentacion, el funcionamiento de los roles y personas que interactuan en la plataforma, y la forma de mostrar los resultados de la retroalimentacion y el progreso del estudiante. Tercero, se ajustaron los elementos de la plataforma para que fueran más claros y comprensibles, y se mejoró la experiencia de usuario en general y 
+se ajustaron los requisitos de rendimiento, desempeño y escalabilidad de la plataforma, para que la plataforma pueda ser usada en diferentes escenarios y con diferentes cantidades de estudiantes y docentes en muchas otras materias como por ejemplo Programacion Avanzada. Por último, se ajustaron los elementos de seguridad y privacidad de la plataforma, para cumplir con la normativa vigente y proteger los datos personales de los estudiantes y docentes, iterando sobre estas etapas de desarrollo y la documentación asociada a los requisitos.
+
+\subsection{Descripción de la Plataforma}
+EduTrace es una plataforma web de retroalimentación formativa enfocada en cursos de introduccion a la programación, que usa inteligencia artificial y el entrenamiento de modelos de lenguaje 
+que propone retroalimentacion y el docente la supervisa antes que llegue al estudiante. La plataforma reune en un solo lugar un editor de codigo especializado con c++, la compilacion, los casos de prueba, y la revision docente de modo que el estudiante no necesita instalar herramientas adicionales para interactuar con la plataforma. 
+la IA se ejecuta de forma local mediante Ollama con el modelo LLaMA3.1:8b asegurando los datos de los diferentes usuarios dentro de la plataforma.
+
+El flujo de trabajo de EduTrace comienza cuando el docente publica un taller con su enunciado, los archivos de apoyo, fecha límite, criterios de evaluación, los RAE que trabaja y hasta diez casos de prueba, que puede dejar visibles u ocultos para el estudiante.
+A partir de ahí, el estudiante escribe su programa en el editor del navegador y puede compilarlo y ejecutarlo tantas veces como quiera antes de entregar; en cada intento ve cuántos casos de prueba pasa y, si el programa no compila o falla al ejecutarse, la plataforma le explica en español qué significa el error y en qué línea ocurre, sin intervención de la IA, e incluso puede agregar sus propios casos de prueba para verificar su solución.
+Cuando el estudiante hace la entrega oficial, la plataforma la guarda, la compila en un entorno aislado y sin acceso a la red, y la ejecuta con todos los casos de prueba del docente, de manera que la entrega se conserva aunque la IA falle después.
+Después, la entrega pasa a una cola de procesamiento en la que la IA elabora una propuesta de feedback a partir del código, el enunciado, los resultados de las pruebas y los criterios del taller, sin conocer nunca ni el nombre ni el correo del estudiante; la propuesta sigue las tres preguntas de Hattie y Timperley, incluye observaciones sobre legibilidad, mantenibilidad y documentación, y pasa por un filtro que impide revelar la solución del ejercicio.
+La propuesta llega al panel de revisión del docente con el código, los resultados de las pruebas, una nota tentativa, los niveles de logro por RAE y una estimación de los minutos que tomará revisarla, y decide si la aprueba tal cual, si edita texto, nota o niveles, o si la descarta y escribe su propia retroalimentación; el estudiante ve su entrega como «pendiente de revisión», y cada decisión queda registrada en la bitácora con su autor y fecha.
+Al ser aprobada la revisión, el estudiante ve un aviso en la plataforma, y por correo si lo autorizó, y la retroalimentación con la indicación de su procedencia, por ejemplo «Generado con IA y aprobado por» el docente; debajo de ella responde si la comprendió y puede hacer preguntas, que son respondidas por el docente o un monitor de la clase.
+Finalmente, si lo necesita, el estudiante puede volver a entregar, y cada nueva versión se revisa por separado, por lo que el ciclo de retroalimentación se repite bajo la supervisión del profesor.
+
+A continuacion en la Figura 9 se muestra un nuevo diagrama de actividad que refleja el flujo de trabajo de la plataforma con respecto a los diferentes componentes con los que interactua el estudiante y el docente en plataforma y relaciona los pasos explicados anteriormente.
+
+\begin{figure*}[t]
+	\centering
+	\includegraphics[width=\textwidth]{images/Actividad_Componentes.png}
+	\caption{Diagrama de actividad del flujo de trabajo de EduTrace en un taller}
+	\label{fig:actividad_componentes}
+\end{figure*}
+
+La plataforma tiene dos formas de usar la IA que el profesor puede configurar para cada clase.
+En el modo supervisado que es el modo por defecto el estudiante no puede consultar directamente a la IA y solo recibe la retroalimentación que apruebe el docente, de esta forma se concreta el principio de que la IA propone y el profesor decide.
+En el modo inmediato, el estudiante puede obtener retroalimentación, pistas progresivas que nunca dan la solución y conversar con un tutor de IA, con un límite de solicitudes por hora.
+Este modo es una excepción que el docente activa de forma explícita tras una advertencia, y queda registrada en la bitácora; también puede marcar un taller como evaluación para que la IA no esté disponible hasta su fecha límite.
+
+Frente al mockup del PMV 0.0 Beta definido en la fase de análisis, el prototipo conserva la idea central, una vista del estudiante con retroalimentación de tipo feed-forward y una vista del docente en la que este revisa y aprueba antes de que el estudiante reciba el resultado.
+Sin embargo, el desarrollo amplió y concretó esa propuesta en varios aspectos, ampliando las funcionalidades y la interfaz de diferentes formas.
+Se incorporaron el editor y la compilación en el navegador con casos de prueba, que el mockup no contemplaba al momento de realizarlo, se definieron los dos modos de IA descritos anteriormente, se añadió el rol del monitor, que comenta el código y responde preguntas sin calificar, y se agregaron indicadores para el docente, como el tiempo real de revisión, la comprensión de la retroalimentación y los errores frecuentes del curso comparando los diferentes elementos.
+La Figura 10 se muestra una vista del prototipo que diferencia la vista de revisión del docente con respecto a la del mockup beta.
+
+\begin{figure}[ht]
+	\centering
+	\placeholderfig{images/MuestraEdu.png}{Vista del docente en el prototipo de EduTrace}
+	\caption{Vista del docente en el prototipo de EduTrace}
+	\label{fig:muestra_prototipo}
+\end{figure}
+
+\subsection{Usuarios de la Plataforma}
+Edutrace fue concebida para ser utilizada por tres tipos de usuarios: estudiantes, docentes y monitores. Añadiendo un cuarto rol interesado que es la propia universidad y sus integrantes como parte de la comunidad academica interesada, del mismo modo fue diseñada para el curso de Introduccion a la programacion de la Pontificia Universidad Javeriana, pero puede ser escalada hacia otros cursos y universidades con sus respectivos cursos introductorios de programacion, 
+al ser orientado hacia los estudiantes de la PUJ se tomaron decisiones de diseño y desarrollo que se ajustan a la experiencia de usuario de los estudiantes y docentes de la institucion, como por ejemplo la inclusion de C++ como lenguaje de desarrollo y con los RAE esperados para el curso de introduccion a la programacion, y la inclusion de los casos de prueba y el syllabus del curso en la plataforma, que permiten que la IA pueda generar retroalimentacion de calidad y ajustada a los criterios del curso.
+Como se mostró en el contexto, una parte importante de los estudiantes percibe el curso como difícil y el 69,6 \% recurre a la IA como su principal fuente de ayuda, mientras que el docente debe dar retroalimentación de calidad a muchos estudiantes en poco tiempo.
+Por eso, la plataforma reconoce a los tres tipos de usuarios con necesidades y permisos distintos el estudiante, que es el beneficiario de la retroalimentación, el profesor, que es quien decide y retroalimenta, y el monitor, que apoya el acompañamiento sin tomar un rol en la calificación pero si en la retroalimentación de forma directa.
+La Tabla~\ref{tab:usuarios} hace un analisis qué necesita cada uno y qué puede hacer dentro de la plataforma.
+
+\begin{table*}[t]
+\centering
+\small
+\caption{Usuarios de EduTrace, necesidades y funciones.}
+\label{tab:usuarios}
+\begin{tabular}{|p{2cm}|p{5.2cm}|p{9.5cm}|}
+\hline
+\textbf{Usuario} & \textbf{Qué necesita} & \textbf{Qué puede hacer} \\
+\hline
+Estudiante &
+Saber qué está mal en su código y cuál es el siguiente paso para mejorarlo, sin recibir la solución de forma directa, con retroalimentación oportuna y en un lenguaje comprensible para cualquier nivel. &
+Escribir, compilar y ejecutar código en el navegador, ver los resultados de los casos de prueba y los errores explicados en español, entregar talleres practicos, practicar con un banco de ejercicios preestablecido, consultar su historial, sus notas y su nivel por RAE, indicar si entendió la retroalimentación y hacer preguntas, en el modo inmediato, pedir retroalimentación, pistas y conversar con un tutor de IA. \\
+\hline
+Profesor &
+Dar retroalimentación de calidad a muchos estudiantes sin perder el control sobre la nota ni sobre su criterio pedagógico. &
+Crear materias, clases, talleres, casos de prueba, criterios y RAE, revisar, editar, aprobar o descartar las propuestas de la IA, definir el modo de IA de cada clase, consultar indicadores, errores frecuentes, alertas tempranas y código similar entre entregas, responder preguntas, exportar notas, compartir la materia con otros profesores y copiarla para el siguiente periodo. \\
+\hline
+Monitor &
+Apoyar al profesor en el acompañamiento de los estudiantes sin asumir un rol directo en la calificación. &
+Ver las entregas de las clases que tiene asignadas, comentar y marcar el código, y responder las preguntas de los estudiantes.  \\
+\hline
+\end{tabular}
+\end{table*}
+Además de estos tres usuarios, la institución es un actor interesado que no usa la plataforma directamente, pero del que depende su adopción tanto en modelo de negocio y de forma practica cumpliendo las restricciones y algunos requisitos no funcionales.
+En la tabla de actores de la fase de análisis se identificó un cierto equilibrio y separacion de responsabilidades entre quien se beneficia de la retroalimentación (el estudiante), quien decide sobre ella (el profesor) y quien sostiene la solución (la universidad).
+En EduTrace, la institución es la encargada de alojar el servidor, de responder por el tratamiento de los datos personales de los estudiantes según la Ley 1581 de 2012 y de autorizar la integración con su plataforma académica, Campus Virtual.
+Por esta razón, aunque no aparece como un rol dentro de la plataforma, su papel es determinante  en el modelo de negocio que Edutrace quiere realizar.
+
+\subsection{Arquitectura de la Plataforma}
+La arquitectura de EduTrace sigue un modelo cliente-servidor organizado como un monolito modular, en el que todos los componentes se ejecutan en un único servidor.
+El navegador del estudiante o del profesor se comunica con Caddy, que actúa como proxy inverso con HTTPS y reparte las peticiones: las páginas las sirve el servidor de Next.js y las peticiones a \texttt{/api} las atiende el backend en Go.
+El backend se divide en módulos con responsabilidades separadas: \texttt{handler} expone la API REST y el envío por partes de la retroalimentación (SSE), \texttt{compiler} compila y prueba el código en un entorno aislado, \texttt{auth} concentra los permisos y el acceso a los datos, y \texttt{ai} construye las instrucciones para el modelo y filtra sus respuestas.
+Los datos se guardan en SQLite y las propuestas de la IA las genera un modelo local a través de Ollama, de modo que ningún dato sale del servidor.
+La Figura~\ref{fig:arquitectura} muestra estos componentes y cómo se relacionan.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{images/arquitectura_edutrace.png}
+\caption{Arquitectura de EduTrace con los diferentes componentes.}
+\label{fig:arquitectura}
+\end{figure*}
+Las decisiones de arquitectura se tomaron a partir de los requisitos definidos en la fase de análisis.
+La Tabla~\ref{tab:decisiones} resume las principales decisiones tomadas.
+\begin{table*}[t]
+\centering
+\small
+\caption{Principales decisiones de arquitectura y su justificación}
+\label{tab:decisiones}
+\begin{tabular}{|p{3.6cm}|p{13.6cm}|}
+\hline
+\textbf{Decisión} & \textbf{Justificación} \\
+\hline
+Monolito modular en Go &
+El equipo es pequeño y todo corre en un solo servidor, así que dividir la plataforma en varios servicios solo habría complicado las cosas. Go deja todo en un único programa, fácil de instalar, y aguanta bien varias compilaciones al mismo tiempo. \\
+\hline
+SQLite WAL &
+No hace falta instalar ni mantener un servidor de base de datos, toda la información queda en un archivo que se respalda y se verifica cada día. El modo WAL permite que varias personas consulten al tiempo sin estorbarse. \\
+\hline
+IA local con Ollama (\texttt{llama3.1:8b}) &
+El código de los estudiantes no sale del servidor y el modelo nunca conoce su nombre ni su correo, algo que importa cuando se trabaja con datos de personas como en este caso. \\
+\hline
+Ejecución aislada con \texttt{bwrap} &
+Cualquier programa que envía un estudiante podría tener un error o hacer algo indebido, así que se ejecuta sin acceso a la red y con límites de procesos, memoria, tiempo y tamaño de archivos. Si el aislamiento no funciona, el servidor no arranca, es preferible no ofrecer el servicio antes que correr código sin protección. \\
+\hline
+Cola persistente de propuestas &
+La entrega y su turno en la cola se guardan al mismo tiempo, así que ningún trabajo se pierde aunque la IA falle o el servidor se reinicie. Si algo sale mal, la plataforma lo intenta hasta tres veces y si aun así no lo logra, le avisa al docente para que sepa qué pasó. \\
+\hline
+Caddy con HTTPS &
+Deja toda la plataforma en una sola dirección web segura y renueva los certificados por su cuenta. \\
+\hline
+Next.js 15 y React 19 &
+Stack tecnológico que facilita armar pantallas distintas para cada rol (estudiante, profesor y monitor) y mantener páginas livianas, lo que ayuda a quienes tienen una conexión lenta. La accesibilidad según WCAG 2.1 AA se revisa de forma automática cada vez que se integra un cambio. \\
+\hline
+\end{tabular}
+\end{table*}
+
+En cuanto al diseño interno, se aplicaron varios patrones de arquitectura y de diseño.
+A nivel de arquitectura, además del estilo cliente-servidor y el proxy inverso, el backend se organiza por capas: la presentación en Next.js, la API en \texttt{handler}, los servicios de compilación e IA en \texttt{compiler} y \texttt{ai}, y el acceso a datos en \texttt{auth}.
+A nivel de diseño, se usaron los siguientes patrones:
+\begin{itemize}
+  \item \textbf{Middleware (cadena de decoradores):} los permisos se aplican envolviendo cada ruta con funciones que verifican la sesión y el rol (\texttt{RequireAuth}, \texttt{RequireRole}, \texttt{RequireLearner}); lo mismo ocurre con la compresión y las cabeceras de seguridad.
+  \item \textbf{Repositorio:} el acceso a la base de datos se concentra en un único componente (\texttt{Store}), y cada consulta filtra por dueño, clase o monitor asignado, de modo que los permisos se aplican en el propio SQL.
+  \item \textbf{Productor-consumidor con cola persistente:} cada entrega produce un trabajo en la tabla \texttt{ai\_jobs} y un trabajador en segundo plano lo consume, con reintentos y recuperación tras un reinicio.
+  \item \textbf{Máquina de estados:} cada revisión pasa de borrador a devuelta solo por una acción del docente, y cada trabajo de la cola pasa por los estados pendiente, procesando, lista, error u omitida. Así, el principio de que el profesor decide queda garantizado por el sistema, no solo por la interfaz.
+  \item \textbf{Tubería de filtros:} la respuesta del modelo pasa por filtros sucesivos que completan las tres preguntas de Hattie y Timperley si faltan, agregan las observaciones de calidad y eliminan la solución del ejercicio.
+  \item \textbf{Semáforo:} un número máximo de programas puede compilarse o ejecutarse al mismo tiempo, para que una carga alta no tumbe el servidor.
+  \item \textbf{Inyección de dependencias:} los módulos reciben sus dependencias al construirse, lo que permite probarlos de forma aislada.
+  \item \textbf{Proveedor de contexto en React:} la sesión del usuario se comparte entre las páginas mediante un contexto de autenticación.
+\end{itemize}
+
+Frente al diagrama de actividad de la Figura~\ref{fig:diagrama_actividad} de la fase anterior, la arquitectura implementada introduce dos cambios.
+En ese diagrama, un orquestador coordinaba la compilación y la IA y entregaba las sugerencias directamente al estudiante.
+En el prototipo, ese orquestador desaparece como componente independiente y su función se divide en dos partes, la compilación y los casos de prueba se ejecutan de inmediato en el backend cuando el estudiante entrega, y la propuesta de la IA se genera después, de forma asíncrona, a través de la cola persistente.
+El segundo cambio que se introduce es que la salida de la IA ya no llega al estudiante, sino que queda como borrador hasta que el docente la aprueba, la edita o la descarta.
+De esta manera, la arquitectura incorpora de forma explícita el principio de \textit{human-in-the-loop} que guío todo el proyecto.
+
+\subsection{Cumplimiento de Requisitos}
+Siguiendo la ciencia del diseño, el prototipo se evalúa frente a los requisitos definidos en la fase de análisis, que funcionan como los objetivos de la solución.
+Esta evaluación técnica revisa, para cada requisito, si existe una implementación y una prueba o medición que lo demuestre, y distingue lo que ya se cumple en el código de lo que depende de una auditoría y lo que se puede desarrollar a futuro, del uso con estudiantes reales o de la institución.
+Para ello se usaron cinco estados: \textit{cumple}, cuando hay implementación y una prueba que lo verifica, \textit{instrumentado}, cuando la plataforma ya mide el criterio pero falta usarla con estudiantes, \textit{parcial}, cuando se cubre solo una parte, \textit{pendiente}, cuando aún no está implementado, y \textit{fuera del código}, cuando depende de un análisis o de una decisión institucional.
+
+Como resultado, el prototipo cumple los 23 requisitos funcionales y 12 de los 16 requisitos no funcionales.
+De los cuatro restantes, el RNF-01 está implementado pero requiere una auditoría legal, el RNF-02 se cumple de forma parcial porque falta la evaluación de impacto de la IA, el RNF-09 está instrumentado a la espera de su uso con estudiantes, y el RNF-13, la integración con Campus Virtual, queda pendiente.
+Las Tablas~\ref{tab:cumplimiento} y~\ref{tab:cumplimiento_rnf} resumen el estado de cada requisito de acuerdo a la fase de análisis establecida.
+
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\caption{Cumplimiento de los requisitos funcionales}
+\label{tab:cumplimiento}
+\begin{tabular}{|p{1.2cm}|p{4.6cm}|p{2.2cm}|p{8.2cm}|}
+\hline
+\textbf{ID} & \textbf{Requisito} & \textbf{Estado} & \textbf{Cómo se cumple} \\
+\hline
+RF-01 & Retroalimentación para cada entrega & Cumple & Cada entrega oficial entra a la cola y recibe una propuesta de la IA. \\ \hline
+RF-02 & Tres preguntas de Hattie y Timperley & Cumple & Toda propuesta se organiza en ¿hacia dónde voy?, ¿cómo voy? y ¿qué sigue?, si falta una sección, se completa. \\ \hline
+RF-03 & «¿Qué sigue?» en todas las salidas & Cumple & Si el modelo la omite, se agrega una pista según el resultado de la entrega. \\ \hline
+RF-04 & Corrección con casos de prueba & Cumple & Hasta diez casos por taller, visibles u ocultos, ejecutados al compilar y al entregar. \\ \hline
+RF-05 & Observación sobre legibilidad & Cumple & Un analizador revisa sangría, nombres y líneas largas, y pasa los hallazgos a la IA. \\ \hline
+RF-06 & Observación sobre mantenibilidad & Cumple & El analizador detecta código repetido, variables globales y funciones muy largas. \\ \hline
+RF-07 & Observación sobre documentación & Cumple & El analizador revisa la presencia de comentarios. \\ \hline
+RF-08 & Pistas orientadas al razonamiento & Cumple & Las instrucciones del modelo exigen preguntas guía y pistas graduadas. \\ \hline
+RF-09 & No revelar la solución & Cumple & Un filtro elimina la solución de la propuesta y de las respuestas en vivo. \\ \hline
+RF-10 & Estado «pendiente de revisión» & Cumple & Toda revisión empieza como borrador y el estudiante no la ve hasta que se aprueba. \\ \hline
+RF-11 & Editar antes de entregar & Cumple & Texto, nota y niveles por RAE son editables en el panel de revisión. \\ \hline
+RF-12 & Aprobación registrada & Cumple & La aprobación queda en la bitácora con autor, fecha, nota y origen del texto. \\ \hline
+RF-13 & Descarte registrado & Cumple & El descarte elimina la propuesta, impide regenerarla y queda en la bitácora. \\ \hline
+RF-14 & Configurar criterios & Cumple & Criterios por taller, RAE por materia y casos de prueba definidos por el profesor. \\ \hline
+RF-15 & La rúbrica se refleja en la salida & Cumple & La propuesta usa los criterios, los RAE y los casos de prueba del taller. \\ \hline
+RF-16 & Ejecución automática & Cumple & Cada entrega dispara compilación, pruebas y propuesta sin intervención manual. \\ \hline
+RF-17 & Separar lo formativo de lo sumativo & Cumple & La IA no pone notas en el texto; la nota es un campo aparte que define el profesor. \\ \hline
+RF-18 & Aviso de participación de la IA & Cumple & Toda salida de la IA lleva su aviso, y cada revisión indica si hubo IA. \\ \hline
+RF-19 & Contenido de IA marcado & Cumple & El origen del texto queda como IA, IA editada o docente, y el estudiante lo ve. \\ \hline
+RF-20 & Bitácora de intervenciones & Cumple & Se registran autor, acción y fecha de cada propuesta, aprobación, descarte y cambio. \\ \hline
+RF-21 & Errores frecuentes del curso & Cumple & Errores de compilación, ejecución y casos de prueba agrupados por clase o materia. \\ \hline
+RF-22 & Aclaración sobre la retroalimentación & Cumple & El estudiante pregunta debajo de la retroalimentación y responde el profesor o un monitor. \\ \hline
+RF-23 & Iterar & Cumple & El estudiante puede volver a entregar, y cada versión tiene su revisión. \\ \hline
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\caption{Cumplimiento de los requisitos no funcionales y las restricciones de viabilidad}
+\label{tab:cumplimiento_rnf}
+\begin{tabular}{|p{1.2cm}|p{4.6cm}|p{2.2cm}|p{8.2cm}|}
+\hline
+\textbf{ID} & \textbf{Requisito} & \textbf{Estado} & \textbf{Cómo se cumple} \\
+\hline
+RNF-01 & Ley 1581 de 2012 & Implementado, falta auditoría & Autorización versionada, política pública, descarga y eliminación de datos y borrado automático al cerrar el periodo. \\ \hline
+RNF-02 & Circular 002 de 2024 (SIC) & Parcial & Supervisión humana, transparencia y modelo local, falta la evaluación de impacto de la IA en plataforma. \\ \hline
+RNF-03 & Confidencialidad del código & Cumple en el código & Ejecución aislada sin red y con límites, permisos filtrados en SQL y cabeceras de seguridad. \\ \hline
+RNF-04 & Confidencialidad de datos personales & Cumple en el código & Contraseñas guardadas con hash, sesión segura y respaldos diarios verificados, que pueden cifrarse. \\ \hline
+RNF-05 & Control de lo que recibe la IA & Cumple & El modelo es local y nunca recibe el nombre ni el correo del estudiante. \\ \hline
+RNF-06 & Validación docente de la retroalimentación & Cumple en modo supervisado & En el modo predeterminado, el estudiante solo recibe lo que el profesor aprueba. \\ \hline
+RNF-07 & Docente como decisor final & Cumple & Aprobar, editar, descartar y calificar son acciones exclusivas del profesor. \\ \hline
+RNF-08 & Tiempo de revisión por entrega & Cumple & La IA estima los minutos de revisión y la plataforma mide el tiempo real. \\ \hline
+RNF-09 & Lenguaje comprensible para CS1 & Instrumentado & Cada retroalimentación pregunta si se entendió; meta de al menos 80 \% de respuestas afirmativas. \\ \hline
+RNF-10 & Procesar el volumen del curso & Cumple & Prueba de carga con 200 entregas, peor demora de 1 h 21 min frente a un umbral de 5 h. \\ \hline
+RNF-11 & Retroalimentación a tiempo & Cumple & Se mide el tiempo entre la entrega y la aprobación, con un umbral de 5 h. \\ \hline
+RNF-12 & Conectividad limitada & Cumple & Páginas de 206 a 237 KB y respuestas comprimidas de menos de 2 KB. \\ \hline
+RNF-13 & Integración con la plataforma institucional & Pendiente & Requiere el registro de EduTrace en Campus Virtual (Brightspace), por ahora exporta en CSV ciertos elementos. \\ \hline
+RNF-14 & Conservar la entrega si falla la IA & Cumple & La entrega se guarda antes de la IA y la cola reintenta sin modificarla. \\ \hline
+RNF-15 & Avisar al docente si falla la IA & Cumple & Aviso en el tablero, botón para reintentar y alertas del servidor cada 5 minutos. \\ \hline
+RNF-16 & Vínculo docente-estudiante & Cumple & La revisión muestra quién la aprobó y el estudiante puede preguntarle directamente. \\ \hline
+\end{tabular}
+\end{table*}
+
+La evaluación se apoya en tres fuentes de evidencia.
+La primera es una prueba de carga con 200 entregas simultáneas, ejecutada con el modelo \texttt{llama3.1:8b} en una GPU RTX 3050 de 6 GB: las 200 entregas se compilaron con sus casos de prueba en 78 segundos y todas las propuestas quedaron listas sin errores, con una mediana de 23,5 segundos por propuesta y una peor demora de 1 h 21 min, frente a un umbral de 5 horas.
+La segunda son 63 pruebas automatizadas del backend, que verifican, entre otros aspectos, el aislamiento del código, los límites del entorno de ejecución, el filtro que impide revelar la solución, los permisos por rol y la restauración de los respaldos.
+La tercera es una revisión de accesibilidad según el estándar WCAG 2.1 AA sobre las páginas públicas, las del estudiante y las del profesor.
+Las pruebas automatizadas y la revisión de accesibilidad se ejecutan en cada cambio mediante integración continua, junto con un análisis de vulnerabilidades de las dependencias, de modo que una versión que falle alguna de ellas no se despliega.
+
+\subsection{Validación con Usuarios}
+
+
+\section{Fase 4: Proyección}
+
+
+\subsection{Recursos necesarios}
+
+
+\subsection{Roadmap tecnológico}
+
+
+\subsection{Investigación, desarrollo e innovación (I+D+i)}
+
+
+\subsection{Plan de negocio}
+\subsubsection{Plan de mercadeo}
+
+\subsubsection{Plan financiero}
+
+\subsubsection{Estrategias de financiación}
+
+
+\subsection{Riesgos}
+
+
+\subsection{Conclusiones y trabajo futuro}
+
+
+%\addtolength{\textheight}{-12cm}   % This command serves to balance the column lengths
                                   % on the last page of the document manually. It shortens
                                   % the textheight of the last page by a suitable amount.
                                   % This command does not take effect until the next page
