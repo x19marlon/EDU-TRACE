@@ -724,8 +724,8 @@ RNF-16 & Vínculo docente-estudiante & Cumple & La revisión muestra quién la a
 \end{tabular}
 \end{table*}
 
-La evaluación se apoya en tres fuentes de evidencia.
-La primera es una prueba de carga con 200 entregas simultáneas, ejecutada con el modelo \texttt{llama3.1:8b} en una GPU RTX 3050 de 6 GB: las 200 entregas se compilaron con sus casos de prueba en 78 segundos y todas las propuestas quedaron listas sin errores, con una mediana de 23,5 segundos por propuesta y una peor demora de 1 h 21 min, frente a un umbral de 5 horas.
+La evaluación se apoya en tres fuentes de evidencia principales.
+La primera es una prueba de carga con 200 entregas simultáneas, ejecutada con el modelo \texttt{llama3.1:8b} en una GPU RTX 3050 de 6 GB, las 200 entregas se compilaron con sus casos de prueba en 78 segundos y todas las propuestas quedaron listas sin errores, con una mediana de 23,5 segundos por propuesta y una peor demora de 1 h 21 min, frente a un umbral de 5 horas.
 La segunda son 63 pruebas automatizadas del backend, que verifican, entre otros aspectos, el aislamiento del código, los límites del entorno de ejecución, el filtro que impide revelar la solución, los permisos por rol y la restauración de los respaldos.
 La tercera es una revisión de accesibilidad según el estándar WCAG 2.1 AA sobre las páginas públicas, las del estudiante y las del profesor.
 Las pruebas automatizadas y la revisión de accesibilidad se ejecutan en cada cambio mediante integración continua, junto con un análisis de vulnerabilidades de las dependencias, de modo que una versión que falle alguna de ellas no se despliega.
@@ -734,18 +734,120 @@ Las pruebas automatizadas y la revisión de accesibilidad se ejecutan en cada ca
 
 
 \section{Fase 4: Proyección}
-
+En la fase de proyeccion se analiza la evolucion de Edutrace desde el prototipo funcional, con el fin de mostrar como se puede aplicar los elementos financieros y de negocio
+Siguiendo el \textit{Technology Roadmapping} presentado en la fase de analisis, en la fase de análisis se identificó por qué hacerlo es decir, los impulsores de adopción, y esta fase responde cómo hacerlo y con qué recursos, tambien la agenda de investigacion, desarrollo e innovacion.
+Primero, se identifican los recursos necesarios para escalar la plataforma y llevar a cabo la implementación, luego, se presenta el roadmap tecnológico por horizontes, con los criterios para avanzar de uno a otro.
+Después, se plantea el plan de negocio, que incluye el plan de mercadeo, el plan financiero y las estrategias de financiación.
+Finalmente, se presentan las conclusiones y el trabajo futuro del proyecto finalizando la fase y el proyecto.
 
 \subsection{Recursos necesarios}
+Los recursos necesarios para llevar a cabo la implementacion del proyecto y el mantenimiento de la plataforma se dividen en tres categorias diferentes recursos humanos, recursos tecnologicos y recursos institucionales y mantenimiento .
+Se parte desde la base de la plataforma y sus funcionalidades actuales y los recursos actuales, y se identifican los recursos adicionales necesarios para escalar la plataforma y llevar a cabo la implementacion a mayor escala y su puesta en marcha.
+Para cada uno se indica para qué sirve y en qué etapa del roadmap se necesita (F1: piloto en una sección, F2: consolidación de plataforma en universidad; F3: expansión a otros cursos y universidades), como se resume en la Tabla~\ref{tab:recursos}.
+\begin{table*}[t]
+\centering
+\footnotesize
+\caption{Recursos necesarios para llevar EduTrace a un uso real.}
+\label{tab:recursos}
+\begin{tabular}{|p{3.6cm}|p{10.6cm}|p{2.4cm}|}
+\hline
+\textbf{Recurso} & \textbf{Para qué sirve} & \textbf{Etapa o\newline frecuencia} \\
+\hline
+\multicolumn{3}{|l|}{\textbf{Humanos}} \\ \hline
 
+Desarrollo & Corregir errores, implementar la integración con Campus Virtual y ajustar la plataforma según los elementos que se nececiten & F0 en adelante \\ \hline
+Administración del servidor & Desplegar versiones, vigilar el estado del servicio, atender alertas y restaurar respaldos si es necesario & F0 en adelante \\ \hline
+Soporte a docentes & Capacitar al profesor en el uso de la plataforma, resolver dudas y recoger observaciones durante el piloto & F0 y F1 \\ \hline
+Responsable de los datos personales & Atender las solicitudes de los titulares y responder por el tratamiento de los datos de los estudiantes & F0 en adelante \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{Tecnológicos}} \\ \hline
+Servidor con GPU & Ejecutar la plataforma y el modelo de IA local y probar su rendimiento con diferentes volúmenes de datos & F0 \\ \hline
+Respaldos & Conservar una copia diaria, cifrada y verificada de la base de datos, con una copia fuera del servidor & F0 en adelante \\ \hline
+Dominio con HTTPS & Publicar la plataforma bajo un dominio de la universidad con certificado de seguridad & F0 \\ \hline
+Correo saliente & Enviar los avisos preferiblemente con correo a estudiantes y docentes cuando se devuelve una revisión o se responde una pregunta & F0 \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{Institucionales}} \\ \hline
+Cursos para el piloto & Usar la plataforma con la mayor cantidad de estudiantes, tiempos de revisión y concordancia con el profesor & F0: un curso especifico, F1: todos los cursos\\ \hline
+Responsable del tratamiento de datos & Asumir legalmente el tratamiento de los datos, designar un canal de contacto y aprobar auditoría legal & F0 \\ \hline
+Registro en Campus Virtual & Obtener las credenciales para integrar EduTrace con Brightspace  & F1 \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{Mantenimiento}} \\ \hline
+Actualización de dependencias & Revisar las actualizaciones que el sistema propone automáticamente cada semana y el análisis de vulnerabilidades que se ejecuta cada semana & Semanal \\ \hline
+Actualización del modelo de IA si es necesario & Comparar modelos nuevos con los casos de evaluación de la plataforma antes de reemplazar el actual  & Una vez por semestre, antes de iniciar el periodo \\ \hline
+Prueba de restauración & Restaurar un respaldo en una copia de prueba para confirmar que los datos se pueden recuperar & Una vez por semestre \\ \hline
+\end{tabular}
+\end{table*}
+
+Parte del mantenimiento ya está automatizado en el prototipo incial, los respaldos se generan y verifican cada día, el estado del servicio se revisa cada cinco minutos con un heartbeat, el sistema propone semanalmente las actualizaciones de dependencias automatizadas con workdlows y cada cambio pasa por pruebas automáticas antes de desplegarse.
+Lo que no esta automatizado es la actualización del modelo de IA, que se hace una vez por semestre, y la prueba de restauración de un respaldo, que también se hace una vez por semestre.
+Mientras que la plataforma se aloja temporalmente en un servidor de pruebas y se asume proximamente dado el modelo de negocio que se plantea que la universidad asuma el alojamiento y mantenimiento de la plataforma, por lo que se requiere un responsable del tratamiento de datos personales y un responsable del servidor, que puede ser el mismo o diferente.
+y tambien se propone como recurso auxiliar al alojamiento de la plataforma en un servidor en nube que a pesar que sea mas rapido es mas dificil trasladar los datos y el modelo de IA a otro servidor, por lo que se recomienda que la universidad asuma el alojamiento y mantenimiento de la plataforma.
 
 \subsection{Roadmap tecnológico}
+El roadmap de EduTrace se organiza en un modelo de capas que pone en una misma linea de tiempo el mercado, el producto, la tecnologia y los recursos, de modo que se pueda ver cómo se relacionan y qué se necesita para avanzar de un horizonte a otro.
+la capa de mercado retoma los impulsores identificados en la fase de analisis, como la nececidad del profesor de dar retroalimentacion de calidad a muchos estudiantes o los datos descubiertos en el contexto del problema
+Las etapas siguen las del modelo de negocio, primero una financiación inicial para el piloto, luego la validación y adopción dentro de la universidad, y por último la expansión a otros cursos e instituciones bajo el mismo modelo.
 
+Se utiliza para desarrollar el roadmap de una forma apropiada acorde con el modelo de negocio se usa el metodo de triángulo mágico del Business Model Navigator de St. Gallen (Gassmann, Frankenberger y Csik), el cual describe
+un negocio con cuatro preguntas principales y como se propone un negocio a partir de ello  quién es el cliente, qué se le ofrece, cómo se produce esa oferta y por qué el negocio es viable.
+En el roadmap, la capa de mercado responde al quién, la de producto al qué, las de tecnología y recursos al cómo, y la financiación de cada etapa al valor llendo en concordancia con el triangulo y la forma de presentar las características de cada etapa.
+para pasar a la siguiente etapa, se hace de forma en cascada, donde hay un criterio medible para pasar de una etapa a otra, y se requiere que se cumplan todos los criterios de la etapa anterior para pasar a la siguiente, Es por ello que en La Figura~\ref{fig:roadmap} muestra el roadmap completo.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{images/roadmap_edutrace.png}
+\caption{Roadmap tecnológico de EduTrace por capas y etapas.}
+\label{fig:roadmap}
+\end{figure*}
+
+En el roadmap tambien se caracteriza el mercado, en especial el tamaño del mercado y hasta donde puede llegar la plataforma, para ello se hace un analisis de mercado y se estima el tamaño del mercado potencial(TAM), el tamaño del mercado disponible con lo actual(SAM) y el tamaño del mercado alcanzable(SOM),
+para alcanzar ese mercado se propone un plan de negocio basado en un cobro por suscripcion semestral por cada estudiante y por semestre a pesar que el modelo de negocio se basa en la venta de la plataforma a la universidad, se propone un cobro por suscripcion a cada estudiante para que la universidad pueda cubrir los costos de mantenimiento y desarrollo de la plataforma, y tambien para que la universidad pueda tener un control sobre el uso de la plataforma y el acceso a los datos de los estudiantes. 
+
+El TAM corresponde a los estudiantes que empiezan a programar en la educación superior colombiana.
+Aproximadamente el TAM de mercado sumó 862.000 estudiantes en promedio entre 2019 y 2024, es decir, cerca de 144.000 por año (Laboratorio de Economía de la Educación, citado en Portafolio, 2025).
+
+El SAM se limita a los programas de ingeniería de sistemas, cuyos estudiantes tienen un curso como Introducción a la Programación al inicio de la carrera unos 259.329 inscritos en el mismo periodo, unos 43.000 por año, en un programa que ofrecían 175 instituciones activas según el Ministerio de Educación (2018).
+El SOM en el corto plazo es una sección de Introducción a la Programación en la Javeriana, y en el mediano plazo ese curso completo junto con Programación Avanzada, lo que equivale a unos 2000 estudiantes aproximadamente por semestre.
+A partir de la etapa de expansión, y solo si se cumplen las puertas del roadmap, el negocio empezaría a capturar una parte del SAM con cada universidad que se sume como cliente.
+
+La Figura~\ref{fig:triangulo} muestra cómo responde EduTrace a las cuatro preguntas del triángulo mágico en cada etapa del roadmap presentando el negocio. 
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{images/triangulo_edutrace.png}
+\caption{Evolución del modelo de negocio de EduTrace según el triángulo mágico del Business Model Navigator.}
+\label{fig:triangulo}
+\end{figure*}
 
 \subsection{Investigación, desarrollo e innovación (I+D+i)}
+Al desarollar Edutrace y el prototipo funcional, se identificaron varias oportunidades de investigación, desarrollo e innovación que pueden mejorar la plataforma y su impacto en la educación.
+La investigacion se centra en lo que falta probar, el desarrollo de lo que falta construir y se puede mejorar, la innovacion de la propuesta de valor que aporta edutrace y de como se coordina todo lo anterior
 
+En especifico, en investigacion, falta demostrar si la retroalimentación aprobada por el docente ayuda al esteudiante a mejorar su desempeño y aprendizaje, y del mismo modo ahorra tiempo para el docente al momento de poder facilitar el aprendizaje del estudiante
+Del mismo modo se puede investigar que las propuestas de la IA puedan tener una relacion consistente con el criterio del docente  porque la literatura ya advierte que esa concordancia suele ser apenas moderada (Jukiewicz, 2025), y porque un profesor que empieza a aprobar sin leer convertiría la supervisión humana en una formalidad y no en lo que se quiere medir y es la transferecia del conocimiento y calidad de la retroalimentacion .
+Para responder estas interrogantes y lo que se deriva de ella, se propone un estudio de investigacion con un diseño experimental en la fase de piloto de prueba inicial en el que unas secciones de Introducción a la Programación usen EduTrace y otras mantengan su retroalimentación habitual como grupo de comparación.
+haciendo una comparativa al estar los estudiantes al azar en los salones y no ser una variable que depende o influye en el estudio, El estudio aprovecha datos que la plataforma ya registra, como la comprensión que reportan los estudiantes, el tiempo real que el profesor dedica a revisar, la proporción de propuestas que edita y la diferencia entre la nota sugerida y la nota final, y los complementa con una nueva aplicación de la encuesta de la fase de contexto y con entrevistas al profesor al cierre del periodo.
 
+En desarrollo, lo más importante es mejorar la calidad de las propuestas, es decir, que el profesor tenga que corregirlas cada vez menos.
+Para eso se ajustarán las instrucciones del modelo y se ampliarán los casos de evaluación con errores reales que aparezcan en el piloto.
+Esos mismos casos sirven para probar mejores modelos que se pueden seguir entrenando con tecnicas de supervision de aprednisaje de maquina de modo que el cambiod
+de inteligencia artifical se haga de acuerdo con los datos que muestre y con la experiencia que vaya adquieriendo en el entrenamiento.
+el otro frente es ampliar la cobertura, ya que hoy la plataforma solo compila C++ y llegar a otros cursos exige soportar lenguajes como Python o Java o lenguajes de mas bajo nivel, cada uno con su propio entorno aislado y su analizador de calidad.
+A esto se suma la integración con Campus Virtual, que es más un requisito de adopción y que pueda integrarse de una forma adecuada con la plataforma institucional, y la mejora de la interfaz de usuario, que se puede hacer con pruebas de usabilidad y accesibilidad.
+
+En innovacion, edutrace busca mejorar la propuesta de retroalimentacion que se le puede ofrecer al estudiante basado en el criterio del profesor usando las herramientas que ya existen como lo son la IA y la retroalimentacion automatica de diferentes entregables o trabajos.
+En este sentido, se busca que edutrace pueda diferenciarse de otras plataformas o combinacion de algunas herramientas simples con la forma que combina la retroalimentacion automatica con la supervisión humana y la forma en que se puede mejorar el aprendizaje del estudiante y el tiempo que se le dedica al docente para poder dar retroalimentacion de calidad a los estudiantes, 
+sin que sea un autograder que solo califica y deja de lado la retroalimentación hacia el estudiante, y tampoco que se tengan que usar chats de IA que pueden caer en ciertos errores al enseñarle un concepto al estudiante y de una forma complicada de usar y con un lenguaje muy tecnico, tambien se enfoca en que la IA da la retroalimentacion de que seigue para el estudiante
+que puede hacer en su entrega proximamente y que pueda tener una guia de como mejorar su entrega y aprendizaje de forma graduada y sin limitarse a dar la solucion de un ejercicio o taller de forma directa limitando las capacidades del propio estudiante y su aprendizaje, y que pueda tener una retroalimentación de calidad y que pueda ser supervisada por el docente para que pueda tener un control sobre la retroalimentación que se le da al estudiante y que pueda ser de calidad y que pueda mejorar el aprendizaje del estudiante y que pueda ahorrar tiempo al docente en la retroalimentación de los estudiantes.
+Se trata, entonces, de una innovación por recombinación de tecnologías existentes, que es el mismo tipo de innovación que sustenta el modelo de negocio.
+
+Para tener un criterio medible de todo lo anterior a coordinar cada uno de los ambitos de Edutrace y su exito en las diferentes etapas, se usan varios indicadores, la mayoría de los cuales la plataforma ya mide.
+La comprensión debe alcanzar al menos el 80~\% de respuestas afirmativas por taller, con un mínimo de 20 respuestas, y las propuestas deben estar listas para el profesor en menos de cinco horas.
+El tiempo docente se medirá frente a una línea base tomada en el piloto, cronometrando la revisión de entregas sin la plataforma, y junto con él se observará la proporción de propuestas que el profesor edita, para confirmar que su revisión es real.
+La concordancia se seguirá con la diferencia entre la nota sugerida y la nota final, que debería reducirse con cada cambio de modelo, y la mejora del estudiante con los casos de prueba que supera en su siguiente entrega, comparados con los del grupo de comparación.
+Finalmente, la adopción se medirá por el número de secciones, cursos y profesores que usan la plataforma en cada etapa del roadmap. 
 \subsection{Plan de negocio}
+
 \subsubsection{Plan de mercadeo}
 
 \subsubsection{Plan financiero}
@@ -753,10 +855,8 @@ Las pruebas automatizadas y la revisión de accesibilidad se ejecutan en cada ca
 \subsubsection{Estrategias de financiación}
 
 
-\subsection{Riesgos}
-
-
 \subsection{Conclusiones y trabajo futuro}
+Como conclusion al trabajo realizado, se puede 
 
 
 %\addtolength{\textheight}{-12cm}   % This command serves to balance the column lengths

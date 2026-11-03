@@ -56,7 +56,7 @@ function CodePreview() {
   return (
     <div className="rounded-3xl border border-lavender-100/70 bg-white p-4 shadow-lift sm:p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="font-bold">Así se ve por dentro</span>
+        <span className="font-bold">Mira como se ve y animate a aprender!</span>
         <span className="rounded-full bg-lavender-100 px-2.5 py-0.5 text-xs font-bold text-lavender-700">Ejemplo</span>
       </div>
       <pre tabIndex={0} aria-label="Ejemplo de un programa en C++" className="overflow-x-auto rounded-2xl bg-lavender-50/70 p-3 font-mono text-xs leading-relaxed text-ink">

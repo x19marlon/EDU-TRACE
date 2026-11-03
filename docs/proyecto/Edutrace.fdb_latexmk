@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1793665689.61361 "/home/ivan/EDU-TRACE/docs/proyecto/Edutrace.tex" "Edutrace.pdf" "Edutrace" 1793665690.38064 0
-  "/home/ivan/EDU-TRACE/docs/proyecto/Edutrace.tex" 1793665689.40718 96508 9c5e39dc50fbdf8cb99a0ac922bcabb4 ""
+["pdflatex"] 1793675144.36889 "/home/ivan/EDU-TRACE/docs/proyecto/Edutrace.tex" "Edutrace.pdf" "Edutrace" 1793675145.09121 2
+  "/home/ivan/EDU-TRACE/docs/proyecto/Edutrace.tex" 1793675142.98281 103976 455eabff6de862645b8b8c73fca5d6c0 ""
   "/usr/share/texmf-dist/fonts/enc/dvips/base/8r.enc" 1775415801 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/share/texmf-dist/fonts/tfm/adobe/courier/pcrr8r.tfm" 1775415801 1292 bd42be2f344128bff6d35d98474adfe3 ""
   "/usr/share/texmf-dist/fonts/tfm/adobe/courier/pcrr8t.tfm" 1775415801 1384 4632f5e54900a7dadbb83f555bc61e56 ""
@@ -59,8 +59,8 @@
   "/usr/share/texmf-dist/web2c/texmf.cnf" 1775415801 43569 fd570f2fa160877d211e859f687312ba ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1792967239 325717 59a65e600f662ceace641c3ea8b5d4af ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1792967207 2349412 de2bcf53fb059a69a797f0e161d7439c ""
-  "Edutrace.aux" 1793665690.35091 10792 c8019e426f1e51dc1d12b14b9130b342 "pdflatex"
-  "Edutrace.tex" 1793665689.40718 96508 9c5e39dc50fbdf8cb99a0ac922bcabb4 ""
+  "Edutrace.aux" 1793675145.03393 11105 488477da1f28a4cd03b834d9ec9f12b4 "pdflatex"
+  "Edutrace.tex" 1793675142.98281 103976 455eabff6de862645b8b8c73fca5d6c0 ""
   "ieeeconf.cls" 1788661645.81346 197572 7738d976ff06339222b34046d16b8e14 ""
   "images/Actividad_Componentes.png" 1793658538.25557 1902166 d6104979f13a170a6d3cb6cb9df8e695 ""
   "images/Design Thinking.png" 1790130904.10352 538612 12e6c68fe440dd843015aebe8f4fe8f6 ""
@@ -73,6 +73,7 @@
   "images/Value Proposition Canvas Estudiante.png" 1790130904.13121 1675333 39dd2b8daf26540f4a5b91be042dac7a ""
   "images/Value Proposition Canvas Profesor.png" 1790130904.14478 1831871 adefac0cdb563fbc1880990141ed34c4 ""
   "images/arquitectura_edutrace.png" 1793662340.50745 158164 0de40ed3d791c55429e875e6ccf29aad ""
+  "img/roadmap_edutrace.png" 0 -1 0 ""
   (generated)
   "Edutrace.aux"
   "Edutrace.log"

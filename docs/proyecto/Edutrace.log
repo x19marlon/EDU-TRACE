@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.10.25)  2 NOV 2026 19:28
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.10.25)  2 NOV 2026 22:05
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -166,36 +166,155 @@ LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <7.69997> on input line 77.
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <5.5> on input line 77.
- [1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/texmf-dist/fonts/enc/dvips/base/8r.enc}
+
+
+LaTeX Warning: Citation `1' on page 1 undefined on input line 99.
+
+
+LaTeX Warning: Citation `5' on page 1 undefined on input line 101.
+
+
+LaTeX Warning: Citation `5' on page 1 undefined on input line 101.
+
+
+LaTeX Warning: Citation `6' on page 1 undefined on input line 101.
+
+
+LaTeX Warning: Citation `7' on page 1 undefined on input line 103.
+
+[1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/texmf-dist/fonts/enc/dvips/base/8r.enc}
 
 
 ]
+
+LaTeX Warning: Citation `24' on page 2 undefined on input line 107.
+
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <8> on input line 113.
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <6> on input line 113.
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <5> on input line 113.
- [2] [3] [4]
+[2]
+
+LaTeX Warning: Citation `9' on page 3 undefined on input line 175.
+
+
+LaTeX Warning: Citation `10' on page 3 undefined on input line 177.
+
+
+LaTeX Warning: Citation `11' on page 3 undefined on input line 177.
+
+
+LaTeX Warning: Citation `11' on page 3 undefined on input line 179.
+
+
+LaTeX Warning: Citation `12' on page 3 undefined on input line 181.
+
+
+LaTeX Warning: Citation `12' on page 3 undefined on input line 181.
+
+
+LaTeX Warning: Citation `23' on page 3 undefined on input line 183.
+
+
+LaTeX Warning: Citation `8' on page 3 undefined on input line 183.
+
+
+LaTeX Warning: Citation `21' on page 3 undefined on input line 183.
+
+
+LaTeX Warning: Citation `13' on page 3 undefined on input line 185.
+
+[3]
+
+LaTeX Warning: Citation `8' on page 4 undefined on input line 193.
+
+
+LaTeX Warning: Citation `4' on page 4 undefined on input line 193.
+
+
+LaTeX Warning: Citation `22' on page 4 undefined on input line 195.
+
+
+LaTeX Warning: Citation `4' on page 4 undefined on input line 195.
+
+
+LaTeX Warning: Citation `2' on page 4 undefined on input line 197.
+
+
+LaTeX Warning: Citation `3' on page 4 undefined on input line 197.
+
+
+LaTeX Warning: Citation `14' on page 4 undefined on input line 197.
+
+
+LaTeX Warning: Citation `14' on page 4 undefined on input line 199.
+
+
+LaTeX Warning: Citation `15' on page 4 undefined on input line 199.
+
+
+LaTeX Warning: Citation `20' on page 4 undefined on input line 201.
+
+
+LaTeX Warning: Citation `5' on page 4 undefined on input line 206.
+
+
+LaTeX Warning: Citation `14' on page 4 undefined on input line 206.
+
+
+LaTeX Warning: Citation `19' on page 4 undefined on input line 208.
+
+
+LaTeX Warning: Citation `17' on page 4 undefined on input line 208.
+
+
+LaTeX Warning: Citation `16' on page 4 undefined on input line 208.
+
+[4]
+
+LaTeX Warning: Citation `17' on page 5 undefined on input line 210.
+
+
+LaTeX Warning: Citation `18' on page 5 undefined on input line 215.
+
+
+LaTeX Warning: Citation `19' on page 5 undefined on input line 219.
+
 <images/Design Thinking.png, id=19, 743.02594pt x 761.84625pt>
 File: images/Design Thinking.png Graphic file (type png)
 <use images/Design Thinking.png>
 Package pdftex.def Info: images/Design Thinking.png  used on input line 245.
 (pdftex.def)             Requested size: 245.71811pt x 251.94478pt.
+
+LaTeX Warning: Reference `fig:design_thinking' on page 5 undefined on input line 250.
+
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <7> on input line 253.
- [5]
+[5]
 <images/Mapa Empatia Juan Camilo.png, id=25, 1782.66pt x 1334.73656pt>
 File: images/Mapa Empatia Juan Camilo.png Graphic file (type png)
 <use images/Mapa Empatia Juan Camilo.png>
 Package pdftex.def Info: images/Mapa Empatia Juan Camilo.png  used on input line 297.
 (pdftex.def)             Requested size: 245.71811pt x 183.9698pt.
- [6 <./images/Design Thinking.png>]
+
+
+LaTeX Warning: Reference `fig:empatia_docente' on page 6 undefined on input line 302.
+
+[6 <./images/Design Thinking.png>]
 <images/Mapa Empatia Estudiantes.png, id=30, 1791.69376pt x 1309.89375pt>
 File: images/Mapa Empatia Estudiantes.png Graphic file (type png)
 <use images/Mapa Empatia Estudiantes.png>
 Package pdftex.def Info: images/Mapa Empatia Estudiantes.png  used on input line 308.
 (pdftex.def)             Requested size: 245.71811pt x 179.62625pt.
+
+
+LaTeX Warning: Reference `fig:empatia_estudiante' on page 7 undefined on input line 313.
+
+
+LaTeX Warning: Reference `tab:comparativo' on page 7 undefined on input line 316.
+
 
 Underfull \hbox (badness 10000) in paragraph at lines 326--326
 []\T1/ptm/b/n/8 Corr.
@@ -253,6 +372,13 @@ File: images/MockUp inicial.png Graphic file (type png)
 Package pdftex.def Info: images/MockUp inicial.png  used on input line 345.
 (pdftex.def)             Requested size: 245.71811pt x 187.0071pt.
 
+
+LaTeX Warning: Reference `fig:mockup_inicial' on page 8 undefined on input line 350.
+
+
+LaTeX Warning: Reference `tab:req_funcional' on page 8 undefined on input line 355.
+
+
 Underfull \hbox (badness 2818) in paragraph at lines 374--374
 []\T1/ptm/m/n/8 Permitir al do-cente re-visar la retroal-i-
  []
@@ -266,6 +392,9 @@ Underfull \hbox (badness 4673) in paragraph at lines 375--375
 Underfull \hbox (badness 1688) in paragraph at lines 376--376
 []\T1/ptm/m/n/8 Permitir al do-cente apro-bar la retroal-i-
  []
+
+
+LaTeX Warning: Reference `tab:req_nofuncional' on page 8 undefined on input line 393.
 
 
 Underfull \hbox (badness 1655) in paragraph at lines 408--408
@@ -282,12 +411,25 @@ File: images/Diagrama de Actividad EduTrace.png Graphic file (type png)
 <use images/Diagrama de Actividad EduTrace.png>
 Package pdftex.def Info: images/Diagrama de Actividad EduTrace.png  used on input line 434.
 (pdftex.def)             Requested size: 245.71811pt x 95.6705pt.
+
+LaTeX Warning: Reference `fig:diagrama_actividad' on page 8 undefined on input line 439.
+
 [8 <./images/MockUp inicial.png>]
 <images/Modelo de Negocio EduTrace.png, id=41, 510.40688pt x 419.31656pt>
 File: images/Modelo de Negocio EduTrace.png Graphic file (type png)
 <use images/Modelo de Negocio EduTrace.png>
 Package pdftex.def Info: images/Modelo de Negocio EduTrace.png  used on input line 449.
 (pdftex.def)             Requested size: 245.71811pt x 201.8711pt.
+
+
+LaTeX Warning: Reference `fig:modelo_negocio' on page 9 undefined on input line 454.
+
+
+LaTeX Warning: Reference `fig:vpc_estudiante' on page 9 undefined on input line 457.
+
+
+LaTeX Warning: Reference `fig:vpc_profesor' on page 9 undefined on input line 457.
+
 <images/Value Proposition Canvas Estudiante.png, id=42, 2716.1475pt x 1541.76pt>
 File: images/Value Proposition Canvas Estudiante.png Graphic file (type png)
 <use images/Value Proposition Canvas Estudiante.png>
@@ -298,7 +440,7 @@ File: images/Value Proposition Canvas Profesor.png Graphic file (type png)
 <use images/Value Proposition Canvas Profesor.png>
 Package pdftex.def Info: images/Value Proposition Canvas Profesor.png  used on input line 468.
 (pdftex.def)             Requested size: 245.71811pt x 130.12596pt.
- [9 <./images/Diagrama de Actividad EduTrace.png> <./images/Modelo de Negocio EduTrace.png>]
+[9 <./images/Diagrama de Actividad EduTrace.png> <./images/Modelo de Negocio EduTrace.png>]
 Underfull \hbox (badness 2990) in paragraph at lines 475--476
 []\T1/ptm/m/n/10 Desde la per-spec-tiva del do-cente, la prop-uesta de
  []
@@ -321,7 +463,11 @@ File: images/MuestraEdu.png Graphic file (type png)
 <use images/MuestraEdu.png>
 Package pdftex.def Info: images/MuestraEdu.png  used on input line 546.
 (pdftex.def)             Requested size: 245.71811pt x 122.85736pt.
- [12 <./images/Actividad_Componentes.png (PNG copy)> <./images/MuestraEdu.png>]
+
+
+LaTeX Warning: Reference `tab:usuarios' on page 12 undefined on input line 556.
+
+[12 <./images/Actividad_Componentes.png (PNG copy)> <./images/MuestraEdu.png>]
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <9> on input line 563.
 
@@ -343,11 +489,17 @@ LaTeX Font Info:    Trying to load font information for T1+pcr on input line 588
 (/usr/share/texmf-dist/tex/latex/psnfss/t1pcr.fd
 File: t1pcr.fd 2001/06/04 font definitions for T1/pcr.
 )
+
+LaTeX Warning: Reference `fig:arquitectura' on page 13 undefined on input line 591.
+
 <images/arquitectura_edutrace.png, id=60, 609.9588pt x 299.4387pt>
 File: images/arquitectura_edutrace.png Graphic file (type png)
 <use images/arquitectura_edutrace.png>
 Package pdftex.def Info: images/arquitectura_edutrace.png  used on input line 595.
 (pdftex.def)             Requested size: 505.89pt x 248.35585pt.
+
+LaTeX Warning: Reference `tab:decisiones' on page 13 undefined on input line 600.
+
 
 Underfull \hbox (badness 10000) in paragraph at lines 616--616
 []\T1/ptm/m/n/9 IA lo-cal con Ol-lama
@@ -373,7 +525,17 @@ Underfull \hbox (badness 10000) in paragraph at lines 638--639
 \T1/pcr/m/n/10 RequireRole\T1/ptm/m/n/10 , \T1/pcr/m/n/10 RequireLearner\T1/ptm/m/n/10 ); lo mismo
  []
 
+
+LaTeX Warning: Reference `fig:diagrama_actividad' on page 13 undefined on input line 648.
+
 [13]
+
+LaTeX Warning: Reference `tab:cumplimiento' on page 14 undefined on input line 661.
+
+
+LaTeX Warning: Reference `tab:cumplimiento_rnf' on page 14 undefined on input line 661.
+
+
 Overfull \hbox (3.04453pt too wide) in paragraph at lines 669--697
  [][] 
  []
@@ -417,33 +579,81 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [15] [16]
-Underfull \hbox (badness 10000) in paragraph at lines 819--820
+ [15]
+
+LaTeX Warning: Reference `tab:recursos' on page 16 undefined on input line 746.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 776--776
+[]\T1/ptm/m/n/8 Una vez por
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 776--776
+\T1/ptm/m/n/8 semestre, antes
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 777--777
+[]\T1/ptm/m/n/8 Una vez por
+ []
+
+
+Overfull \hbox (2.4259pt too wide) in paragraph at lines 752--779
+ [][] 
+ []
+
+[16]
+
+LaTeX Warning: Reference `fig:roadmap' on page 17 undefined on input line 794.
+
+
+LaTeX Warning: File `img/roadmap_edutrace.png' not found on input line 798.
+
+
+/home/ivan/EDU-TRACE/docs/proyecto/Edutrace.tex:798: Package pdftex.def Error: File `img/roadmap_edutrace.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.798 ...dth=\textwidth]{img/roadmap_edutrace.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+Overfull \hbox (260.17189pt too wide) in paragraph at lines 798--799
+ [][] 
+ []
+
+[17]
+Underfull \hbox (badness 10000) in paragraph at lines 874--875
 []\T1/ptm/m/n/8 D. Calderón Gómez, ^^PJóvenes y de-sigual-dad dig-i-tal: Las
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 819--820
+Underfull \hbox (badness 10000) in paragraph at lines 874--875
 \T1/ptm/m/n/8 brechas de ac-ceso, com-pe-ten-cias y uso,^^Q Cen-tro Reina
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 819--820
+Underfull \hbox (badness 10000) in paragraph at lines 874--875
 \T1/ptm/m/n/8 Sofía de Fad Ju-ven-tud, 2020. [En línea]. Disponible:
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 819--820
+Underfull \hbox (badness 10000) in paragraph at lines 874--875
 \T1/ptm/m/n/8 https://www.centroreinasofia.org/blog/analisis-y-debate/jovenes-y-
  []
 
 
-Underfull \hbox (badness 1577) in paragraph at lines 825--826
+Underfull \hbox (badness 1577) in paragraph at lines 880--881
 []\T1/ptm/m/n/8 A. Milne, ^^PChat-GPT in the class-room: Ex-plor-ing its po-ten-tial
  []
 
 
-Underfull \hbox (badness 1515) in paragraph at lines 825--826
+Underfull \hbox (badness 1515) in paragraph at lines 880--881
 \T1/ptm/m/n/8 and lim-i-ta-tions in a Func-tional Pro-gram-ming course,^^Q preprint,
  []
 
@@ -458,27 +668,32 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the US letter (8.5in X 11in) paper size.
 
-[17
-
-] (./Edutrace.aux)
+[18] (./Edutrace.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
+
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
  ) 
 Here is how much of TeX's memory you used:
- 2394 strings out of 469453
- 40023 string characters out of 5469036
- 482168 words of memory out of 5000000
- 31055 multiletter control sequences out of 15000+600000
+ 2426 strings out of 469453
+ 41074 string characters out of 5469036
+ 482756 words of memory out of 5000000
+ 31087 multiletter control sequences out of 15000+600000
  745108 words of font info for 152 fonts, out of 8000000 for 9000
  40 hyphenation exceptions out of 8191
- 57i,14n,65p,1973b,401s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 57i,14n,65p,1976b,401s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></usr/share/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/share/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></usr/share/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/share/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on Edutrace.pdf (17 pages, 8137558 bytes).
+Output written on Edutrace.pdf (18 pages, 8144568 bytes).
 PDF statistics:
- 106 PDF objects out of 1000 (max. 8388607)
- 59 compressed objects within 1 object stream
+ 109 PDF objects out of 1000 (max. 8388607)
+ 61 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  56 words of extra memory for PDF output out of 10000 (max. 10000000)
 
