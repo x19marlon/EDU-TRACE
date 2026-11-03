@@ -103,6 +103,17 @@ En `.env`, define `TEACHER_CODE`: es el código para crear cuentas de profesor.
 
 `start.sh` reinstala las dependencias del frontend y reconstruye su caché solo cuando cambian; `./start.sh --limpio` la borra a la fuerza.
 
+### En Windows
+
+Solo para desarrollo. Abre **Git Bash** en la carpeta del proyecto y ejecuta:
+
+```bash
+cp .env.example .env
+./startW.sh
+```
+
+`startW.sh` hace lo mismo que `start.sh`, y si falta Go, Node.js, `g++` u Ollama los instala con `winget`. En Windows no hay `bubblewrap`, así que el código de los estudiantes corre **sin aislamiento** (`SANDBOX=none`): no lo uses para recibir código de otras personas ni en producción.
+
 Para cargar datos de prueba (un profesor, 5 estudiantes, talleres y entregas):
 
 ```bash
