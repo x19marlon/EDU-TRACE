@@ -78,14 +78,14 @@ EduTrace - Una plataforma para la retroalimentación formativa en cursos introdu
 
 
 \begin{abstract}
-	This document presents a multidimensional analysis of the existing gap in higher education between ideal formative feedback and the real constraints of sustaining it at scale, with a particular focus on programming introductory courses. Through an evaluation across pedagogical, technological, ethical-legal, sociocultural, and economic dimensions, it examines how high submission volumes shift formative guidance away from fostering student autonomy toward processes primarily focused on grading. Furthermore, the capabilities and limitations of automated assessment systems and Large Language Models (LLMs) are evaluated, identifying risks related to student overreliance, personal data protection, copyright ownership, and implementation costs. Based on this diagnosis, the core problem and guiding question are formulated to design IT-based solutions that support teaching practices while preserving the instructor as the central decision-maker.
+	This document presents a multidimensional analysis of the existing gap in higher education between ideal formative feedback and the real constraints of sustaining it at scale, with a particular focus on programming introductory courses. Through an evaluation across pedagogical, technological, ethical-legal, sociocultural, and economic dimensions, it examines how high submission volumes shift formative guidance away from fostering student autonomy toward processes primarily focused on grading. Furthermore, the capabilities and limitations of automated assessment systems and Large Language Models (LLMs) are evaluated, identifying risks related to student overreliance, personal data protection, copyright ownership, and implementation costs. Based on this diagnosis, the core problem and guiding question are formulated to design IT-based solutions that support teaching practices while preserving the instructor as the central decision-maker. The document then describes the design and construction of EduTrace, a functional prototype developed under design science research and evaluated against the defined requirements, and projects its evolution through a technology roadmap and a business plan.
 \end{abstract}
 
 \section{Introducción} 
 
 En este documento se analiza la retroalimentación y la situación problema partiendo de un análisis multidimensional de cada uno de los ámbitos, centrado en la situación problema que se identificó principalmente en la observación del desarrollo de diferentes clases y entornos académicos en los que los participantes interactuaron. Con ello se identificó una situación problema que muestra que, en la educación superior, existe una distancia entre la retroalimentación formativa que se reconoce como ideal y la que las condiciones reales permiten sostener, evidenciándose una falta de retroalimentación directa en cursos con una gran cantidad de estudiantes o con un alto volumen de entregables.
 
-A partir de esto, se plantea la necesidad de abordar dicha retroalimentación desde distintas dimensiones: desde el ámbito pedagógico, de una forma apropiada y centrada en el aprendizaje; desde el ámbito tecnológico, considerando las herramientas existentes y sus limitaciones; desde el ámbito ético-legal, atendiendo la dependencia de estas herramientas y, en el plano jurídico, los aspectos relacionados con la privacidad y los derechos sobre lo generado; desde el ámbito sociocultural, analizando la influencia de la brecha existente en el contexto colombiano frente a la IA y su adaptación en escenarios sociales, profundizando en las diferencias de habilidades, concientización y demás factores presentes en las poblaciones menos favorecidas; y, finalmente, desde el ámbito económico, examinando los costos asociados a estas herramientas y las tendencias del mercado en el área de la IA aplicada a la educación. Con este análisis desde varias dimensiones se busca plantear el problema y la pregunta problema que se abordarán en este contexto y en esta fase de definición.
+A partir de esto, se plantea la necesidad de abordar dicha retroalimentación desde distintas dimensiones: desde el ámbito pedagógico, de una forma apropiada y centrada en el aprendizaje; desde el ámbito tecnológico, considerando las herramientas existentes y sus limitaciones; desde el ámbito ético-legal, atendiendo la dependencia de estas herramientas y, en el plano jurídico, los aspectos relacionados con la privacidad y los derechos sobre lo generado; desde el ámbito sociocultural, analizando la influencia de la brecha existente en el contexto colombiano frente a la IA y su adaptación en escenarios sociales, profundizando en las diferencias de habilidades, concientización y demás factores presentes en las poblaciones menos favorecidas; y, finalmente, desde el ámbito económico, examinando los costos asociados a estas herramientas y las tendencias del mercado en el área de la IA aplicada a la educación. Con este análisis desde varias dimensiones se busca plantear el problema y la pregunta problema que se abordarán en este contexto y en esta fase de definición. Posteriormente, se presenta el análisis de la solución, el diseño y la construcción del prototipo EduTrace bajo la ciencia del diseño, y su proyección mediante un roadmap tecnológico y un plan de negocio.
 
 %Este documento analiza como la carencia de una retroalimentación formativa afecta profundamente el proceso de aprendizaje de estudiantes universitarios de cursos introductorios de programación y como una herramienta tecnológica como la IA puede ayudar a docentes a dar una retroalimentación de forma más eficiente sin descuidar la calidad de esta. 
 
@@ -352,7 +352,7 @@ La Fig. \ref{fig:mockup_inicial} presenta el mockup inicial de EduTrace en su ve
 \subsection{Especificación de Requisitos}
 
 \subsubsection{Requisitos funcionales}
-Los requisitos funcionales se clasificaron según el modelo FURPS+ y se priorizaron mediante la técnica MoSCoW (Must, Should, Could), con el fin de precisar el alcance mínimo viable de la solución, tal como se sintetiza en la Tabla \ref{tab:req_funcional}.
+Los requisitos funcionales se clasificaron según el modelo FURPS+ y se priorizaron mediante la técnica MoSCoW (Must, Should, Could), con el fin de precisar el alcance mínimo viable de la solución, tal como se sintetiza en la Tabla \ref{tab:req_funcional}. Los requisitos RF-24, RF-25 y RF-26 se incorporaron durante la construcción de la plataforma.
 
 \begin{table}[ht]
 	\centering
@@ -385,6 +385,9 @@ Los requisitos funcionales se clasificaron según el modelo FURPS+ y se prioriza
 		RF-21 & Presentar al docente un reporte de errores frecuentes del curso. & Should \\
 		RF-22 & Permitir al estudiante solicitar aclaración sobre la retroalimentación recibida. & Could \\
 		RF-23 & Permitir al estudiante iterar sobre la retroalimentación reenviando nuevas versiones. & Could \\
+		RF-24 & Permitir al docente seleccionar los ejemplos de sintaxis disponibles para su clase. & Could \\
+		RF-25 & Presentar al docente la relación entre la nota y el esfuerzo de cada estudiante. & Should \\
+		RF-26 & Usar los documentos de la materia del curso como contexto de la retroalimentación. & Should \\
 		\hline
 	\end{tabular}
 \end{table}
@@ -486,43 +489,43 @@ Finalmente, se identificaron los impulsores que sustentan la hoja de ruta del pr
 \end{itemize}
 
 \section{Fase de Diseño y Construcción del Prototipo}
-Para la fase 3 se definió un plan de trabajo para la construcción y ejecución de un prototipo funcional de la plataforma, que concluye con su desarrollo y con una validación inicial con usuarios.
+Para esta fase se definió un plan de trabajo para la construcción y ejecución de un prototipo funcional de la plataforma, que concluye con su desarrollo y con una validación inicial con usuarios.
 Siguiendo la ciencia del diseño, este prototipo se trata como un artefacto que se evalúa frente a los requisitos definidos en la fase de análisis, y la fase se divide en las siguientes subfases.
 Primero, se presenta la metodología de desarrollo, la cual se enmarca en la ciencia del diseño; posteriormente, se describe la plataforma y lo que se hizo para su desarrollo, y se identifican sus usuarios y el rol que cumple cada uno dentro de ella.
-Luego, se describe la arquitectura utilizada y cómo esta permite cumplir los requisitos funcionales y no funcionales necesarios para su funcionamiento, junto con las tecnologías, frameworks, librerías y lenguajes de programación empleados; después, se analizan los elementos que componen la plataforma y la razón de su desarrollo, así como el cumplimiento de los requisitos con respecto a la fase de análisis.
-Finalmente, se desarrolla un plan de pruebas y una validación inicial con usuarios, de alcance reducido, para determinar en qué medida la plataforma cumple los objetivos planteados
+Luego, se describe la arquitectura utilizada y cómo esta permite cumplir los requisitos funcionales y no funcionales necesarios para su funcionamiento, junto con las tecnologías, frameworks, librerías y lenguajes de programación empleados; después, se analiza el cumplimiento de los requisitos con respecto a la fase de análisis.
+Finalmente, se desarrolla un plan de pruebas y una validación inicial con usuarios, de alcance reducido, para determinar en qué medida la plataforma cumple los objetivos planteados.
 \subsection{Metodología de Desarrollo, Ciencia del Diseño}
-En la ciencia del diseño es una metodología investigativa que genera conocimiento mediante la construcción y evaluación de artefactos que resuelven un problema real, aplicada a un contexto específico.
+La ciencia del diseño es una metodología investigativa que genera conocimiento mediante la construcción y evaluación de artefactos que resuelven un problema real, aplicada a un contexto específico \cite{25}.
 Para el desarrollo de este proyecto se utilizó el artefacto EduTrace, cuya utilidad se evalúa en función del problema y los requisitos identificados en las fases anteriores.
-De esta forma la plataforma servirá para comprobar que la Inteligencia Artificial puede apoyar la retroalimentación formativa sin desplazar al docente, y que la retroalimentación generada por la plataforma sea de calidad y cumpla con los objetivos establecidos en la fase de análisis.
-y que sea efectivo en la lucha contra la problematica identificada.
+De esta forma la plataforma servirá para comprobar que la Inteligencia Artificial puede apoyar la retroalimentación formativa sin desplazar al docente, y que la retroalimentación generada por la plataforma sea de calidad y cumpla con los objetivos establecidos en la fase de análisis,
+y que sea efectiva en la lucha contra la problemática identificada.
 
-La metodología de ciencia de diseño complementa directamente la metodología de Design Thinking empleada en la fase de análisis, ya que con ella se logró entender el problema desde la experiencia del profesor y de los estudiantes, e idear así una solución que satisfaga las necesidades de los usuarios y que pueda ser evaluada frente a los requisitos planteados en la fase de análisis.
-La ciencia del diseño, sin embargo, guio la construcción de la solución y su evaluación convirtiéndolo directamente en un artefacto verificable y evaluable frente a los objetivos planteados, y permitiendo que la solución pueda ser mejorada iterativamente.
+La metodología de ciencia del diseño complementa directamente la metodología de Design Thinking empleada en la fase de análisis, ya que con ella se logró entender el problema desde la experiencia del profesor y de los estudiantes, e idear así una solución que satisfaga las necesidades de los usuarios y que pueda ser evaluada frente a los requisitos planteados en la fase de análisis.
+La ciencia del diseño, sin embargo, guio la construcción de la solución y su evaluación convirtiéndola directamente en un artefacto verificable y evaluable frente a los objetivos planteados, y permitiendo que la solución pueda ser mejorada iterativamente.
 
-Seis actividades diferentes estructuraron el proceso. Inicialmente la identificación del problema y la motivación impulsaron la sección de contextualización y proporcionaron las pautas necesarias a las cuales 
-El artefacto se captura para cumplir los objetivos y mitigar la problemática identificada, luego la definición de los objetivos de la solución corresponde a los requisitos funcionales y no funcionales de la plataforma a la que la solución. 
-me adapto y desarrollo de manera efectiva. En esta fase se realiza el diseño y desarrollo del artefacto donde con la construccion de la plataforma y los elementos que la componen, se realiza la demostracion del prototipo funcional el cual muestra su funcionamiento.
+Seis actividades diferentes estructuraron el proceso \cite{26}. Inicialmente la identificación del problema y la motivación impulsaron la sección de contextualización y proporcionaron las pautas necesarias a las cuales 
+el artefacto se ajusta para cumplir los objetivos y mitigar la problemática identificada, luego la definición de los objetivos de la solución corresponde a los requisitos funcionales y no funcionales de la plataforma a la que la solución 
+se adaptó y se desarrolló de manera efectiva. En esta fase se realiza el diseño y desarrollo del artefacto donde con la construcción de la plataforma y los elementos que la componen, se realiza la demostración del prototipo funcional el cual muestra su funcionamiento
 con código y feedback generado por la plataforma con diferentes artefactos que comprueban dicha validación. La evaluación consiste en analizar el cumplimiento de los requisitos funcionales y no funcionales de la plataforma y en presentar los artefactos de validación con los usuarios sobre la plataforma realizada.
 
-El desarrollo de la plataforma se realizó mediante un proceso iterativo y de mejora continua, evaluando la plataforma y mejorándola a partir de versiones intermedias. En primer lugar, se adaptaron los textos de la retroalimentación, para que fueran comprensibles para estudiantes de primer semestre y de diferentes carreras, por ejemplo, en el modo informal las tres preguntas de Hattie y Timperley se muestran como «¿Qué pide el ejercicio?», «¿Qué está funcionando y qué puedo mejorar?» y «¿Qué puedo hacer ahora?» 
-siguiendo la teoria afirmada por Hattie y Timperley, se ajsutaron los modos de aprendizaje de la IA, los elementos de muestra en plataforma y la forma de mostrar la retroalimentacion, el funcionamiento de los roles y personas que interactuan en la plataforma, y la forma de mostrar los resultados de la retroalimentacion y el progreso del estudiante. Tercero, se ajustaron los elementos de la plataforma para que fueran más claros y comprensibles, y se mejoró la experiencia de usuario en general y 
-se ajustaron los requisitos de rendimiento, desempeño y escalabilidad de la plataforma, para que la plataforma pueda ser usada en diferentes escenarios y con diferentes cantidades de estudiantes y docentes en muchas otras materias como por ejemplo Programacion Avanzada. Por último, se ajustaron los elementos de seguridad y privacidad de la plataforma, para cumplir con la normativa vigente y proteger los datos personales de los estudiantes y docentes, iterando sobre estas etapas de desarrollo y la documentación asociada a los requisitos.
+El desarrollo de la plataforma se realizó mediante un proceso iterativo y de mejora continua, evaluando la plataforma y mejorándola a partir de versiones intermedias. En primer lugar, se adaptaron los textos de la retroalimentación, para que fueran comprensibles para estudiantes de primer semestre y de diferentes carreras, por ejemplo, en el modo informal las tres preguntas de Hattie y Timperley \cite{1} se muestran como «¿Qué pide el ejercicio?», «¿Qué está funcionando y qué puedo mejorar?» y «¿Qué puedo hacer ahora?» 
+siguiendo la teoría afirmada por Hattie y Timperley. Segundo, se ajustaron los modos de aprendizaje de la IA, los elementos de muestra en plataforma y la forma de mostrar la retroalimentación, el funcionamiento de los roles y personas que interactúan en la plataforma, y la forma de mostrar los resultados de la retroalimentación y el progreso del estudiante. Tercero, se ajustaron los elementos de la plataforma para que fueran más claros y comprensibles, y se mejoró la experiencia de usuario en general y 
+se ajustaron los requisitos de rendimiento, desempeño y escalabilidad de la plataforma, para que la plataforma pueda ser usada en diferentes escenarios y con diferentes cantidades de estudiantes y docentes en muchas otras materias como por ejemplo Programación Avanzada. Por último, se ajustaron los elementos de seguridad y privacidad de la plataforma, para cumplir con la normativa vigente y proteger los datos personales de los estudiantes y docentes, iterando sobre estas etapas de desarrollo y la documentación asociada a los requisitos.
 
 \subsection{Descripción de la Plataforma}
-EduTrace es una plataforma web de retroalimentación formativa enfocada en cursos de introduccion a la programación, que usa inteligencia artificial y el entrenamiento de modelos de lenguaje 
-que propone retroalimentacion y el docente la supervisa antes que llegue al estudiante. La plataforma reune en un solo lugar un editor de codigo especializado con c++, la compilacion, los casos de prueba, y la revision docente de modo que el estudiante no necesita instalar herramientas adicionales para interactuar con la plataforma. 
-la IA se ejecuta de forma local mediante Ollama con el modelo LLaMA3.1:8b asegurando los datos de los diferentes usuarios dentro de la plataforma.
+EduTrace es una plataforma web de retroalimentación formativa enfocada en cursos de introducción a la programación, que usa inteligencia artificial y modelos de lenguaje 
+que proponen retroalimentación y el docente la supervisa antes de que llegue al estudiante. La plataforma reúne en un solo lugar un editor de código especializado con C++, la compilación, los casos de prueba, y la revisión docente de modo que el estudiante no necesita instalar herramientas adicionales para interactuar con la plataforma. 
+La IA se ejecuta de forma local mediante Ollama con el modelo \texttt{llama3.1:8b} asegurando los datos de los diferentes usuarios dentro de la plataforma.
 
 El flujo de trabajo de EduTrace comienza cuando el docente publica un taller con su enunciado, los archivos de apoyo, fecha límite, criterios de evaluación, los RAE que trabaja y hasta diez casos de prueba, que puede dejar visibles u ocultos para el estudiante.
 A partir de ahí, el estudiante escribe su programa en el editor del navegador y puede compilarlo y ejecutarlo tantas veces como quiera antes de entregar; en cada intento ve cuántos casos de prueba pasa y, si el programa no compila o falla al ejecutarse, la plataforma le explica en español qué significa el error y en qué línea ocurre, sin intervención de la IA, e incluso puede agregar sus propios casos de prueba para verificar su solución.
 Cuando el estudiante hace la entrega oficial, la plataforma la guarda, la compila en un entorno aislado y sin acceso a la red, y la ejecuta con todos los casos de prueba del docente, de manera que la entrega se conserva aunque la IA falle después.
 Después, la entrega pasa a una cola de procesamiento en la que la IA elabora una propuesta de feedback a partir del código, el enunciado, los resultados de las pruebas y los criterios del taller, sin conocer nunca ni el nombre ni el correo del estudiante; la propuesta sigue las tres preguntas de Hattie y Timperley, incluye observaciones sobre legibilidad, mantenibilidad y documentación, y pasa por un filtro que impide revelar la solución del ejercicio.
-La propuesta llega al panel de revisión del docente con el código, los resultados de las pruebas, una nota tentativa, los niveles de logro por RAE y una estimación de los minutos que tomará revisarla, y decide si la aprueba tal cual, si edita texto, nota o niveles, o si la descarta y escribe su propia retroalimentación; el estudiante ve su entrega como «pendiente de revisión», y cada decisión queda registrada en la bitácora con su autor y fecha.
+La propuesta llega al panel de revisión del docente con el código, los resultados de las pruebas, una nota tentativa, los niveles de logro por RAE y una estimación de los minutos que tomará revisarla, y el docente decide si la aprueba tal cual, si edita texto, nota o niveles, o si la descarta y escribe su propia retroalimentación; el estudiante ve su entrega como «pendiente de revisión», y cada decisión queda registrada en la bitácora con su autor y fecha.
 Al ser aprobada la revisión, el estudiante ve un aviso en la plataforma, y por correo si lo autorizó, y la retroalimentación con la indicación de su procedencia, por ejemplo «Generado con IA y aprobado por» el docente; debajo de ella responde si la comprendió y puede hacer preguntas, que son respondidas por el docente o un monitor de la clase.
 Finalmente, si lo necesita, el estudiante puede volver a entregar, y cada nueva versión se revisa por separado, por lo que el ciclo de retroalimentación se repite bajo la supervisión del profesor.
 
-A continuacion en la Figura 9 se muestra un nuevo diagrama de actividad que refleja el flujo de trabajo de la plataforma con respecto a los diferentes componentes con los que interactua el estudiante y el docente en plataforma y relaciona los pasos explicados anteriormente.
+A continuación en la Figura~\ref{fig:actividad_componentes} se muestra un nuevo diagrama de actividad que refleja el flujo de trabajo de la plataforma con respecto a los diferentes componentes con los que interactúa el estudiante y el docente en la plataforma y relaciona los pasos explicados anteriormente.
 
 \begin{figure*}[t]
 	\centering
@@ -532,14 +535,14 @@ A continuacion en la Figura 9 se muestra un nuevo diagrama de actividad que refl
 \end{figure*}
 
 La plataforma tiene dos formas de usar la IA que el profesor puede configurar para cada clase.
-En el modo supervisado que es el modo por defecto el estudiante no puede consultar directamente a la IA y solo recibe la retroalimentación que apruebe el docente, de esta forma se concreta el principio de que la IA propone y el profesor decide.
+En el modo supervisado, que es el modo por defecto, el estudiante no puede consultar directamente a la IA y solo recibe la retroalimentación que apruebe el docente, de esta forma se concreta el principio de que la IA propone y el profesor decide.
 En el modo inmediato, el estudiante puede obtener retroalimentación, pistas progresivas que nunca dan la solución y conversar con un tutor de IA, con un límite de solicitudes por hora.
 Este modo es una excepción que el docente activa de forma explícita tras una advertencia, y queda registrada en la bitácora; también puede marcar un taller como evaluación para que la IA no esté disponible hasta su fecha límite.
 
 Frente al mockup del PMV 0.0 Beta definido en la fase de análisis, el prototipo conserva la idea central, una vista del estudiante con retroalimentación de tipo feed-forward y una vista del docente en la que este revisa y aprueba antes de que el estudiante reciba el resultado.
 Sin embargo, el desarrollo amplió y concretó esa propuesta en varios aspectos, ampliando las funcionalidades y la interfaz de diferentes formas.
 Se incorporaron el editor y la compilación en el navegador con casos de prueba, que el mockup no contemplaba al momento de realizarlo, se definieron los dos modos de IA descritos anteriormente, se añadió el rol del monitor, que comenta el código y responde preguntas sin calificar, y se agregaron indicadores para el docente, como el tiempo real de revisión, la comprensión de la retroalimentación y los errores frecuentes del curso comparando los diferentes elementos.
-La Figura 10 se muestra una vista del prototipo que diferencia la vista de revisión del docente con respecto a la del mockup beta.
+En la Figura~\ref{fig:muestra_prototipo} se muestra una vista del prototipo que diferencia la vista del docente con respecto a la del mockup beta.
 
 \begin{figure}[ht]
 	\centering
@@ -549,11 +552,11 @@ La Figura 10 se muestra una vista del prototipo que diferencia la vista de revis
 \end{figure}
 
 \subsection{Usuarios de la Plataforma}
-Edutrace fue concebida para ser utilizada por tres tipos de usuarios: estudiantes, docentes y monitores. Añadiendo un cuarto rol interesado que es la propia universidad y sus integrantes como parte de la comunidad academica interesada, del mismo modo fue diseñada para el curso de Introduccion a la programacion de la Pontificia Universidad Javeriana, pero puede ser escalada hacia otros cursos y universidades con sus respectivos cursos introductorios de programacion, 
-al ser orientado hacia los estudiantes de la PUJ se tomaron decisiones de diseño y desarrollo que se ajustan a la experiencia de usuario de los estudiantes y docentes de la institucion, como por ejemplo la inclusion de C++ como lenguaje de desarrollo y con los RAE esperados para el curso de introduccion a la programacion, y la inclusion de los casos de prueba y el syllabus del curso en la plataforma, que permiten que la IA pueda generar retroalimentacion de calidad y ajustada a los criterios del curso.
+EduTrace fue concebida para ser utilizada por tres tipos de usuarios: estudiantes, docentes y monitores, añadiendo un cuarto rol interesado que es la propia universidad y sus integrantes como parte de la comunidad académica interesada, del mismo modo fue diseñada para el curso de Introducción a la Programación de la Pontificia Universidad Javeriana, pero puede ser escalada hacia otros cursos y universidades con sus respectivos cursos introductorios de programación, 
+al ser orientada hacia los estudiantes de la PUJ se tomaron decisiones de diseño y desarrollo que se ajustan a la experiencia de usuario de los estudiantes y docentes de la institución, como por ejemplo la inclusión de C++ como lenguaje de desarrollo y con los RAE esperados para el curso de Introducción a la Programación, y la inclusión de los casos de prueba y el syllabus del curso en la plataforma, que permiten que la IA pueda generar retroalimentación de calidad y ajustada a los criterios del curso.
 Como se mostró en el contexto, una parte importante de los estudiantes percibe el curso como difícil y el 69,6 \% recurre a la IA como su principal fuente de ayuda, mientras que el docente debe dar retroalimentación de calidad a muchos estudiantes en poco tiempo.
-Por eso, la plataforma reconoce a los tres tipos de usuarios con necesidades y permisos distintos el estudiante, que es el beneficiario de la retroalimentación, el profesor, que es quien decide y retroalimenta, y el monitor, que apoya el acompañamiento sin tomar un rol en la calificación pero si en la retroalimentación de forma directa.
-La Tabla~\ref{tab:usuarios} hace un analisis qué necesita cada uno y qué puede hacer dentro de la plataforma.
+Por eso, la plataforma reconoce a los tres tipos de usuarios con necesidades y permisos distintos: el estudiante, que es el beneficiario de la retroalimentación, el profesor, que es quien decide y retroalimenta, y el monitor, que apoya el acompañamiento sin tomar un rol en la calificación pero sí en la retroalimentación de forma directa.
+La Tabla~\ref{tab:usuarios} hace un análisis de qué necesita cada uno y qué puede hacer dentro de la plataforma.
 
 \begin{table*}[t]
 \centering
@@ -566,27 +569,27 @@ La Tabla~\ref{tab:usuarios} hace un analisis qué necesita cada uno y qué puede
 \hline
 Estudiante &
 Saber qué está mal en su código y cuál es el siguiente paso para mejorarlo, sin recibir la solución de forma directa, con retroalimentación oportuna y en un lenguaje comprensible para cualquier nivel. &
-Escribir, compilar y ejecutar código en el navegador, ver los resultados de los casos de prueba y los errores explicados en español, entregar talleres practicos, practicar con un banco de ejercicios preestablecido, consultar su historial, sus notas y su nivel por RAE, indicar si entendió la retroalimentación y hacer preguntas, en el modo inmediato, pedir retroalimentación, pistas y conversar con un tutor de IA. \\
+Escribir, compilar y ejecutar código en el navegador, ver los resultados de los casos de prueba y los errores explicados en español, entregar talleres prácticos, practicar con un banco de ejercicios preestablecido, consultar los ejemplos de sintaxis que activó su profesor, consultar su historial, sus notas y su nivel por RAE, indicar si entendió la retroalimentación y hacer preguntas, en el modo inmediato, pedir retroalimentación, pistas y conversar con un tutor de IA. \\
 \hline
 Profesor &
 Dar retroalimentación de calidad a muchos estudiantes sin perder el control sobre la nota ni sobre su criterio pedagógico. &
-Crear materias, clases, talleres, casos de prueba, criterios y RAE, revisar, editar, aprobar o descartar las propuestas de la IA, definir el modo de IA de cada clase, consultar indicadores, errores frecuentes, alertas tempranas y código similar entre entregas, responder preguntas, exportar notas, compartir la materia con otros profesores y copiarla para el siguiente periodo. \\
+Crear materias, clases, talleres, casos de prueba, criterios y RAE, revisar, editar, aprobar o descartar las propuestas de la IA, definir el modo de IA de cada clase, elegir los ejemplos de sintaxis de cada clase, consultar indicadores, el gráfico de nota y esfuerzo, errores frecuentes, alertas tempranas y código similar entre entregas, responder preguntas, exportar notas, compartir la materia con otros profesores y copiarla para el siguiente periodo. \\
 \hline
 Monitor &
 Apoyar al profesor en el acompañamiento de los estudiantes sin asumir un rol directo en la calificación. &
-Ver las entregas de las clases que tiene asignadas, comentar y marcar el código, y responder las preguntas de los estudiantes.  \\
+Ver las entregas de las clases que tiene asignadas, comentar y marcar el código, y responder las preguntas de los estudiantes. Para su propio trabajo, tiene las mismas herramientas que un estudiante en las materias que no acompaña. \\
 \hline
 \end{tabular}
 \end{table*}
-Además de estos tres usuarios, la institución es un actor interesado que no usa la plataforma directamente, pero del que depende su adopción tanto en modelo de negocio y de forma practica cumpliendo las restricciones y algunos requisitos no funcionales.
-En la tabla de actores de la fase de análisis se identificó un cierto equilibrio y separacion de responsabilidades entre quien se beneficia de la retroalimentación (el estudiante), quien decide sobre ella (el profesor) y quien sostiene la solución (la universidad).
-En EduTrace, la institución es la encargada de alojar el servidor, de responder por el tratamiento de los datos personales de los estudiantes según la Ley 1581 de 2012 y de autorizar la integración con su plataforma académica, Campus Virtual.
-Por esta razón, aunque no aparece como un rol dentro de la plataforma, su papel es determinante  en el modelo de negocio que Edutrace quiere realizar.
+Además de estos tres usuarios, la institución es un actor interesado que no usa la plataforma directamente, pero del que depende su adopción tanto en el modelo de negocio como de forma práctica cumpliendo las restricciones y algunos requisitos no funcionales.
+En la tabla de actores de la fase de análisis se identificó un cierto equilibrio y separación de responsabilidades entre quien se beneficia de la retroalimentación (el estudiante), quien decide sobre ella (el profesor) y quien sostiene la solución (la universidad).
+En EduTrace, la institución es la encargada de alojar el servidor, de responder por el tratamiento de los datos personales de los estudiantes según la Ley 1581 de 2012 \cite{3} y de autorizar la integración con su plataforma académica, Campus Virtual.
+Por esta razón, aunque no aparece como un rol dentro de la plataforma, su papel es determinante en el modelo de negocio que EduTrace quiere realizar.
 
 \subsection{Arquitectura de la Plataforma}
 La arquitectura de EduTrace sigue un modelo cliente-servidor organizado como un monolito modular, en el que todos los componentes se ejecutan en un único servidor.
 El navegador del estudiante o del profesor se comunica con Caddy, que actúa como proxy inverso con HTTPS y reparte las peticiones: las páginas las sirve el servidor de Next.js y las peticiones a \texttt{/api} las atiende el backend en Go.
-El backend se divide en módulos con responsabilidades separadas: \texttt{handler} expone la API REST y el envío por partes de la retroalimentación (SSE), \texttt{compiler} compila y prueba el código en un entorno aislado, \texttt{auth} concentra los permisos y el acceso a los datos, y \texttt{ai} construye las instrucciones para el modelo y filtra sus respuestas.
+El backend se divide en módulos con responsabilidades separadas: \texttt{handler} expone la API REST y el envío por partes de la retroalimentación (SSE), \texttt{compiler} compila y prueba el código en un entorno aislado, \texttt{auth} concentra los permisos y el acceso a los datos, \texttt{ai} construye las instrucciones para el modelo con los documentos de la materia de cada curso, guardados en la carpeta \texttt{syllabus}, y filtra sus respuestas, y \texttt{examples} contiene el catálogo de ejemplos de sintaxis.
 Los datos se guardan en SQLite y las propuestas de la IA las genera un modelo local a través de Ollama, de modo que ningún dato sale del servidor.
 La Figura~\ref{fig:arquitectura} muestra estos componentes y cómo se relacionan.
 
@@ -649,14 +652,14 @@ Frente al diagrama de actividad de la Figura~\ref{fig:diagrama_actividad} de la 
 En ese diagrama, un orquestador coordinaba la compilación y la IA y entregaba las sugerencias directamente al estudiante.
 En el prototipo, ese orquestador desaparece como componente independiente y su función se divide en dos partes, la compilación y los casos de prueba se ejecutan de inmediato en el backend cuando el estudiante entrega, y la propuesta de la IA se genera después, de forma asíncrona, a través de la cola persistente.
 El segundo cambio que se introduce es que la salida de la IA ya no llega al estudiante, sino que queda como borrador hasta que el docente la aprueba, la edita o la descarta.
-De esta manera, la arquitectura incorpora de forma explícita el principio de \textit{human-in-the-loop} que guío todo el proyecto.
+De esta manera, la arquitectura incorpora de forma explícita el principio de \textit{human-in-the-loop} que guio todo el proyecto.
 
 \subsection{Cumplimiento de Requisitos}
 Siguiendo la ciencia del diseño, el prototipo se evalúa frente a los requisitos definidos en la fase de análisis, que funcionan como los objetivos de la solución.
-Esta evaluación técnica revisa, para cada requisito, si existe una implementación y una prueba o medición que lo demuestre, y distingue lo que ya se cumple en el código de lo que depende de una auditoría y lo que se puede desarrollar a futuro, del uso con estudiantes reales o de la institución.
+Esta evaluación técnica revisa, para cada requisito, si existe una implementación y una prueba o medición que lo demuestre, y distingue lo que ya se cumple en el código de lo que depende de una auditoría, del uso con estudiantes reales o de la institución, y de lo que se puede desarrollar a futuro.
 Para ello se usaron cinco estados: \textit{cumple}, cuando hay implementación y una prueba que lo verifica, \textit{instrumentado}, cuando la plataforma ya mide el criterio pero falta usarla con estudiantes, \textit{parcial}, cuando se cubre solo una parte, \textit{pendiente}, cuando aún no está implementado, y \textit{fuera del código}, cuando depende de un análisis o de una decisión institucional.
 
-Como resultado, el prototipo cumple los 23 requisitos funcionales y 12 de los 16 requisitos no funcionales.
+Como resultado, el prototipo cumple los 26 requisitos funcionales, incluidos los tres que se agregaron durante su construcción (RF-24 a RF-26), y 12 de los 16 requisitos no funcionales.
 De los cuatro restantes, el RNF-01 está implementado pero requiere una auditoría legal, el RNF-02 se cumple de forma parcial porque falta la evaluación de impacto de la IA, el RNF-09 está instrumentado a la espera de su uso con estudiantes, y el RNF-13, la integración con Campus Virtual, queda pendiente.
 Las Tablas~\ref{tab:cumplimiento} y~\ref{tab:cumplimiento_rnf} resumen el estado de cada requisito de acuerdo a la fase de análisis establecida.
 
@@ -673,7 +676,7 @@ Las Tablas~\ref{tab:cumplimiento} y~\ref{tab:cumplimiento_rnf} resumen el estado
 RF-01 & Retroalimentación para cada entrega & Cumple & Cada entrega oficial entra a la cola y recibe una propuesta de la IA. \\ \hline
 RF-02 & Tres preguntas de Hattie y Timperley & Cumple & Toda propuesta se organiza en ¿hacia dónde voy?, ¿cómo voy? y ¿qué sigue?, si falta una sección, se completa. \\ \hline
 RF-03 & «¿Qué sigue?» en todas las salidas & Cumple & Si el modelo la omite, se agrega una pista según el resultado de la entrega. \\ \hline
-RF-04 & Corrección con casos de prueba & Cumple & Hasta diez casos por taller, visibles u ocultos, ejecutados al compilar y al entregar. \\ \hline
+RF-04 & Corrección con casos de prueba & Cumple & Hasta diez casos por taller, visibles u ocultos, ejecutados al compilar y al entregar; si el programa falla al ejecutarse, se explica la causa. \\ \hline
 RF-05 & Observación sobre legibilidad & Cumple & Un analizador revisa sangría, nombres y líneas largas, y pasa los hallazgos a la IA. \\ \hline
 RF-06 & Observación sobre mantenibilidad & Cumple & El analizador detecta código repetido, variables globales y funciones muy largas. \\ \hline
 RF-07 & Observación sobre documentación & Cumple & El analizador revisa la presencia de comentarios. \\ \hline
@@ -693,6 +696,9 @@ RF-20 & Bitácora de intervenciones & Cumple & Se registran autor, acción y fec
 RF-21 & Errores frecuentes del curso & Cumple & Errores de compilación, ejecución y casos de prueba agrupados por clase o materia. \\ \hline
 RF-22 & Aclaración sobre la retroalimentación & Cumple & El estudiante pregunta debajo de la retroalimentación y responde el profesor o un monitor. \\ \hline
 RF-23 & Iterar & Cumple & El estudiante puede volver a entregar, y cada versión tiene su revisión. \\ \hline
+RF-24 & Ejemplos de sintaxis por clase & Cumple & Catálogo de 48 ejemplos de C++, el cual el docente activa los de cada clase y los estudiantes solo ven esos. \\ \hline
+RF-25 & Relación entre nota y esfuerzo & Cumple & Gráfico por clase y por taller con 9 cuadrantes y 3 situaciones sin nota, solo cuentan las notas del docente. \\ \hline
+RF-26 & Documentos de la materia para la IA & Cumple & La IA usa los documentos de la materia de cada curso, por ahora solo existen los de Introducción a la Programación al ser orientada hacia eso. \\ \hline
 \end{tabular}
 \end{table*}
 
@@ -716,7 +722,7 @@ RNF-08 & Tiempo de revisión por entrega & Cumple & La IA estima los minutos de 
 RNF-09 & Lenguaje comprensible para CS1 & Instrumentado & Cada retroalimentación pregunta si se entendió; meta de al menos 80 \% de respuestas afirmativas. \\ \hline
 RNF-10 & Procesar el volumen del curso & Cumple & Prueba de carga con 200 entregas, peor demora de 1 h 21 min frente a un umbral de 5 h. \\ \hline
 RNF-11 & Retroalimentación a tiempo & Cumple & Se mide el tiempo entre la entrega y la aprobación, con un umbral de 5 h. \\ \hline
-RNF-12 & Conectividad limitada & Cumple & Páginas de 206 a 237 KB y respuestas comprimidas de menos de 2 KB. \\ \hline
+RNF-12 & Conectividad limitada & Cumple & Páginas de 206 a 238 KB y respuestas comprimidas de menos de 2 KB. \\ \hline
 RNF-13 & Integración con la plataforma institucional & Pendiente & Requiere el registro de EduTrace en Campus Virtual (Brightspace), por ahora exporta en CSV ciertos elementos. \\ \hline
 RNF-14 & Conservar la entrega si falla la IA & Cumple & La entrega se guarda antes de la IA y la cola reintenta sin modificarla. \\ \hline
 RNF-15 & Avisar al docente si falla la IA & Cumple & Aviso en el tablero, botón para reintentar y alertas del servidor cada 5 minutos. \\ \hline
@@ -733,21 +739,21 @@ Las pruebas automatizadas y la revisión de accesibilidad se ejecutan en cada ca
 \subsection{Validación con Usuarios}
 
 
-\section{Fase 4: Proyección}
-En la fase de proyeccion se analiza la evolucion de Edutrace desde el prototipo funcional, con el fin de mostrar como se puede aplicar los elementos financieros y de negocio
-Siguiendo el \textit{Technology Roadmapping} presentado en la fase de analisis, en la fase de análisis se identificó por qué hacerlo es decir, los impulsores de adopción, y esta fase responde cómo hacerlo y con qué recursos, tambien la agenda de investigacion, desarrollo e innovacion.
-Primero, se identifican los recursos necesarios para escalar la plataforma y llevar a cabo la implementación, luego, se presenta el roadmap tecnológico por horizontes, con los criterios para avanzar de uno a otro.
-Después, se plantea el plan de negocio, que incluye el plan de mercadeo, el plan financiero y las estrategias de financiación.
+\section{Fase de Proyección}
+En la fase de proyección se analiza la evolución de EduTrace desde el prototipo funcional, con el fin de mostrar cómo se pueden aplicar los elementos financieros y de negocio.
+Siguiendo el \textit{Technology Roadmapping} \cite{27} presentado en la fase de análisis, en esa fase se identificó por qué hacerlo, es decir, los impulsores de adopción, y esta fase responde cómo hacerlo y con qué recursos, además de la agenda de investigación, desarrollo e innovación.
+Primero, se identifican los recursos necesarios para escalar la plataforma y llevar a cabo la implementación, luego, se presenta el roadmap tecnológico por etapas, con los criterios para avanzar de una a otra.
+Después, se plantean la agenda de investigación, desarrollo e innovación y el plan de negocio, que incluye el plan de mercadeo y el plan financiero.
 Finalmente, se presentan las conclusiones y el trabajo futuro del proyecto finalizando la fase y el proyecto.
 
 \subsection{Recursos necesarios}
-Los recursos necesarios para llevar a cabo la implementacion del proyecto y el mantenimiento de la plataforma se dividen en tres categorias diferentes recursos humanos, recursos tecnologicos y recursos institucionales y mantenimiento .
-Se parte desde la base de la plataforma y sus funcionalidades actuales y los recursos actuales, y se identifican los recursos adicionales necesarios para escalar la plataforma y llevar a cabo la implementacion a mayor escala y su puesta en marcha.
-Para cada uno se indica para qué sirve y en qué etapa del roadmap se necesita (F1: piloto en una sección, F2: consolidación de plataforma en universidad; F3: expansión a otros cursos y universidades), como se resume en la Tabla~\ref{tab:recursos}.
+Los recursos necesarios para llevar a cabo la implementación del proyecto y el mantenimiento de la plataforma se dividen en cuatro categorías diferentes: recursos humanos, recursos tecnológicos, recursos institucionales y mantenimiento.
+Se parte desde la base de la plataforma y sus funcionalidades actuales y los recursos actuales, y se identifican los recursos adicionales necesarios para escalar la plataforma y llevar a cabo la implementación a mayor escala y su puesta en marcha.
+Para cada uno se indica para qué sirve y en qué etapa del roadmap se necesita (F1: piloto en una sección; F2: consolidación de plataforma en universidad; F3: expansión a otros cursos y universidades), como se resume en la Tabla~\ref{tab:recursos}.
 \begin{table*}[t]
 \centering
 \footnotesize
-\caption{Recursos necesarios para llevar EduTrace a un uso real.}
+\caption{Recursos necesarios para la puesta en marcha de EduTrace}
 \label{tab:recursos}
 \begin{tabular}{|p{3.6cm}|p{10.6cm}|p{2.4cm}|}
 \hline
@@ -755,21 +761,21 @@ Para cada uno se indica para qué sirve y en qué etapa del roadmap se necesita 
 \hline
 \multicolumn{3}{|l|}{\textbf{Humanos}} \\ \hline
 
-Desarrollo & Corregir errores, implementar la integración con Campus Virtual y ajustar la plataforma según los elementos que se nececiten & F0 en adelante \\ \hline
-Administración del servidor & Desplegar versiones, vigilar el estado del servicio, atender alertas y restaurar respaldos si es necesario & F0 en adelante \\ \hline
-Soporte a docentes & Capacitar al profesor en el uso de la plataforma, resolver dudas y recoger observaciones durante el piloto & F0 y F1 \\ \hline
-Responsable de los datos personales & Atender las solicitudes de los titulares y responder por el tratamiento de los datos de los estudiantes & F0 en adelante \\ \hline
+Desarrollo & Corregir errores, implementar la integración con Campus Virtual y ajustar la plataforma según los elementos que se necesiten & F1 en adelante \\ \hline
+Administración del servidor & Desplegar versiones, vigilar el estado del servicio, atender alertas y restaurar respaldos si es necesario & F1 en adelante \\ \hline
+Soporte a docentes & Capacitar al profesor en el uso de la plataforma, resolver dudas y recoger observaciones durante el piloto & F1 y F2 \\ \hline
+Responsable de los datos personales & Atender las solicitudes de los titulares y responder por el tratamiento de los datos de los estudiantes & F1 en adelante \\ \hline
 
 \multicolumn{3}{|l|}{\textbf{Tecnológicos}} \\ \hline
-Servidor con GPU & Ejecutar la plataforma y el modelo de IA local y probar su rendimiento con diferentes volúmenes de datos & F0 \\ \hline
-Respaldos & Conservar una copia diaria, cifrada y verificada de la base de datos, con una copia fuera del servidor & F0 en adelante \\ \hline
-Dominio con HTTPS & Publicar la plataforma bajo un dominio de la universidad con certificado de seguridad & F0 \\ \hline
-Correo saliente & Enviar los avisos preferiblemente con correo a estudiantes y docentes cuando se devuelve una revisión o se responde una pregunta & F0 \\ \hline
+Servidor con GPU & Ejecutar la plataforma y el modelo de IA local y probar su rendimiento con diferentes volúmenes de datos & F1 \\ \hline
+Respaldos & Conservar una copia diaria, cifrada y verificada de la base de datos, con una copia fuera del servidor & F1 en adelante \\ \hline
+Dominio con HTTPS & Publicar la plataforma bajo un dominio de la universidad con certificado de seguridad & F1 \\ \hline
+Correo saliente & Enviar los avisos preferiblemente con correo a estudiantes y docentes cuando se devuelve una revisión o se responde una pregunta & F1 \\ \hline
 
 \multicolumn{3}{|l|}{\textbf{Institucionales}} \\ \hline
-Cursos para el piloto & Usar la plataforma con la mayor cantidad de estudiantes, tiempos de revisión y concordancia con el profesor & F0: un curso especifico, F1: todos los cursos\\ \hline
-Responsable del tratamiento de datos & Asumir legalmente el tratamiento de los datos, designar un canal de contacto y aprobar auditoría legal & F0 \\ \hline
-Registro en Campus Virtual & Obtener las credenciales para integrar EduTrace con Brightspace  & F1 \\ \hline
+Cursos para el piloto & Usar la plataforma con la mayor cantidad de estudiantes y medir tiempos de revisión y concordancia con el profesor & F1: una sección, F2: todos los cursos \\ \hline
+Responsable del tratamiento de datos & Asumir legalmente el tratamiento de los datos, designar un canal de contacto y aprobar auditoría legal & F1 \\ \hline
+Registro en Campus Virtual & Obtener las credenciales para integrar EduTrace con Brightspace & F2 \\ \hline
 
 \multicolumn{3}{|l|}{\textbf{Mantenimiento}} \\ \hline
 Actualización de dependencias & Revisar las actualizaciones que el sistema propone automáticamente cada semana y el análisis de vulnerabilidades que se ejecuta cada semana & Semanal \\ \hline
@@ -778,20 +784,20 @@ Prueba de restauración & Restaurar un respaldo en una copia de prueba para conf
 \end{tabular}
 \end{table*}
 
-Parte del mantenimiento ya está automatizado en el prototipo incial, los respaldos se generan y verifican cada día, el estado del servicio se revisa cada cinco minutos con un heartbeat, el sistema propone semanalmente las actualizaciones de dependencias automatizadas con workdlows y cada cambio pasa por pruebas automáticas antes de desplegarse.
-Lo que no esta automatizado es la actualización del modelo de IA, que se hace una vez por semestre, y la prueba de restauración de un respaldo, que también se hace una vez por semestre.
-Mientras que la plataforma se aloja temporalmente en un servidor de pruebas y se asume proximamente dado el modelo de negocio que se plantea que la universidad asuma el alojamiento y mantenimiento de la plataforma, por lo que se requiere un responsable del tratamiento de datos personales y un responsable del servidor, que puede ser el mismo o diferente.
-y tambien se propone como recurso auxiliar al alojamiento de la plataforma en un servidor en nube que a pesar que sea mas rapido es mas dificil trasladar los datos y el modelo de IA a otro servidor, por lo que se recomienda que la universidad asuma el alojamiento y mantenimiento de la plataforma.
+Parte del mantenimiento ya está automatizado en el prototipo inicial: los respaldos se generan y verifican cada día, el estado del servicio se revisa cada cinco minutos con un heartbeat, el sistema propone semanalmente las actualizaciones de dependencias automatizadas con workflows y cada cambio pasa por pruebas automáticas antes de desplegarse.
+Lo que no está automatizado es la actualización del modelo de IA, que se hace una vez por semestre, y la prueba de restauración de un respaldo, que también se hace una vez por semestre.
+Por ahora, la plataforma se aloja temporalmente en un servidor de pruebas y, dado el modelo de negocio que se plantea, se asume que próximamente la universidad se encargue del alojamiento y mantenimiento de la plataforma, por lo que se requiere un responsable del tratamiento de datos personales y un responsable del servidor, que puede ser el mismo o diferente.
+También se propone como recurso auxiliar el alojamiento de la plataforma en un servidor en la nube, que a pesar de ser más rápido de poner en marcha hace más difícil trasladar los datos y el modelo de IA a otro servidor, por lo que se recomienda que la universidad asuma el alojamiento y mantenimiento de la plataforma.
 
 \subsection{Roadmap tecnológico}
-El roadmap de EduTrace se organiza en un modelo de capas que pone en una misma linea de tiempo el mercado, el producto, la tecnologia y los recursos, de modo que se pueda ver cómo se relacionan y qué se necesita para avanzar de un horizonte a otro.
-la capa de mercado retoma los impulsores identificados en la fase de analisis, como la nececidad del profesor de dar retroalimentacion de calidad a muchos estudiantes o los datos descubiertos en el contexto del problema
+El roadmap de EduTrace se organiza en un modelo de capas que pone en una misma línea de tiempo el mercado, el producto, la tecnología y los recursos, de modo que se pueda ver cómo se relacionan y qué se necesita para avanzar de una etapa a otra.
+La capa de mercado retoma los impulsores identificados en la fase de análisis, como la necesidad del profesor de dar retroalimentación de calidad a muchos estudiantes o los datos descubiertos en el contexto del problema.
 Las etapas siguen las del modelo de negocio, primero una financiación inicial para el piloto, luego la validación y adopción dentro de la universidad, y por último la expansión a otros cursos e instituciones bajo el mismo modelo.
 
-Se utiliza para desarrollar el roadmap de una forma apropiada acorde con el modelo de negocio se usa el metodo de triángulo mágico del Business Model Navigator de St. Gallen (Gassmann, Frankenberger y Csik), el cual describe
-un negocio con cuatro preguntas principales y como se propone un negocio a partir de ello  quién es el cliente, qué se le ofrece, cómo se produce esa oferta y por qué el negocio es viable.
-En el roadmap, la capa de mercado responde al quién, la de producto al qué, las de tecnología y recursos al cómo, y la financiación de cada etapa al valor llendo en concordancia con el triangulo y la forma de presentar las características de cada etapa.
-para pasar a la siguiente etapa, se hace de forma en cascada, donde hay un criterio medible para pasar de una etapa a otra, y se requiere que se cumplan todos los criterios de la etapa anterior para pasar a la siguiente, Es por ello que en La Figura~\ref{fig:roadmap} muestra el roadmap completo.
+Para desarrollar el roadmap de una forma apropiada acorde con el modelo de negocio se usa el método de triángulo mágico del Business Model Navigator de St. Gallen (Gassmann, Frankenberger y Csik) \cite{28}, el cual describe
+un negocio con cuatro preguntas principales y cómo se propone un negocio a partir de ello: quién es el cliente, qué se le ofrece, cómo se produce esa oferta y por qué el negocio es viable.
+En el roadmap, la capa de mercado responde al quién, la de producto al qué, las de tecnología y recursos al cómo, y la financiación de cada etapa al valor yendo en concordancia con el triángulo y la forma de presentar las características de cada etapa.
+Para pasar a la siguiente etapa, se hace de forma en cascada, donde hay un criterio medible para pasar de una etapa a otra, y se requiere que se cumplan todos los criterios de la etapa anterior para pasar a la siguiente, es por ello que la Figura~\ref{fig:roadmap} muestra el roadmap completo.
 
 \begin{figure*}[t]
 \centering
@@ -800,14 +806,14 @@ para pasar a la siguiente etapa, se hace de forma en cascada, donde hay un crite
 \label{fig:roadmap}
 \end{figure*}
 
-En el roadmap tambien se caracteriza el mercado, en especial el tamaño del mercado y hasta donde puede llegar la plataforma, para ello se hace un analisis de mercado y se estima el tamaño del mercado potencial(TAM), el tamaño del mercado disponible con lo actual(SAM) y el tamaño del mercado alcanzable(SOM),
-para alcanzar ese mercado se propone un plan de negocio basado en un cobro por suscripcion semestral por cada estudiante y por semestre a pesar que el modelo de negocio se basa en la venta de la plataforma a la universidad, se propone un cobro por suscripcion a cada estudiante para que la universidad pueda cubrir los costos de mantenimiento y desarrollo de la plataforma, y tambien para que la universidad pueda tener un control sobre el uso de la plataforma y el acceso a los datos de los estudiantes. 
+En el roadmap también se caracteriza el mercado, en especial el tamaño del mercado y hasta dónde puede llegar la plataforma, para ello se hace un análisis de mercado y se estima el tamaño del mercado potencial (TAM), el tamaño del mercado disponible con lo actual (SAM) y el tamaño del mercado alcanzable (SOM),
+para alcanzar ese mercado se propone un plan de negocio basado en un cobro por suscripción semestral por cada estudiante y por semestre, a pesar de que el modelo de negocio se basa en la venta de la plataforma a la universidad, se propone un cobro por suscripción por cada estudiante, que asume la universidad, para cubrir los costos de mantenimiento y desarrollo de la plataforma, y también para que la universidad pueda tener un control sobre el uso de la plataforma y el acceso a los datos de los estudiantes. 
 
 El TAM corresponde a los estudiantes que empiezan a programar en la educación superior colombiana.
-Aproximadamente el TAM de mercado sumó 862.000 estudiantes en promedio entre 2019 y 2024, es decir, cerca de 144.000 por año (Laboratorio de Economía de la Educación, citado en Portafolio, 2025).
+Aproximadamente el TAM de mercado sumó 862.000 inscripciones entre 2019 y 2024, es decir, cerca de 144.000 por año (Laboratorio de Economía de la Educación, citado en Portafolio \cite{29}).
 
-El SAM se limita a los programas de ingeniería de sistemas, cuyos estudiantes tienen un curso como Introducción a la Programación al inicio de la carrera unos 259.329 inscritos en el mismo periodo, unos 43.000 por año, en un programa que ofrecían 175 instituciones activas según el Ministerio de Educación (2018).
-El SOM en el corto plazo es una sección de Introducción a la Programación en la Javeriana, y en el mediano plazo ese curso completo junto con Programación Avanzada, lo que equivale a unos 2000 estudiantes aproximadamente por semestre.
+El SAM se limita a los programas de ingeniería de sistemas, cuyos estudiantes tienen un curso como Introducción a la Programación al inicio de la carrera, unos 259.329 inscritos en el mismo periodo, unos 43.000 por año \cite{29}, en un programa que ofrecían 175 instituciones activas según el Ministerio de Educación (2018).
+El SOM en el corto plazo es una sección de Introducción a la Programación en la Javeriana, y en el mediano plazo ese curso completo junto con Programación Avanzada, lo que equivale a unos 650 estudiantes por semestre.
 A partir de la etapa de expansión, y solo si se cumplen las puertas del roadmap, el negocio empezaría a capturar una parte del SAM con cada universidad que se sume como cliente.
 
 La Figura~\ref{fig:triangulo} muestra cómo responde EduTrace a las cuatro preguntas del triángulo mágico en cada etapa del roadmap presentando el negocio. 
@@ -820,44 +826,155 @@ La Figura~\ref{fig:triangulo} muestra cómo responde EduTrace a las cuatro pregu
 \end{figure*}
 
 \subsection{Investigación, desarrollo e innovación (I+D+i)}
-Al desarollar Edutrace y el prototipo funcional, se identificaron varias oportunidades de investigación, desarrollo e innovación que pueden mejorar la plataforma y su impacto en la educación.
-La investigacion se centra en lo que falta probar, el desarrollo de lo que falta construir y se puede mejorar, la innovacion de la propuesta de valor que aporta edutrace y de como se coordina todo lo anterior
+Al desarrollar EduTrace y el prototipo funcional, se identificaron varias oportunidades de investigación, desarrollo e innovación que pueden mejorar la plataforma y su impacto en la educación.
+La investigación se centra en lo que falta probar, el desarrollo de lo que falta construir y se puede mejorar, la innovación de la propuesta de valor que aporta EduTrace y de cómo se coordina todo lo anterior.
 
-En especifico, en investigacion, falta demostrar si la retroalimentación aprobada por el docente ayuda al esteudiante a mejorar su desempeño y aprendizaje, y del mismo modo ahorra tiempo para el docente al momento de poder facilitar el aprendizaje del estudiante
-Del mismo modo se puede investigar que las propuestas de la IA puedan tener una relacion consistente con el criterio del docente  porque la literatura ya advierte que esa concordancia suele ser apenas moderada (Jukiewicz, 2025), y porque un profesor que empieza a aprobar sin leer convertiría la supervisión humana en una formalidad y no en lo que se quiere medir y es la transferecia del conocimiento y calidad de la retroalimentacion .
-Para responder estas interrogantes y lo que se deriva de ella, se propone un estudio de investigacion con un diseño experimental en la fase de piloto de prueba inicial en el que unas secciones de Introducción a la Programación usen EduTrace y otras mantengan su retroalimentación habitual como grupo de comparación.
-haciendo una comparativa al estar los estudiantes al azar en los salones y no ser una variable que depende o influye en el estudio, El estudio aprovecha datos que la plataforma ya registra, como la comprensión que reportan los estudiantes, el tiempo real que el profesor dedica a revisar, la proporción de propuestas que edita y la diferencia entre la nota sugerida y la nota final, y los complementa con una nueva aplicación de la encuesta de la fase de contexto y con entrevistas al profesor al cierre del periodo.
+En específico, en investigación, falta demostrar si la retroalimentación aprobada por el docente ayuda al estudiante a mejorar su desempeño y aprendizaje, y del mismo modo ahorra tiempo para el docente al momento de poder facilitar el aprendizaje del estudiante.
+Del mismo modo se puede investigar que las propuestas de la IA puedan tener una relación consistente con el criterio del docente porque la literatura ya advierte que esa concordancia suele ser apenas moderada \cite{21}, y porque un profesor que empieza a aprobar sin leer convertiría la supervisión humana en una formalidad y no en lo que se quiere medir, que es la transferencia del conocimiento y calidad de la retroalimentación.
+Para responder estas interrogantes y lo que se deriva de ellas, se propone un estudio de investigación con un diseño experimental en la fase de piloto de prueba inicial en el que una sección de Introducción a la Programación use EduTrace y otras mantengan su retroalimentación habitual como grupo de comparación,
+haciendo una comparativa al estar los estudiantes al azar en los salones y no ser una variable que depende o influye en el estudio. El estudio aprovecha datos que la plataforma ya registra, como la comprensión que reportan los estudiantes, el tiempo real que el profesor dedica a revisar, la proporción de propuestas que edita y la diferencia entre la nota sugerida y la nota final, y los complementa con una nueva aplicación de la encuesta de la fase de contexto y con entrevistas al profesor al cierre del periodo.
 
 En desarrollo, lo más importante es mejorar la calidad de las propuestas, es decir, que el profesor tenga que corregirlas cada vez menos.
 Para eso se ajustarán las instrucciones del modelo y se ampliarán los casos de evaluación con errores reales que aparezcan en el piloto.
-Esos mismos casos sirven para probar mejores modelos que se pueden seguir entrenando con tecnicas de supervision de aprednisaje de maquina de modo que el cambiod
-de inteligencia artifical se haga de acuerdo con los datos que muestre y con la experiencia que vaya adquieriendo en el entrenamiento.
-el otro frente es ampliar la cobertura, ya que hoy la plataforma solo compila C++ y llegar a otros cursos exige soportar lenguajes como Python o Java o lenguajes de mas bajo nivel, cada uno con su propio entorno aislado y su analizador de calidad.
+Esos mismos casos sirven para probar mejores modelos que se pueden seguir entrenando con técnicas de supervisión de aprendizaje de máquina de modo que el cambio
+de inteligencia artificial se haga de acuerdo con los datos que muestre y con la experiencia que vaya adquiriendo en el entrenamiento.
+El otro frente es ampliar la cobertura, ya que hoy la plataforma solo compila C++ y llegar a otros cursos exige soportar lenguajes como Python o Java o lenguajes de más bajo nivel, cada uno con su propio entorno aislado y su analizador de calidad.
 A esto se suma la integración con Campus Virtual, que es más un requisito de adopción y que pueda integrarse de una forma adecuada con la plataforma institucional, y la mejora de la interfaz de usuario, que se puede hacer con pruebas de usabilidad y accesibilidad.
 
-En innovacion, edutrace busca mejorar la propuesta de retroalimentacion que se le puede ofrecer al estudiante basado en el criterio del profesor usando las herramientas que ya existen como lo son la IA y la retroalimentacion automatica de diferentes entregables o trabajos.
-En este sentido, se busca que edutrace pueda diferenciarse de otras plataformas o combinacion de algunas herramientas simples con la forma que combina la retroalimentacion automatica con la supervisión humana y la forma en que se puede mejorar el aprendizaje del estudiante y el tiempo que se le dedica al docente para poder dar retroalimentacion de calidad a los estudiantes, 
-sin que sea un autograder que solo califica y deja de lado la retroalimentación hacia el estudiante, y tampoco que se tengan que usar chats de IA que pueden caer en ciertos errores al enseñarle un concepto al estudiante y de una forma complicada de usar y con un lenguaje muy tecnico, tambien se enfoca en que la IA da la retroalimentacion de que seigue para el estudiante
-que puede hacer en su entrega proximamente y que pueda tener una guia de como mejorar su entrega y aprendizaje de forma graduada y sin limitarse a dar la solucion de un ejercicio o taller de forma directa limitando las capacidades del propio estudiante y su aprendizaje, y que pueda tener una retroalimentación de calidad y que pueda ser supervisada por el docente para que pueda tener un control sobre la retroalimentación que se le da al estudiante y que pueda ser de calidad y que pueda mejorar el aprendizaje del estudiante y que pueda ahorrar tiempo al docente en la retroalimentación de los estudiantes.
+En innovación, EduTrace busca mejorar la propuesta de retroalimentación que se le puede ofrecer al estudiante basado en el criterio del profesor usando las herramientas que ya existen como lo son la IA y la retroalimentación automática de diferentes entregables o trabajos.
+En este sentido, se busca que EduTrace pueda diferenciarse de otras plataformas o combinación de algunas herramientas simples con la forma que combina la retroalimentación automática con la supervisión humana y la forma en que se puede mejorar el aprendizaje del estudiante y el tiempo que se le dedica al docente para poder dar retroalimentación de calidad a los estudiantes, 
+sin que sea un autograder que solo califica y deja de lado la retroalimentación hacia el estudiante, y tampoco que se tengan que usar chats de IA que pueden caer en ciertos errores al enseñarle un concepto al estudiante y de una forma complicada de usar y con un lenguaje muy técnico, también se enfoca en que la IA da la retroalimentación de qué sigue para el estudiante,
+qué puede hacer en su entrega próximamente y que pueda tener una guía de cómo mejorar su entrega y aprendizaje de forma graduada y sin limitarse a dar la solución de un ejercicio o taller de forma directa limitando las capacidades del propio estudiante y su aprendizaje, y que pueda tener una retroalimentación de calidad, supervisada por el docente para que tenga control sobre lo que se le da al estudiante, que mejore su aprendizaje y que le ahorre tiempo al docente.
 Se trata, entonces, de una innovación por recombinación de tecnologías existentes, que es el mismo tipo de innovación que sustenta el modelo de negocio.
 
-Para tener un criterio medible de todo lo anterior a coordinar cada uno de los ambitos de Edutrace y su exito en las diferentes etapas, se usan varios indicadores, la mayoría de los cuales la plataforma ya mide.
+Para tener un criterio medible de todo lo anterior y coordinar cada uno de los ámbitos de EduTrace y su éxito en las diferentes etapas, se usan varios indicadores, la mayoría de los cuales la plataforma ya mide.
 La comprensión debe alcanzar al menos el 80~\% de respuestas afirmativas por taller, con un mínimo de 20 respuestas, y las propuestas deben estar listas para el profesor en menos de cinco horas.
 El tiempo docente se medirá frente a una línea base tomada en el piloto, cronometrando la revisión de entregas sin la plataforma, y junto con él se observará la proporción de propuestas que el profesor edita, para confirmar que su revisión es real.
 La concordancia se seguirá con la diferencia entre la nota sugerida y la nota final, que debería reducirse con cada cambio de modelo, y la mejora del estudiante con los casos de prueba que supera en su siguiente entrega, comparados con los del grupo de comparación.
 Finalmente, la adopción se medirá por el número de secciones, cursos y profesores que usan la plataforma en cada etapa del roadmap. 
 \subsection{Plan de negocio}
-
+El plan de negocio de EduTrace parte de lo que se construyó en la fase de análisis, con ello los perfiles de los usuarios que se construyeron en especial con el 
+\textit{Value Proposition Canvas} mostraron que tanto el estudiante como el profesor tienen problemas diferentes en torno a la misma problemática, pues el estudiante 
+no sabe qué hacer después de un error y termina con dependencia de la IA para obtener la respuesta, mientras que el profesor no tiene tiempo para dar una retroalimentación de calidad a todos sin perder el control sobre la nota. 
+En el modelo de negocio planteado en la fase de análisis, además del modelo institucional se planteó quién se beneficia del modelo, quién decide, de qué forma se costea y esas diferencias se ven reflejadas en los actores
+que interactúan directa o indirectamente con la plataforma y cómo se satisfacen los diferentes intereses de los actores. El plan de negocio usa esos intereses y problemas y los convierte en una forma de generar rentabilidad.
 \subsubsection{Plan de mercadeo}
+El cliente principal de EduTrace son las instituciones educativas, que son representadas en la práctica por la dirección del departamento y sección que ofrece los cursos de programación, porque es quien decide adoptar la plataforma y quien puede ofrecer una remuneración por ella. 
+Al ser los usuarios principales el profesor que la usa para revisar y aprobar la retroalimentación al estudiante y el estudiante que en este modelo no paga, 
+por lo tanto la institución es el principal cliente como conjunto a partir de las universidades bajo el modelo de presentar una mejor retroalimentación formativa, menos tiempo docente invertido en revisar y una mejora en el rendimiento de los estudiantes con una retroalimentación mucho más amplia. 
+
+Como se vio en el roadmap, el mercado total lo forman cerca de 144.000 inscripciones al año en el núcleo de ingeniería de sistemas, telemática y afines, y el mercado atendible se acerca a 43.000 inscritos al año en ingeniería de sistemas, en un programa que ofrecían 175 instituciones activas.
+El mercado que se puede obtener en los primeros años es la Javeriana, con Introducción a la Programación y Programación Avanzada, y a partir de 2029 un pequeño grupo de universidades que repliquen el piloto.
+Como se mostrará en el plan financiero, el negocio se sostiene con cerca del 7~\% del mercado atendible, lo que hace que el objetivo sea exigente pero alcanzable dentro de los parámetros establecidos y con el uso de otras plataformas de competencia.
+
+La competencia de mercado se divide en tres grupos, los mismos de la tabla comparativa de la fase de análisis, la cual juega un papel importante en cómo se desarrolla el plan de mercadeo.
+Los autograders califican de forma automática, pero no explican al estudiante qué hacer después ni dejan la decisión en manos del profesor.
+Los chats de IA de uso general son gratuitos y ya los usa el 69,6~\% de los estudiantes, pero le entregan la respuesta directamente y el profesor no sabe qué se le dijo ni cómo seguir apoyando en el proceso del estudiante y en su aprendizaje.
+Herramientas como CodeRabbit revisan código con IA, pero están pensadas para equipos profesionales que buscan velocidad, no para estudiantes que están aprendiendo.
+
+EduTrace se diferencia porque combina tres diferentes elementos pedagógicos y tecnológicos: el profesor aprueba todo lo que llega al estudiante, la retroalimentación siempre termina en el siguiente paso sin revelar la solución, y la IA funciona de acuerdo a los parámetros y condiciones oficiales de las diferentes materias.
+A pesar de ello el principal competidor real es la costumbre y radica en cómo el estudiante use la plataforma: que el estudiante siga usando un chat gratuito y que el profesor siga revisando como siempre y con ello se anima al estudiante a que intente, con ayuda de una herramienta útil y de una forma responsable, 
+las diferentes funcionalidades y con ello acercarse a un entorno de aprendizaje.
+
+El modelo de licencia de la plataforma se propone de núcleo abierto, usando una licencia abierta, de modo que cualquier institución pueda auditarlo, mientras que la versión institucional, que incluye la integración con Campus Virtual, los indicadores para el docente, la actualización de modelos y el soporte, se ofrece por suscripción que asume la institución al momento de comprarla.
+Los ingresos provienen de tres fuentes, que corresponden a patrones del Business Model Navigator.
+La principal es una suscripción por estudiante y por semestre, que da un ingreso recurrente y crece con el tamaño de cada cliente que asume la institución al pagarla cada semestre, la segunda es el cobro único por implementar la plataforma en cada universidad, integrarla con su sistema académico y capacitar a sus docentes, y la tercera son módulos adicionales que una institución puede contratar según sus necesidades, como nuevos lenguajes de programación o reportes ampliados con una descripción más detallada de los errores y falencias de los estudiantes.
+El precio base se fija en \$20.000 por estudiante por semestre y en \$4 millones por implementación, y los módulos adicionales se cotizan aparte dependiendo del tamaño.
+Se espera que ese precio esté por debajo del valor del tiempo docente que la plataforma ahorra por estudiante, de modo que a la institución le cueste menos pagar la suscripción que seguir como está, y ese costo-beneficio se comprobará con la línea base de tiempo docente que se tome en el piloto.
+
+Para saber si el mercadeo funciona se seguirán cuatro indicadores diferentes, el número de cursos activos en la plataforma, el número de docentes que la usan cada semestre, la retención de universidades, medida como el porcentaje de instituciones que renuevan su suscripción, y la proporción de pilotos que terminan convirtiéndose en clientes.
+De ellos, la retención de universidades es el más importante, porque una universidad que renueva es la mejor señal de que la plataforma le resulta útil.
 
 \subsubsection{Plan financiero}
 
-\subsubsection{Estrategias de financiación}
+El plan financiero se proyecta a tres años, de 2027 a 2029, siguiendo las etapas del roadmap, y todos los costos que usa están tomados de fuentes verificables con los diferentes costos fijos y variables que se desprenden de ello.
+El costo más importante del negocio es el de las personas. Según 45 salarios reportados en Indeed con corte a septiembre de 2026 \cite{30}, un desarrollador junior gana en promedio \$2.806.818 al mes en Colombia.
+A ese salario la empresa debe sumarle el auxilio de transporte de \$249.095 \cite{32}, porque el salario no supera dos salarios mínimos, que en 2026 equivalen a \$3.501.810 \cite{31}; los aportes a pensión (12~\%), riesgos laborales de clase I (0,522~\%) y caja de compensación (4~\%); y la prima, las cesantías, sus intereses y las vacaciones.
+Con todo esto, un desarrollador le cuesta a la empresa \$4.176.484 al mes, cerca de 1,49 veces su salario, y como la jornada máxima es de 42 horas semanales desde el 15 de julio de 2026 \cite{33}, cada hora de trabajo cuesta unos \$22.948.
+El plan prevé 900 horas del equipo en 2027, 1.080 en 2028 y 2.160 en 2029, lo que equivale a pasar de menos de medio desarrollador de tiempo completo a uno completo, y dentro de esas horas está el tiempo dedicado a la gestión comercial, y aparte se reservan unas 40 al año para evaluar y actualizar los modelos de IA.
+
+La contabilidad de una pyme pequeña cuesta entre \$800.000 y \$1.200.000 al mes en Bogotá, según tarifas de mercado de 2026 \cite{34}, y el plan toma el valor inferior desde que la empresa empieza a operar en el segundo semestre de 2027. No se asume un costo sobre el alojamiento del servidor pues, al ser los datos institucionales, se manejaría en la propia plataforma e infraestructura de 
+las diferentes universidades.
+
+En cuanto a los ingresos, el precio de la suscripción y el de la implementación no son datos del mercado sino decisiones del negocio.
+El plan fija \$20.000 por estudiante por semestre y \$4 millones por implementar la plataforma en cada universidad, y se plantea que la Pontificia Universidad Javeriana sea el primer cliente desde el segundo semestre de 2027, con una meta de aproximadamente 650 estudiantes por semestre entre Introducción a la Programación y Programación Avanzada, y que en 2029 se sumen dos universidades con otros 650 estudiantes cada una.
+
+La Tabla~\ref{tab:proyeccion} muestra la proyección resultante.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Proyección a tres años (millones de pesos).}
+\label{tab:proyeccion}
+\begin{tabular}{|p{4.9cm}|r|r|r|}
+\hline
+\textbf{Concepto} & \textbf{2027} & \textbf{2028} & \textbf{2029} \\
+\hline
+Suscripciones & 13,0 & 26,0 & 78,0 \\
+Implementaciones & 4,0 & 0,0 & 8,0 \\
+\hline
+\textbf{Total de ingresos} & \textbf{17,0} & \textbf{26,0} & \textbf{86,0} \\
+\hline
+Horas del equipo & 20,7 & 24,8 & 49,6 \\
+Actualización de modelos & 0,9 & 0,9 & 0,9 \\
+Contabilidad & 4,8 & 9,6 & 9,6 \\
+\hline
+\textbf{Total de costos} & \textbf{26,4} & \textbf{35,3} & \textbf{60,1} \\
+\hline
+\textbf{Resultado del año} & \textbf{$-$9,4} & \textbf{$-$9,3} & \textbf{25,9} \\
+Resultado acumulado & $-$9,4 & $-$18,7 & 7,2 \\
+\hline
+\end{tabular}
+\end{table}
+
+Los dos primeros años tienen pérdidas, algo esperable porque en ese periodo solo se tiene un único cliente y su suscripción no alcanza a cubrir el equipo.
+El cambio llega en 2029, cuando la entrada de dos universidades deja una utilidad de \$25,9 millones, suficiente para recuperar lo perdido en los años anteriores y cerrar el periodo con un acumulado positivo de \$7,2 millones.
+
+El punto de equilibrio se calcula con los costos de 2029, cuando la empresa ya opera con un desarrollador de tiempo completo, dividiendo los costos anuales entre los ingresos que deja cada estudiante en el año, es decir, entre dos veces el precio por semestre.
+Con costos de \$60,1 millones, el negocio se sostiene con unos 1.500 estudiantes por semestre, lo que se alcanza con la Javeriana y dos universidades de tamaño similar, y equivale a cerca del 7~\% del mercado atendible.
 
 
 \subsection{Conclusiones y trabajo futuro}
-Como conclusion al trabajo realizado, se puede 
+Este proyecto partió de un problema concreto en la enseñanza de la programación: los cursos introductorios no logran sostener una retroalimentación formativa efectiva, y la salida fácil, que es automatizar la calificación, deja al docente por fuera justo en el momento en que el estudiante más lo necesita.
+A lo largo de las cuatro fases se buscó responder cómo las tecnologías de la información pueden apoyar esa retroalimentación sin reemplazar el criterio del profesor, y la respuesta que deja el trabajo es EduTrace como prototipo funcional, una plataforma en la que la inteligencia artificial propone y apoya la decisión del docente y el aprendizaje del estudiante.
 
+La fase de contexto mostró que el problema no era la cantidad de retroalimentación sino su calidad. La mayoría de los estudiantes encuestados percibía el curso como difícil, pero más de la mitad consideraba adecuada la cantidad de retroalimentación que recibía, mientras que el 69,6~\% ya acudía a la IA como su principal fuente de ayuda.
+Ese hallazgo cambió el enfoque del proyecto y cómo se abordaba, de dar más comentarios a dar comentarios de calidad, centrados en lo que Hattie y Timperley llaman el siguiente paso, y de canalizar hacia el aprendizaje un uso de la IA que ya existía, pero que ocurría sin el profesor.
+
+La fase de análisis convirtió ese diagnóstico en requisitos. Los mapas de empatía y los dos perfiles del \textit{Value Proposition Canvas} dejaron claro que el estudiante y el profesor tienen necesidades distintas, y que quien se beneficia, quien decide y quien paga son actores diferentes.
+De ahí salieron 23 requisitos funcionales y 16 no funcionales, todos derivados de la evidencia que se pudo recolectar en la fase de análisis, y una comparación con las soluciones existentes que mostró el vacío que ninguna cubría. 
+
+La fase de diseño, guiada por la ciencia del diseño, construyó y evaluó el artefacto. El prototipo cumple los 26 requisitos funcionales, incluidos los tres que se agregaron durante su construcción, y 12 de los 16 no funcionales, y los cuatro restantes no dependen del código sino de una auditoría legal, del uso con estudiantes reales o de la integración con Campus Virtual.
+La prueba de carga con 200 entregas mostró que la plataforma prepara todas las propuestas con una demora máxima de 1 hora y 21 minutos, muy por debajo del umbral de cinco horas, y las pruebas automatizadas y la revisión de accesibilidad se ejecutan en cada cambio.
+Más allá de las cifras, la decisión de arquitectura más importante fue que la propuesta de la IA nunca llega directamente al estudiante, queda como borrador hasta que el profesor la aprueba, la edita o la descarta, de modo que la supervisión humana guía el desarrollo de la plataforma.
+A esto se suma que el modelo de IA se orienta a correr dentro de la universidad, por lo que el código y los datos de los estudiantes no salen de ella.
+
+La fase de proyección mostró que la plataforma puede sostenerse en el tiempo. El roadmap organiza su evolución en tres etapas, un piloto, la adopción en la Javeriana y la expansión a otras universidades, y cada una avanza solo si se cumple un criterio medible, lo que evita escalar algo que todavía no ha demostrado su valor.
+El modelo de negocio convierte la plataforma en una empresa que vende a instituciones educativas, con un núcleo abierto y una versión institucional por suscripción.
+Con costos tomados de fuentes verificables y una meta de 650 estudiantes por semestre en cada universidad, el negocio sería rentable desde 2029, y se espera que para la universidad la suscripción cueste menos que el tiempo docente que ahorra, algo que el piloto debe confirmar.
+
+La plataforma cuenta con espacio para crecer sin alterar su objetivo central.
+El primer paso natural es ampliar los lenguajes de programación: hoy EduTrace compila C++ y sumar Python y Java, cada uno con su propio entorno aislado y su analizador de calidad, le permitiría llegar a cursos como Estructuras de Datos y a los programas que enseñan a programar con otros lenguajes.
+
+En la misma línea, la plataforma podría pasar de ejercicios de un único archivo a proyectos completos, conectándose con repositorios de GitHub para que el estudiante tenga feedback de su trabajo sobre la marcha, conforme lo va construyendo y no solamente al momento de entregarlos.
+
+Otra línea de crecimiento es que la IA aprenda del propio docente.
+Cada vez que un profesor edita una propuesta, la plataforma guarda los cambios y con esos datos, anonimizados y sin salir del servidor de la institución, el modelo podría ajustarse para que sus propuestas se parezcan cada vez más al criterio y al tono de quien las aprueba.
+De esa manera, la retroalimentación sería cada vez más fiel a la voz del docente, que es justamente lo que el proyecto busca amplificar.
+A esto se añade la evaluación periódica de modelos más precisos, que ya la plataforma permite hacer con sus propios casos de prueba antes de reemplazar el modelo actual.
+
+También la plataforma puede aportar más información para la toma de decisiones.
+Los niveles por RAE, los errores más comunes y las alertas tempranas que hoy se ven por clase se podrían consolidar por semestres y por programa, para que la dirección académica identifique qué temas les cuestan más a los estudiantes año tras año y ajuste el currículo con datos.
+Además, la integración con Campus Virtual podría extenderse a otras plataformas académicas como Moodle o Canvas, y la interfaz podría estar disponible en inglés, lo cual abre la puerta a instituciones fuera de Colombia.
+
+En el negocio, cada una de estas funciones puede convertirse en un módulo adicional de la versión institucional, de modo que la oferta crece por capas: una suscripción base por estudiante y módulos que cada universidad contrata según sus necesidades, como nuevos lenguajes, analítica para la dirección del programa o integración con su plataforma académica.
+Tampoco el mercado se limita a las universidades.
+Las instituciones técnicas y tecnológicas, el SENA y los programas de formación en programación tienen el mismo problema a la hora de dar retroalimentación de calidad a muchos estudiantes, y el modelo local es especialmente atractivo para instituciones que no pueden enviar los datos de sus estudiantes a servicios externos.
+Con una base de clientes en Colombia, el siguiente paso sería América Latina, donde el idioma es el mismo y los cursos introductorios de programación tienen las mismas dificultades.
+Con esa expansión, la alianza con la universidad permite a EduTrace acceder, como socio tecnológico, a convocatorias de investigación como ColombIA Inteligente de Minciencias \cite{35}.
+
+En todo caso, el desarrollo de EduTrace debe respetar la misma regla que presidió su diseño: cada función nueva tiene que ampliar la capacidad del profesor y nunca sustituirla.
+Si esa regla se mantiene, la plataforma puede pasar de ser una herramienta para un curso a convertirse en la forma en que muchas instituciones incorporan la inteligencia artificial en la enseñanza de la programación, sin quitarle el lugar que le corresponde al docente.
 
 %\addtolength{\textheight}{-12cm}   % This command serves to balance the column lengths
                                   % on the last page of the document manually. It shortens
@@ -927,6 +1044,28 @@ Como conclusion al trabajo realizado, se puede
 \bibitem{23} K. Mohamed, M. Yousef, W. Medhat, E. H. Mohamed, G. Khoriba, y T. Arafa, “Hands-on analysis of using large language models for the auto evaluation of programming assignments,” \textit{Information Systems}, vol. 128, Art. 102473, 2025.
 
 \bibitem{24} C. Watson y F. W. B. Li, “Failure rates in introductory programming revisited,” en \textit{Proc. 2014 Conf. Innovation Technol. Comput. Sci. Educ. (ITiCSE '14)}, Uppsala, Sweden, 2014, pp. 39–44.
+
+\bibitem{25} A. R. Hevner, S. T. March, J. Park, y S. Ram, “Design science in information systems research,” \textit{MIS Quarterly}, vol. 28, no. 1, pp. 75–105, mar. 2004.
+
+\bibitem{26} K. Peffers, T. Tuunanen, M. A. Rothenberger, y S. Chatterjee, “A design science research methodology for information systems research,” \textit{J. Manage. Inf. Syst.}, vol. 24, no. 3, pp. 45–77, 2007.
+
+\bibitem{27} R. Phaal, C. J. P. Farrukh, y D. R. Probert, “Technology roadmapping: A planning framework for evolution and revolution,” \textit{Technol. Forecast. Soc. Change}, vol. 71, no. 1–2, pp. 5–26, 2004.
+
+\bibitem{28} O. Gassmann, K. Frankenberger, y M. Csik, “The St. Gallen Business Model Navigator,” documento de trabajo, Univ. St. Gallen, St. Gallen, Suiza, 2013.
+
+\bibitem{29} D. K. Rodríguez T., “Administración, medicina y derecho concentran la mayor demanda de carreras en Colombia,” \textit{Portafolio}, 18 de sep. de 2025. [En línea]. Disponible: https://www.portafolio.co/economia/regiones/las-carreras-de-pregrado-mas-demandadas-en-colombia-entre-2019-y-2024-administracion-medicina-y-derecho-640208
+
+\bibitem{30} Indeed, “Sueldo de Desarrollador/a junior en Colombia,” 28 de sep. de 2026. [En línea]. Disponible: https://co.indeed.com/career/junior-developer/salaries
+
+\bibitem{31} Presidencia de la República de Colombia, Decreto 1469 de 2025, salario mínimo legal mensual para 2026, Bogotá, Colombia, 29 de dic. de 2025.
+
+\bibitem{32} Presidencia de la República de Colombia, Decreto 1470 de 2025, auxilio de transporte para 2026, Bogotá, Colombia, 29 de dic. de 2025.
+
+\bibitem{33} Congreso de la República de Colombia, “Ley 2101 de 2021, por medio de la cual se reduce la jornada laboral semanal de manera gradual, sin disminuir el salario de los trabajadores y se dictan otras disposiciones,” Bogotá, Colombia, 15 de jul. de 2021.
+
+\bibitem{34} CuantoMeCuesta, “¿Cuánto cuesta un contador en Colombia? Honorarios 2026,” abr. de 2026. [En línea]. Disponible: https://cuantomecuesta.com/co/contador/
+
+\bibitem{35} Ministerio de Ciencia, Tecnología e Innovación, “Convocatoria ColombIA Inteligente 2026,” mar. de 2026. [En línea]. Disponible: https://minciencias.gov.co/sala\_de\_prensa/minciencias-abre-convocatoria-colombia-inteligente-2026-para-financiar-soluciones-con
 
 
 
