@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	filippo.io/age v1.3.2
-	modernc.org/sqlite v1.61.0
+	modernc.org/sqlite v1.61.1
 )
 
 require (
