@@ -16,7 +16,7 @@
     "@codemirror/view": "^6.43.13",
     "@lezer/highlight": "^1.2.5",
     "codemirror": "^6.0.2",
-    "next": "15.5.28",
+    "next": "15.5.29",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
@@ -27,7 +27,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "eslint": "^8",
-    "eslint-config-next": "15.5.28",
+    "eslint-config-next": "15.5.29",
     "postcss": "^8.5.32",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
